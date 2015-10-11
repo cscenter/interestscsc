@@ -26,6 +26,10 @@ public class Tag {
         this.uses = uses;
     }
 
+    public String writeToFile() {
+        return name + " : " + uses + "\n";
+    }
+
     @Override
     public String toString() {
         return name;

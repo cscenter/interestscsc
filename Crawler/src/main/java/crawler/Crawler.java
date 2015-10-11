@@ -18,9 +18,17 @@ import java.util.regex.Pattern;
 
 public class Crawler {
 
+    // selectors
+    private static final String POST_SELECTOR = "item";
+    private static final String TITLE_SELECTOR = "title";
+    private static final String TEXT_SELECTOR = "description";
+    private static final String DATE_SELECTOR = "pubDate";
+    private static final String URL_SELECTOR = "comments";
+    private static final String TAG_SELECTOR = "category";
+
     private final int MAX_TAG_USES_POW = 6; // max uses count 1e6
     private final String PATH_TO_FILE_WITH_TAGS = "Crawler" + File.separator + "src" + File.separator +
-            "main" + File.separator + "resources" + File.separator;
+            "main" + File.separator + "resources" + File.separator + "tags" + File.separator;
 
     private final String PATH_TO_FILE_WITH_USERS = "Crawler" + File.separator + "src" + File.separator +
             "main" + File.separator + "resources" + File.separator + "users" + File.separator;
@@ -54,7 +62,7 @@ public class Crawler {
         while (!usersQueue.isEmpty()) {
 
             String user = usersQueue.poll();
-            List<Tag> userTags = null;
+            Set<Tag> userTags = null;
             try {
 
                 getUserFriends(user);
@@ -72,15 +80,15 @@ public class Crawler {
                 usersNoTags.add(user);
             }
 
-            BufferedWriter bufferedWriter = null;
+            BufferedWriter bufferedWriterTags = null;
             try {
-                File file = new File(PATH_TO_FILE_WITH_USERS + user + ".txt");
-                if (!file.exists()) {
-                    file.getParentFile().mkdirs();
-                    file.createNewFile();
+                File fileTags = new File(PATH_TO_FILE_WITH_USERS + user + ".txt");
+                if (!fileTags.exists()) {
+                    fileTags.getParentFile().mkdir();
+                    fileTags.createNewFile();
                 }
-                FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
-                bufferedWriter = new BufferedWriter(fileWriter);
+                FileWriter fileWriterTags = new FileWriter(fileTags.getAbsoluteFile());
+                bufferedWriterTags = new BufferedWriter(fileWriterTags);
 
                 System.out.println(user);
                 System.out.println(usersQueue.size() + " / " + allUsers.size());
@@ -89,10 +97,44 @@ public class Crawler {
                 Integer countUserTags = userTags.size();
                 Integer countUserTagsUses = 0;
                 for (Tag tag : userTags) {
-                    countUserTagsUses += tag.getUses();
-                    bufferedWriter.write(tag.getTag() + " : " + tag.getUses() + "\n");
+                    List<Post> posts = null;
+                    try {
+                        posts = getTagPosts(user, tag);
+                    } catch (UnirestException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
 
-                    System.out.println(tag.getTag() + " : " + tag.getUses() + " uses");
+                    BufferedWriter bufferedWriterPosts = null;
+                    try {
+                        File filePosts = new File(PATH_TO_FILE_WITH_TAGS + tag.getTag() + ".txt");
+                        if (!filePosts.exists()) {
+                            filePosts.getParentFile().mkdir();
+                            filePosts.createNewFile();
+                        }
+                        FileWriter fileWriterPosts = new FileWriter(filePosts.getAbsoluteFile(), true);
+                        bufferedWriterPosts = new BufferedWriter(fileWriterPosts);
+                        for (Post post : posts) {
+                            bufferedWriterPosts.write(post.writeToFile());
+                            bufferedWriterPosts.write("-\n");
+                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        if (bufferedWriterPosts != null) {
+                            try {
+                                bufferedWriterPosts.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    countUserTagsUses += tag.getUses();
+                    bufferedWriterTags.write(tag.writeToFile());
+
+                    System.out.print(tag.writeToFile());
 
                     Integer lastUses = allTags.containsKey(tag.getTag()) ? allTags.get(tag.getTag()) : 0;
                     allTags.put(tag.getTag(), tag.getUses() + lastUses);
@@ -107,9 +149,9 @@ public class Crawler {
                 e.printStackTrace();
             } finally {
 
-                if (bufferedWriter != null) {
+                if (bufferedWriterTags != null) {
                     try {
-                        bufferedWriter.close();
+                        bufferedWriterTags.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -117,6 +159,7 @@ public class Crawler {
             }
         }
 
+        BufferedWriter bufferedWriter = null;
         try {
 
             File file = new File(PATH_TO_FILE_WITH_TAGS + "tags.txt");
@@ -125,7 +168,7 @@ public class Crawler {
             }
 
             FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
-            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+            bufferedWriter = new BufferedWriter(fileWriter);
 
             System.out.println("++++++++++++++++++++++++++++++++++++++++++");
             System.out.println("ALL TAGS:");
@@ -147,10 +190,16 @@ public class Crawler {
             for (String userNoTags : usersNoTags) {
                 System.out.println(userNoTags);
             }
-
-            bufferedWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (bufferedWriter != null) {
+                try {
+                    bufferedWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -181,7 +230,7 @@ public class Crawler {
     }
 
     // get all user's tags
-    private List<Tag> getUserTags(String user) throws UnirestException, InterruptedException {
+    private Set<Tag> getUserTags(String user) throws UnirestException, InterruptedException {
 
         HttpResponse<String> userTagsResponse = Unirest.get("http://{user_name}.livejournal.com/tag")
                 .routeParam("user_name", user)
@@ -196,7 +245,7 @@ public class Crawler {
 
         String regex = "\\d+";    // the number
         Pattern pattern = Pattern.compile(regex);
-        List<Tag> tagList = new ArrayList<Tag>();
+        Set<Tag> tagSet = new HashSet<Tag>();
 
         for (Element httpTag : httpTags) {
             String tagText = httpTag.text();
@@ -226,10 +275,40 @@ public class Crawler {
             // if don't find uses or find irregular result
             if (!strUses.isEmpty() && strUses.length() < MAX_TAG_USES_POW) {
                 Integer tagUses = Integer.parseInt(strUses);
-                tagList.add(new Tag(tagText, tagUses));
+                tagSet.add(new Tag(tagText, tagUses));
             }
         }
 
-        return tagList;
+        return tagSet;
+    }
+
+    // get 25 posts by current tag
+    private List<Post> getTagPosts(final String user, final Tag tag) throws UnirestException, InterruptedException {
+
+        HttpResponse<String> liveJournalResponse = Unirest.get("http://" + user + ".livejournal.com/data/rss/?tag=" + tag.getTag().replaceAll(" ", "%20"))
+                .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
+                .asString();
+        Thread.sleep(200);  // delay
+
+        Document doc = Jsoup.parse(liveJournalResponse.getBody());
+
+        Elements selectionPosts = doc.select(POST_SELECTOR);
+
+        List<Post> postList = new ArrayList<Post>();
+        for (Element selectionPost : selectionPosts) {
+            Elements title = selectionPost.select(TITLE_SELECTOR);
+            Elements text = selectionPost.select(TEXT_SELECTOR);
+            Elements date = selectionPost.select(DATE_SELECTOR);
+            Elements url = selectionPost.select(URL_SELECTOR);
+            Elements postTags = selectionPost.select(TAG_SELECTOR);
+
+            List<String> tagsList = new ArrayList<String>();
+            for (Element postTag : postTags) {
+                tagsList.add(postTag.text());
+            }
+
+            postList.add(new Post(title.text(), text.text(), date.text(), url.text(), tagsList));
+        }
+        return postList;
     }
 }
