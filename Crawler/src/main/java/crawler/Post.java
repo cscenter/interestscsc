@@ -8,7 +8,7 @@ public class Post {
     private String title;
     private String text;
     private String date;
-    private String url;
+    private String url;                   //TODO: int is enough
     private List<String> tags;
 
     public Post() {
