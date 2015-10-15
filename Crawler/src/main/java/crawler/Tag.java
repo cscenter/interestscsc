@@ -3,27 +3,19 @@ package crawler;
 public class Tag {
 
     private String name;
-    private int uses;
+    private Integer uses;
 
-    public Tag(String title, int uses) {
+    public Tag(String title, Integer uses) {
         this.name = title;
         this.uses = uses;
     }
 
-    public String getTag() {
+    public String getName() {
         return name;
-    }
-
-    public void setTag(String title) {
-        this.name = title;
     }
 
     public Integer getUses() {
         return uses;
-    }
-
-    public void setUses(int uses) {
-        this.uses = uses;
     }
 
     public String writeToFile() {
@@ -33,5 +25,23 @@ public class Tag {
     @Override
     public String toString() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Tag)) return false;
+
+        Tag tag = (Tag) o;
+
+        return !(name != null ? !name.equals(tag.name) : tag.name != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name != null ? name.hashCode() : 0;
+        result = 31 * result + (uses != null ? uses.hashCode() : 0);
+        return result;
     }
 }
