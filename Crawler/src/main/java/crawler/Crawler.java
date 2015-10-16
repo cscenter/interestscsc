@@ -6,6 +6,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.safety.Whitelist;
 import org.jsoup.select.Elements;
 
 import java.io.*;
@@ -24,7 +25,7 @@ public class Crawler {
     private static final String DATE_SELECTOR = "pubDate";
     private static final String URL_SELECTOR = "comments";
     private static final String TAG_SELECTOR = "category";
-    private static final String COUNT_COMMENTS_SELECTOR = "lj";
+    private static final String COUNT_COMMENTS_SELECTOR = "lj:reply-count";
 
     private final int MAX_TAG_USES_POW = 6; // max uses count 1e6
     private final String PATH_TO_FILE_WITH_TAGS = "Crawler" + File.separator + "src" + File.separator +
@@ -342,8 +343,9 @@ public class Crawler {
             Elements date = selectionPost.select(DATE_SELECTOR);
             Elements url = selectionPost.select(URL_SELECTOR);
             Elements postTags = selectionPost.select(TAG_SELECTOR);
-            Elements comments = selectionPost.select(COUNT_COMMENTS_SELECTOR);
+            Elements comments = selectionPost.getElementsByTag(COUNT_COMMENTS_SELECTOR);
 
+            String safeText = Jsoup.clean(text.text(), Whitelist.none());
             List<String> tagsList = postTags.stream().map(Element::text).collect(Collectors.toList());
 
             String regex = "/\\d+";    // the number
@@ -354,7 +356,7 @@ public class Crawler {
                 urlNumber = Integer.parseInt(matcher.group().replaceAll("/", ""));
             }
             Integer countComments = !Objects.equals(comments.text(), "") ? Integer.parseInt(comments.text()) : null;
-            postList.add(new Post(title.text(), text.text(), user, date.text(), urlNumber, countComments, tagsList));
+            postList.add(new Post(title.text(), safeText, user, date.text(), urlNumber, countComments, tagsList));
         }
         return postList;
     }
