@@ -5,39 +5,177 @@
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.*;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Set;
 
 public class TomitaExec {
 
-    public static void main(String[] args) {
+    private static final String PROTO_FILE = "config.proto";
+    private static final int WATCHDOG_CONST = 60000;
+    static final String TOMITA_INPUT_FILE_NAME = "test.txt";
+    static final String TOMITA_OUTPUT_FILE_NAME = "PrettyOutput.html";
+    private static final int ID_INDEX = 1;
+    private static final int TITLE_INDEX = 5;
+    private static final int TEXT_INDEX = 6;
+    private static final String BASE_DIR = System.getProperty("user.dir")  + File.separator + getTomitFileName();
 
-        String inputFile = "test.txt";
-        String outputFile = "testit";
-        PrepareProtoFile(inputFile, outputFile);
-        runTomita();
 
-        WordFilter a = new WordFilter();
-        String[] strArray = {"а", "н", "у", "с", "в"};
-        List<String> GoodWords = a.filter(strArray);
-        for( String oneItem : GoodWords ) {
-            System.out.println(oneItem);
+    public static void main(String[] args) throws Exception {
+        DBConnector dbConnector = new DBConnector();
+        dbConnector.setConnectionParams("localhost", "5432", "interests", "interests", "12345");
+        dbConnector.connect();
+
+        Statement st = dbConnector.getConnection().createStatement();
+
+        ResultSet rs = st.executeQuery("SELECT * FROM Post");
+        while (rs.next()) {
+            String textId = rs.getString(ID_INDEX);
+            System.out.println("id: " + textId);
+            String title = rs.getString(TITLE_INDEX);
+            System.out.println("title: " + title);
+            String newText = rs.getString(TEXT_INDEX);
+            String fullText = new String(title + ". " + newText);
+            TomitaExec tomitaExec = new TomitaExec();
+            HashMap<String, Integer> wordsCount = tomitaExec.runTomitaOnText(fullText);
+            NGramm[] nGramms = tomitaExec.toNGramm(wordsCount, textId);
+
+            ///*
+            for (NGramm nGramm : nGramms) {
+                System.out.println(nGramm.getTextId() + " " + nGramm.getnGramm() + " " + nGramm.getCountOccurences());
+            }
+            //*/
+
         }
+        rs.close();
 
+        st.close();
     }
+
+    public static NGramm[] toNGramm(HashMap<String, Integer> countMap, String idText) {
+        Set<String> keySet = countMap.keySet();
+        NGramm[] nGramms = new NGramm[keySet.size()];
+        int i = 0;
+        for (String nGramm : keySet) {
+            NGramm newNGramm = new NGramm(idText, nGramm, countMap.get(nGramm));
+            nGramms[i] = newNGramm;
+            i++;
+        }
+        return nGramms;
+    }
+
+    private static void printCount(HashMap<String, Integer> countMap) {
+        Set<String> keySet = countMap.keySet();
+        for (String string : keySet) {
+            System.out.println(string + " : " + countMap.get(string));
+        }
+    }
+
+
+    // processNGramms
+    public static HashMap<String, Integer> runTomitaOnText(String text) {
+        // here we have input file named 'test.txt' for tomita to eat it!
+        saveFileForTomita(text);
+        // here tomita ate 'test.txt' and produced 'PrettyOutput.html'
+        runTomita();
+        // here we get nGrams (with repeats) from our 'PrettyOutput.html'
+        ArrayList<String> nGramms = getNGramms();
+
+        WordFilter wordFilter = new WordFilter();
+        ArrayList<String> goodNGrams = wordFilter.filter(nGramms);
+
+        HashMap<String, Integer> nGrammCount = countOccurences(goodNGrams);
+
+        return nGrammCount;
+    }
+
+    public static HashMap<String, Integer> countOccurences(ArrayList<String> strArray) {
+        HashMap<String, Integer> countMap = new HashMap<String, Integer>();
+        for (String string : strArray) {
+            if (!countMap.containsKey(string)) {
+                countMap.put(string, 1);
+            } else {
+                Integer count = countMap.get(string);
+                count = count + 1;
+                countMap.put(string, count);
+            }
+        }
+        return countMap;
+    }
+
+    public static ArrayList<String> getNGramms() {
+        String html = readPrettyOutput();
+        Document doc = Jsoup.parse(html);
+        Elements links = doc.select("a[href]");
+        ArrayList<String> nGramms = new ArrayList<String>();
+        for (Element link : links) {
+            nGramms.add(link.text());
+        }
+        return nGramms;
+    }
+
+    public static String readPrettyOutput() {
+        StringBuilder contentBuilder = new StringBuilder();
+        try {
+            BufferedReader in = new BufferedReader(new FileReader(TOMITA_OUTPUT_FILE_NAME));
+            String str;
+            while ((str = in.readLine()) != null) {
+                contentBuilder.append(str);
+            }
+            in.close();
+        } catch (IOException e) {
+        }
+        String content = contentBuilder.toString();
+        return content;
+    }
+
+    public static void saveFileForTomita(String text) {
+        PrintWriter writer = null;
+        try {
+            writer = new PrintWriter(TOMITA_INPUT_FILE_NAME, "UTF-8");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        writer.println(text);
+        writer.close();
+    }
+
+    public static String getTomitFileName() {
+        String oSName = System.getProperty("os.name");
+        if (oSName.equals("Linux")) {
+            // разрядность?
+            return "tomita-linux64";
+        }
+        if (oSName.equals("Windows")) {
+            return "tomita-win32";
+        }
+        if (oSName.equals("Mac")) {
+            return "tomita-mac";
+        }
+        return "tomita-freebsd";
+    }
+
 
     // запускает tomita с готовым config.proto
     public static void runTomita() {
         // из других директорий не запускается, не знаю почему(
-        final String BASE_DIR = System.getProperty("user.dir")  + File.separator + "tomita-linux64";
+        System.out.println(BASE_DIR);
 
         CommandLine cmdLine = new CommandLine(BASE_DIR);
-        cmdLine.addArgument("config.proto");
+        cmdLine.addArgument(PROTO_FILE);
         DefaultExecutor executor = new DefaultExecutor();
         executor.setExitValue(0);
-        ExecuteWatchdog watchdog = new ExecuteWatchdog(60000);
+        ExecuteWatchdog watchdog = new ExecuteWatchdog(WATCHDOG_CONST);
         executor.setWatchdog(watchdog);
         try {
             int exitValue = executor.execute(cmdLine);
@@ -46,92 +184,45 @@ public class TomitaExec {
         }
     }
 
-    // возвращает строку, что должна быть в config.proto
-    public static String getProtoText(String inputFile, String outputFile) {
-        String ProtoString = "encoding \"utf8\"; // указываем кодировку, в которой написан конфигурационный файл\n" +
-                "TTextMinerConfig {\n" +
-                "  Dictionary = \"mydic.gzt\"; // путь к корневому словарю\n" +
-                "  PrettyOutput = \"" + outputFile + ".html\"; // путь к файлу с отладочным выводом в удобном для чтения виде\n" +
-                "  Input = {\n" +
-                "    File = \""+ inputFile +"\"; // путь к входному файлу\n" +
-                "  }\n" +
-                "  Articles = [\n" +
-                "    { Name = \"наша_первая_грамматика\" } // название статьи в корневом словаре,\n" +
-                "                                          // которая содержит запускаемую грамматику\n" +
-                "  ]\n" +
-                "Facts = [\n" +
-                "    { Name = \"Word\" }\n" +
-                "]\n" +
-                "Output = {\n" +
-                "    File = \"" + outputFile + ".txt\";\n" +
-                "    Format = text;        // можно использовать следующие форматы:\n" +
-                "                          // proto (Google Protobuf), xml, text\n" +
-                "}\n" +
-                "}";
-        return ProtoString;
-    }
-
-    // записывает config.proto
-    public static void PrepareProtoFile(String inputFile, String outputFile) {
-        String ProtoString = getProtoText(inputFile, outputFile);
-        try (Writer writer = new BufferedWriter(new OutputStreamWriter(
-                new FileOutputStream("config.proto"), "utf-8"))) {
-            try {
-                writer.write(ProtoString);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }
 
-/*
-class TomitaHTMLParser {
 
-    public static String parse(String OutputFileName) {
-        final String BASE_DIR = System.getProperty("user.dir")  + File.separator + OutputFileName;
-        return "";
-    }
-}
-*/
+class NGramm {
+    private String textId;
+    private String nGramm;
+    private int countOccurences;
 
-// Будущий фильтр для стоп-слов
-class WordFilter {
+    NGramm() {
 
-    public static List<String> filter(String[] Words) {
-        String [] StopWords = getStopWords();
-        List<String> GoodWords = new ArrayList<String>();
-        for (String Word : Words) {
-            String NormWord = normalize(Word);
-            if (!isIn(NormWord, StopWords)) {
-                GoodWords.add( NormWord );
-            }
-        }
-        return GoodWords;
     }
 
-    // привести слово к нижнему регистру
-    public static String normalize(String Word) {
-        return Word.toLowerCase();
+    NGramm(final String textId, final String nGramm, final int countOccurences) {
+        this.textId = textId;
+        this.nGramm = nGramm;
+        this.countOccurences = countOccurences;
     }
 
-    public static boolean isIn(String item, String[] strArray) {
-        for (String str : strArray) {
-            if (str.equals(item)) {
-                return true;
-            }
-        }
-        return false;
+    String getTextId() {
+        return this.textId;
     }
 
-    public static String[] getStopWords() {
-        String[] a = {"в", "у"};
-        return a;
+    String getnGramm() {
+        return this.nGramm;
+    }
+
+    int getCountOccurences() {
+        return this.countOccurences;
+    }
+
+    void setTextId(final String textId) {
+        this.textId = textId;
+    }
+
+    void setnGramm(final String nGramm) {
+        this.nGramm = nGramm;
+    }
+
+    void setCountOccurences(final int countOccurences) {
+        this.countOccurences = countOccurences;
     }
 }

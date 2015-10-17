@@ -3,7 +3,7 @@ encoding "utf8";               // указываем кодировку, в ко
 import "base.proto";           // подключаем описания protobuf-типов (TAuxDicArticle и прочих)
 import "articles_base.proto";  // Файлы base.proto и articles_base.proto встроены в компилятор.
                                // Их необходимо включать в начало любого gzt-словаря.
-//import "words.proto";
+import "words.proto";
 // статья с нашей грамматикой:
 TAuxDicArticle "наша_первая_грамматика"
 {
