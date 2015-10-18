@@ -34,8 +34,8 @@ public class WordFilter {
     }
 
     public static String[] getStopWords() {
-        String[] stopWords = {"в", "у"};
-        return stopWords;
+        String[] a = {"в", "у"};
+        return a;
     }
 }
 
