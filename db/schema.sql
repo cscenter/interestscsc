@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS UserLJ;
 DROP TABLE IF EXISTS Region;
 
 
--- ? TODO Возможно нужно прописать касдады удаления
+-- ? TODO Р’РѕР·РјРѕР¶РЅРѕ РЅСѓР¶РЅРѕ РїСЂРѕРїРёСЃР°С‚СЊ РєР°СЃРґР°РґС‹ СѓРґР°Р»РµРЅРёСЏ
 
 CREATE TABLE Region (
   id   BIGSERIAL PRIMARY KEY,
@@ -24,18 +24,18 @@ CREATE TABLE UserLJ (
   region_id INT       NOT NULL REFERENCES Region,
   created   TIMESTAMP NOT NULL,
   update    TIMESTAMP NOT NULL,
-  fetched   TIMESTAMP NULL, -- NULL здесь показывает, что
-                                            -- значение может быть пустым
+  fetched TIMESTAMP NULL, -- NULL Р·РґРµСЃСЊ РїРѕРєР°Р·С‹РІР°РµС‚, С‡С‚Рѕ
+                                            -- Р·РЅР°С‡РµРЅРёРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј
   birthday  DATE      NULL,
   interests TEXT      NULL
 
-  -- Что-то еще добавить?
+  -- Р§С‚Рѕ-С‚Рѕ РµС‰Рµ РґРѕР±Р°РІРёС‚СЊ?
 );
 
 CREATE TABLE Post (
   id        BIGSERIAL PRIMARY KEY,
-  url       INT       NOT NULL UNIQUE, -- здесь храним номер из ссылки на пост
-                                            -- они все вида <user>.lj.com/<number>
+  url INT NOT NULL UNIQUE, -- Р·РґРµСЃСЊ С…СЂР°РЅРёРј РЅРѕРјРµСЂ РёР· СЃСЃС‹Р»РєРё РЅР° РїРѕСЃС‚
+                                            -- РѕРЅРё РІСЃРµ РІРёРґР° <user>.lj.com/<number>
   user_id   INT       NOT NULL REFERENCES UserLJ,
   date      TIMESTAMP NOT NULL,
   title     TEXT      NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE Post (
   text_norm TEXT      NULL,
   repostNum INT       NULL
 
-  -- Что-то еще можем\хотим вытащить?
+  -- Р§С‚Рѕ-С‚Рѕ РµС‰Рµ РјРѕР¶РµРј\С…РѕС‚РёРј РІС‹С‚Р°С‰РёС‚СЊ?
 );
 
 CREATE TABLE MasterTag (
@@ -53,9 +53,9 @@ CREATE TABLE MasterTag (
 
 CREATE TABLE Tag (
   id        BIGSERIAL PRIMARY KEY,
-  text      TEXT NOT NULL UNIQUE, -- Если хотим связать один тэг
-  master_id INT  NULL REFERENCES MasterTag, -- с неск мастерами, связь нужно
-  text_norm TEXT NULL                       -- вынести в отдельную таблицу
+  text      TEXT NOT NULL UNIQUE, -- Р•СЃР»Рё С…РѕС‚РёРј СЃРІСЏР·Р°С‚СЊ РѕРґРёРЅ С‚СЌРі
+  master_id INT  NULL REFERENCES MasterTag, -- СЃ РЅРµСЃРє РјР°СЃС‚РµСЂР°РјРё, СЃРІСЏР·СЊ РЅСѓР¶РЅРѕ
+  text_norm TEXT NULL                       -- РІС‹РЅРµСЃС‚Рё РІ РѕС‚РґРµР»СЊРЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ
 );
 
 CREATE TABLE Unigram (
@@ -64,6 +64,11 @@ CREATE TABLE Unigram (
 );
 
 CREATE TABLE Digram (
+  id   BIGSERIAL PRIMARY KEY,
+  text TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE Trigram (
   id   BIGSERIAL PRIMARY KEY,
   text TEXT NOT NULL UNIQUE
 );
@@ -78,7 +83,7 @@ CREATE TABLE TagToPost (
 CREATE TABLE TagToUserLJ (
   tag_id  INT REFERENCES Tag,
   user_id INT REFERENCES UserLJ,
-  uses    INT NULL, --количество использований конкретным userLJ
+  uses INT NULL, --РєРѕР»РёС‡РµСЃС‚РІРѕ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёР№ РєРѕРЅРєСЂРµС‚РЅС‹Рј userLJ
   PRIMARY KEY (tag_id, user_id)
 );
 
@@ -94,31 +99,8 @@ CREATE TABLE DigramToPost (
   PRIMARY KEY (digram_id, post_id)
 );
 
-
--- Ниже несколько тестовых примеров заполнения.
-
-INSERT INTO Region VALUES
-  (DEFAULT, 'RU'),
-  (DEFAULT, 'EN');
-
-INSERT INTO UserLJ VALUES
-  (1, 'sssmaxusss', (SELECT id
-                     FROM Region
-                     WHERE name = 'RU'),
-   '2015-09-17T13:09:03', '2015-09-17T13:09:03', NULL, NULL, NULL),
-  (2, 'mi3ch', (SELECT id
-                FROM Region
-                WHERE name = 'EN'),
-   '2003-04-03T08:11:41', '2015-09-17T13:09:03', NULL, '1966-03-27', 'бабель бабы байсикл');
---
--- INSERT INTO Tag VALUES
---   (DEFAULT, 'coffee', NULL),
---   (DEFAULT, 'java', NULL);
---
--- INSERT INTO TagToUserLJ VALUES
---   ((SELECT id
---     FROM Tag
---     WHERE text = 'java'), 1),
---   ((SELECT id
---     FROM Tag
---     WHERE text = 'coffee'), 2);
+CREATE TABLE TrigramToPost (
+  trigram_id INT REFERENCES Trigram,
+  post_id    INT REFERENCES Post,
+  PRIMARY KEY (trigram_id, post_id)
+);

@@ -18,13 +18,13 @@ import java.util.Scanner;
 
 public class DBConnector {
     private static final String SCHEMA_PATH = "db/schema.sql";
-    private static final String SCHEMA_ENCODING = "UTF-8"; //TODO почему IDEA не воспринимает UTF-8?
-    private String host = "localhost"; //TODO храним здесь или оставляем метод для задания
+    private static final String SCHEMA_ENCODING = "UTF-8";
+    private String host = "localhost"; //TODO С…СЂР°РЅРёРј Р·РґРµСЃСЊ РёР»Рё РѕСЃС‚Р°РІР»СЏРµРј РјРµС‚РѕРґ РґР»СЏ Р·Р°РґР°РЅРёСЏ
     private String port = "5432";
     private String db = "interests";
     private String user = "interests";
     private String pass = "12345";
-    private Connection connection; //TODO нужно ли как-то проверять успешность коннекта
+    private Connection connection;
 
     public DBConnector setConnectionParams(String host, String port, String db, String user, String pass) {
         this.host = host;
@@ -41,32 +41,32 @@ public class DBConnector {
         Properties props = new Properties();
         props.setProperty("user", user);
         props.setProperty("password", pass);
-        this.connection = DriverManager.getConnection(url, props);
+        connection = DriverManager.getConnection(url, props);
         return this;
     }
 
-    public Connection getConnection() throws Exception {
-        if (connection == null) throw new Exception("You should firt use connect() method");
+    public Connection getConnection() throws SQLException, ClassNotFoundException {
+        if (connection == null) connect();
         return connection;
     }
 
     public DBConnector recreateDatabase() throws SQLException, FileNotFoundException {
-        String schemaSQL = new Scanner(new File(SCHEMA_PATH)).useDelimiter("\\Z").next();
+        String schemaSQL = new Scanner(new File(SCHEMA_PATH), SCHEMA_ENCODING).useDelimiter("\\Z").next();
         connection.createStatement().execute(schemaSQL);
         return this;
     }
 
-    public DBConnector insertTag(Tag tag) throws SQLException { //TODO нужно как-то возвращать успешность внесенных изменений
+    public DBConnector insertTag(Tag tag) throws SQLException { //TODO РЅСѓР¶РЅРѕ РєР°Рє-С‚Рѕ РІРѕР·РІСЂР°С‰Р°С‚СЊ СѓСЃРїРµС€РЅРѕСЃС‚СЊ РІРЅРµСЃРµРЅРЅС‹С… РёР·РјРµРЅРµРЅРёР№
         connection.createStatement().execute("INSERT INTO Tag VALUES " +
                 "(DEFAULT, '" + tag.getTag() + "', NULL, NULL );");
         return this;
     }
 
     public DBConnector insertPost(Post post, String userLJname) throws SQLException {
-        connection.createStatement().execute( //Не очень красивый способ. найти параметризованный
+        connection.createStatement().execute( //РќРµ РѕС‡РµРЅСЊ РєСЂР°СЃРёРІС‹Р№ СЃРїРѕСЃРѕР±. РЅР°Р№С‚Рё РїР°СЂР°РјРµС‚СЂРёР·РѕРІР°РЅРЅС‹Р№
                 "INSERT INTO Post VALUES " +
                         "(DEFAULT, " +
-//                        "'" + post.getUrl() + "', " + //TODO дождаться изменений в Post
+//                        "'" + post.getUrl() + "', " + //TODO РґРѕР¶РґР°С‚СЊСЃСЏ РёР·РјРµРЅРµРЅРёР№ РІ Post
                         "0, " +
                         "(SELECT id FROM UserLJ WHERE nick = '" + userLJname + "'), " +
                         "'" + post.getDate() + "', " +
