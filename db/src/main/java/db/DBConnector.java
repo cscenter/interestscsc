@@ -58,22 +58,21 @@ public class DBConnector {
 
     public DBConnector insertTag(Tag tag) throws SQLException { //TODO нужно как-то возвращать успешность внесенных изменений
         connection.createStatement().execute("INSERT INTO Tag VALUES " +
-                "(DEFAULT, '" + tag.getTag() + "', NULL, NULL );");
+                "(DEFAULT, '" + tag.getName() + "', NULL, NULL );");
         return this;
     }
 
-    public DBConnector insertPost(Post post, String userLJname) throws SQLException {
+    public DBConnector insertPost(Post post) throws SQLException {
         connection.createStatement().execute( //Не очень красивый способ. найти параметризованный
                 "INSERT INTO Post VALUES " +
                         "(DEFAULT, " +
-//                        "'" + post.getUrl() + "', " + //TODO дождаться изменений в Post
-                        "0, " +
-                        "(SELECT id FROM UserLJ WHERE nick = '" + userLJname + "'), " +
+                        post.getUrl() + ", " +
+                        "(SELECT id FROM UserLJ WHERE nick = '" + post.getAuthor() + "'), " +
                         "'" + post.getDate() + "', " +
                         "'" + post.getTitle() + "', " +
                         "'" + post.getText() + "', " +
                         "NULL, " +
-                        "NULL" +
+                        post.getCountComment() +
                         ");"
         );
         return this;

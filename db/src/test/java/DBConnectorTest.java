@@ -48,9 +48,9 @@ public class DBConnectorTest {
             System.out.println("name: " + rs.getString(2) + "\tuses: " + rs.getString(4));
         rs.close();
 
-        Post post = new Post("No pain..", "..no game!", "Sun, 11 Oct 2015 16:53:16 GMT",
-                "http://mi3ch.livejournal.com/3098540.html", new ArrayList<String>());
-        dbConnector.insertPost(post, "sssmaxusss");
+        Post post = new Post("No pain..", "..no game!", "sssmaxusss", "Sun, 11 Oct 2015 16:53:16 GMT",
+                3098540, 20, new ArrayList<String>());
+        dbConnector.insertPost(post);
         rs = st.executeQuery("SELECT title, text FROM Post");
         while (rs.next())
             System.out.println("title: " + rs.getString(1) + "\ttext: " + rs.getString(2));
