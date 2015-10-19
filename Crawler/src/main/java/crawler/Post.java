@@ -7,23 +7,29 @@ public class Post {
 
     private String title;
     private String text;
+    private String author;
     private String date;
-    private String url;                   //TODO: int is enough
+    private Integer url;
+    private Integer countComment;
     private List<String> tags;
 
     public Post() {
         this.title = "";
         this.text = "";
+        this.author = "";
         this.date = "";
-        this.url = "";
-        this.tags = new ArrayList<String>();
+        this.url = null;
+        this.countComment = null;
+        this.tags = new ArrayList<>();
     }
 
-    public Post(final String title, final String text, final String date, final String url, final List<String> tags) {
+    public Post(final String title, final String text, final String author, final String date, final Integer url, final Integer countComment, final List<String> tags) {
         this.title = title;
         this.text = text;
+        this.author = author;
         this.date = date;
         this.url = url;
+        this.countComment = countComment;
         this.tags = tags;
     }
 
@@ -31,47 +37,37 @@ public class Post {
         return title;
     }
 
-    public void setTitle(final String title) {
-        this.title = title;
-    }
-
     public String getText() {
         return text;
     }
 
-    public void setText(final String text) {
-        this.text = text;
+    public String getAuthor() {
+        return author;
     }
 
     public String getDate() {
         return date;
     }
 
-    public void setDate(final String date) {
-        this.date = date;
-    }
-
-    public String getUrl() {
+    public Integer getUrl() {
         return url;
     }
 
-    public void setUrl(final String url) {
-        this.url = url;
+    public Integer getCountComment() {
+        return countComment;
     }
 
     public List<String> getTags() {
         return tags;
     }
 
-    public void setTag(final String tag) {
-        this.tags.add(tag);
-    }
-
     public String writeToFile() {
         return "title : " + title + "\n" +
                 "text : " + text + "\n" +
+                "author : " + author + "\n" +
                 "date : " + date + "\n" +
                 "url : " + url + "\n" +
+                "comments : " + countComment + "\n" +
                 "tags : " + tags.toString() + "\n";
     }
 
