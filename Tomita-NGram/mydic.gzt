@@ -3,9 +3,9 @@ encoding "utf8";               // указываем кодировку, в ко
 import "base.proto";           // подключаем описания protobuf-типов (TAuxDicArticle и прочих)
 import "articles_base.proto";  // Файлы base.proto и articles_base.proto встроены в компилятор.
                                // Их необходимо включать в начало любого gzt-словаря.
-import "test.proto";
+import "ngrams.proto";
 // статья с нашей грамматикой:
-TAuxDicArticle "наша_первая_грамматика"
+TAuxDicArticle "N-Grams"
 {
-    key = { "tomita:first.cxx" type=CUSTOM }
+    key = { "tomita:goodwords.cxx" type=CUSTOM }
 }
