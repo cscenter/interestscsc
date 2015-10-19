@@ -1,0 +1,7 @@
+import "base.proto";           // описание protobuf-типов
+import "facttypes_base.proto"; // описание protobuf-типа NFactType.TFact
+
+message Word: NFactType.TFact 
+{
+    required string Norm = 1;
+}
