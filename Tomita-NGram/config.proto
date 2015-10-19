@@ -6,11 +6,11 @@ TTextMinerConfig {
     File = "input.txt"; // путь к входному файлу
   }
   Articles = [
-    { Name = "наша_первая_грамматика" } // название статьи в корневом словаре,
+    { Name = "N-Grams" } // название статьи в корневом словаре,
                                           // которая содержит запускаемую грамматику
   ]
 Facts = [
-    { Name = "Test" }
+    { Name = "NGrams" }
 ]
 Output = {
     File = "facts.txt";
