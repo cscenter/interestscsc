@@ -1,6 +1,7 @@
 /**
  * Created by jamsic on 26.09.15.
  */
+package db;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
@@ -17,7 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 
-public class TomitaExec {
+public class TomitaExecutor {
 
     private static final String PROTO_FILE = "config.proto";
     private static final int WATCHDOG_CONST = 60000;
@@ -45,13 +46,14 @@ public class TomitaExec {
             System.out.println("title: " + title);
             String newText = rs.getString(TEXT_INDEX);
             String fullText = new String(title + ". " + newText);
-            TomitaExec tomitaExec = new TomitaExec();
-            HashMap<String, Integer> wordsCount = tomitaExec.runTomitaOnText(fullText);
-            NGramm[] nGramms = tomitaExec.toNGramm(wordsCount, textId);
+            TomitaExecutor tomitaExec = new TomitaExecutor();
+            HashMap<String, String> wordsPositions = tomitaExec.runTomitaOnText(fullText);
+            NGramm[] nGramms = tomitaExec.toNGramm(wordsPositions, textId);
 
             ///*
             for (NGramm nGramm : nGramms) {
-                System.out.println(nGramm.getTextId() + " " + nGramm.getnGramm() + " " + nGramm.getCountOccurences());
+                System.out.println(nGramm.getPostId() + " " + nGramm.getnGramm() + " " + nGramm.getPositions()
+                        + " " + nGramm.getCountOccurences());
             }
             //*/
 
@@ -64,12 +66,12 @@ public class TomitaExec {
     }
     //*/
 
-    public static NGramm[] toNGramm(HashMap<String, Integer> countMap, String idText) {
-        Set<String> keySet = countMap.keySet();
+    public static NGramm[] toNGramm(HashMap<String, String> positionMap, String idText) {
+        Set<String> keySet = positionMap.keySet();
         NGramm[] nGramms = new NGramm[keySet.size()];
         int i = 0;
         for (String nGramm : keySet) {
-            NGramm newNGramm = new NGramm(idText, nGramm, countMap.get(nGramm));
+            NGramm newNGramm = new NGramm(idText, nGramm, positionMap.get(nGramm));
             nGramms[i] = newNGramm;
             i++;
         }
@@ -85,10 +87,10 @@ public class TomitaExec {
 
 
     // processNGramms
-    public static HashMap<String, Integer> runTomitaOnText(String text) {
-        // here we have input file named 'test.txt' for tomita to eat it!
+    public static HashMap<String, String> runTomitaOnText(String text) {
+        // here we have input file named 'test.txt' for tomita to process it!
         saveFileForTomita(text);
-        // here tomita ate 'test.txt' and produced 'PrettyOutput.html'
+        // here tomita processes 'test.txt' and produces 'PrettyOutput.html'
         runTomita();
         // here we get nGrams (with repeats) from our 'PrettyOutput.html'
         ArrayList<String> nGramms = getNGramms();
@@ -97,8 +99,23 @@ public class TomitaExec {
         ArrayList<String> goodNGrams = wordFilter.filter(nGramms);
 
         HashMap<String, Integer> nGrammCount = countOccurences(goodNGrams);
+        HashMap<String, String> nGrammPositions = getPositions(goodNGrams);
 
-        return nGrammCount;
+        return nGrammPositions;
+    }
+
+    public static HashMap<String, String> getPositions(ArrayList<String> strArray) {
+        HashMap<String, String> positionMap = new HashMap<String, String>();
+        for (int i = 0; i < strArray.size(); i++) {
+            if (!positionMap.containsKey(strArray.get(i))) {
+                positionMap.put(strArray.get(i), Integer.toString(i));
+            } else {
+                String positions = positionMap.get(strArray.get(i));
+                positions = positions + "," + Integer.toString(i);
+                positionMap.put(strArray.get(i), positions);
+            }
+        }
+        return positionMap;
     }
 
     public static HashMap<String, Integer> countOccurences(ArrayList<String> strArray) {
@@ -189,41 +206,47 @@ public class TomitaExec {
 
 
 class NGramm {
-    private String textId;
-    private String nGramm;
+    private String postId;
+    private String nGrammText;
+    private String positions;
     private int countOccurences;
 
     NGramm() {
 
     }
 
-    NGramm(final String textId, final String nGramm, final int countOccurences) {
-        this.textId = textId;
-        this.nGramm = nGramm;
-        this.countOccurences = countOccurences;
+    NGramm(final String postId, final String nGramm, final String positions) {
+        this.postId = postId;
+        this.nGrammText = nGramm;
+        this.positions = positions;
+        this.countOccurences = positions.split(",").length;
     }
 
-    String getTextId() {
-        return this.textId;
+    String getPostId() {
+        return this.postId;
     }
 
     String getnGramm() {
-        return this.nGramm;
+        return this.nGrammText;
+    }
+
+    String getPositions() {
+        return this.positions;
     }
 
     int getCountOccurences() {
         return this.countOccurences;
     }
 
-    void setTextId(final String textId) {
-        this.textId = textId;
+    void setPostId(final String textId) {
+        this.postId = textId;
     }
 
     void setnGramm(final String nGramm) {
-        this.nGramm = nGramm;
+        this.nGrammText = nGramm;
     }
 
-    void setCountOccurences(final int countOccurences) {
-        this.countOccurences = countOccurences;
+    void setCountOccurences(final String positions) {
+        this.positions = positions;
     }
 }
