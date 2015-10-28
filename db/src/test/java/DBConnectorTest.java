@@ -1,12 +1,14 @@
 import crawler.Post;
 import crawler.Tag;
+import crawler.User;
 import db.DBConnector;
 
 import java.io.FileNotFoundException;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
+import java.sql.Timestamp;
+import java.util.LinkedList;
 
 /**
  * User: allight
@@ -16,46 +18,83 @@ public class DBConnectorTest {
 
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
         DBConnector dbConnector = new DBConnector();
-        dbConnector.setConnectionParams("localhost", "5432", "interests", "interests", "12345");
-        dbConnector.connect();
+        dbConnector.dropInitDatabase();
 
-        dbConnector.recreateDatabase();
 
-        Statement st = dbConnector.getConnection().createStatement();
+        LinkedList<String> regions = new LinkedList<>();
+        regions.add("EN");
+        regions.add("EN");
+        regions.add("RU");
+        dbConnector.insertRegions(regions);
 
-        st.execute("INSERT INTO Region VALUES\n" + //тестовые примеры
-                "  (DEFAULT, 'RU'),\n" +
-                "  (DEFAULT, 'EN');\n");
-        st.execute("INSERT INTO UserLJ VALUES\n" +
-                        "  (1, 'sssmaxusss', (SELECT id\n" +
-                        "                     FROM Region\n" +
-                        "                     WHERE name = 'RU'),\n" +
-                        "   '2015-09-17T13:09:03', '2015-09-17T13:09:03', NULL," +
-                        "   NULL, NULL),\n" +
-                        "  (2, 'mi3ch', (SELECT id\n" +
-                        "                FROM Region\n" +
-                        "                WHERE name = 'EN'),\n" +
-                        "   '2003-04-03T08:11:41', '2015-09-17T13:09:03', NULL," +
-                        "   '1966-03-27', 'бабель бабы байсикл');\n"
-        );
 
-        Tag coffee = new Tag("coffee", 12);
-        Tag java = new Tag("java", 120);
-        dbConnector.insertTag(coffee);
-        dbConnector.insertTag(java);
-        ResultSet rs = st.executeQuery("SELECT * FROM Tag");
-        while (rs.next())
-            System.out.println("name: " + rs.getString(2) + "\tuses: " + rs.getString(4));
-        rs.close();
+        LinkedList<User> users = new LinkedList<>();
+        users.add(new User(
+                "sssmaxusss", "RU", Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
+                Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
+        ));
+        users.add(new User(
+                "mi3ch", "EN", Timestamp.valueOf("2003-04-03T08:11:41".replaceFirst("T", " ")),
+                Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
+                Date.valueOf("1966-03-27"), "бабель бабы байсикл"
+        ));
+        dbConnector.insertUsers(users);
 
-        Post post = new Post("No pain..", "..no game!", "sssmaxusss", "Sun, 11 Oct 2015 16:53:16 GMT",
-                3098540, 20, new ArrayList<String>());
-        dbConnector.insertPost(post);
-        rs = st.executeQuery("SELECT title, text FROM Post");
-        while (rs.next())
-            System.out.println("title: " + rs.getString(1) + "\ttext: " + rs.getString(2));
-        rs.close();
+        try (
+                ResultSet rs = dbConnector.getConnection().createStatement()
+                        .executeQuery("SELECT * FROM UserLJ")
+        ) {
+            while (rs.next())
+                System.out.println("id: " + rs.getInt(1) +
+                                "\tnick: " + rs.getString(2) +
+                                "\tregion_id: " + rs.getInt(3) +
+                                "\tcreated: " + rs.getTimestamp(4) +
+                                "\tuodated: " + rs.getTimestamp(5) +
+                                "\tfetched: " + rs.getTimestamp(6) +
+                                "\tbirthday: " + rs.getDate(7) +
+                                "\tinterests: " + rs.getString(8)
+                );
+        }
 
-        st.close();
+        LinkedList<Tag> tags = new LinkedList<>();
+        tags.add(new Tag("coffee", 12));
+        tags.add(new Tag("java", 120));
+        dbConnector.insertTags(tags, "sssmaxusss");
+
+        try (
+                ResultSet rs = dbConnector.getConnection().createStatement()
+                        .executeQuery("SELECT * FROM Tag")
+        ) {
+            while (rs.next())
+                System.out.println("name: " + rs.getString(2) + "\tuses: " + rs.getString(4));
+        }
+
+        LinkedList<String> postTags = new LinkedList<>();
+        postTags.add("coffee");
+        postTags.add("java");
+        LinkedList<Post> posts = new LinkedList<>();
+        posts.add(new Post("No pain..", "..no game!", "sssmaxusss",
+                Timestamp.valueOf("2015-10-19 08:11:41"),
+                3098540, 20, postTags));
+        dbConnector.insertPosts(posts);
+
+        try (
+                ResultSet rs = dbConnector.getConnection().createStatement()
+                        .executeQuery("SELECT title, text FROM Post")
+        ) {
+            while (rs.next())
+                System.out.println("title: " + rs.getString(1) + "\ttext: " + rs.getString(2));
+        }
+
+
+        dbConnector.insertNgrams(postTags, "sssmaxusss", 3098540, 2);
+
+        try (
+                ResultSet rs = dbConnector.getConnection().createStatement()
+                        .executeQuery("SELECT id, text FROM Digram")
+        ) {
+            while (rs.next())
+                System.out.println("id: " + rs.getInt(1) + "\ttext: " + rs.getString(2));
+        }
     }
 }
