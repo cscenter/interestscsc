@@ -11,6 +11,10 @@ import org.jsoup.select.Elements;
 
 import java.io.*;
 import java.net.URLEncoder;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,7 +22,7 @@ import java.util.stream.Collectors;
 
 public class Crawler {
 
-    // selectors
+    // Post's selectors
     private static final String POST_SELECTOR = "item";
     private static final String TITLE_SELECTOR = "title";
     private static final String TEXT_SELECTOR = "description";
@@ -26,6 +30,16 @@ public class Crawler {
     private static final String URL_SELECTOR = "comments";
     private static final String TAG_SELECTOR = "category";
     private static final String COUNT_COMMENTS_SELECTOR = "lj:reply-count";
+
+    // User's selectors
+    private static final String PERSON_SELECTOR = "foaf:Person";
+    private static final String REGION_SELECTOR = "ya:country";
+    private static final String WEBLOG_SELECTOR = "foaf:weblog";
+    private static final String DATE_CREATED_SELECTOR = "lj:dateCreated";
+    private static final String DATE_LAST_UPDATED_SELECTOR = "lj:dateLastUpdated";
+    private static final String BIRTHDAY_SELECTOR = "foaf:dateOfBirth";
+    private static final String INTEREST_SELECTOR = "foaf:interest";
+    private static final String ATTR_TITLE_SELECTOR = "dc:title";
 
     private final int MAX_TAG_USES_POW = 6; // max uses count 1e6
     private final String PATH_TO_FILE_WITH_TAGS = "Crawler" + File.separator + "src" + File.separator +
@@ -70,9 +84,11 @@ public class Crawler {
             System.out.println(user);
             System.out.println(usersQueue.size() + " / " + allUsers.size());
             Set<Tag> userTags = null;
+            User userInfo = null;
             try {
 
                 getUserFriends(user);
+                userInfo = getUserInfo(user);
                 userTags = getUserTags(user);
 
             } catch (UnirestException e) {
@@ -80,9 +96,13 @@ public class Crawler {
                 e.printStackTrace();
             } catch (InterruptedException | UnsupportedEncodingException e) {
                 e.printStackTrace();
-            } catch (Throwable e) {
-                // @TODO serialization
-                e.printStackTrace();
+            }
+
+            if (userInfo == null) {
+                countUsersNoAccess++;
+                usersNoAccess.add(user);
+                System.out.println("No access to user: " + user);
+                continue;
             }
 
             if (userTags == null) {
@@ -110,15 +130,14 @@ public class Crawler {
                 }
                 FileWriter fileWriterTags = new FileWriter(fileTags.getAbsoluteFile());
                 bufferedWriterTags = new BufferedWriter(fileWriterTags);
+                bufferedWriterTags.write(userInfo.writeToFile());
+                bufferedWriterTags.write("----------------------\nTags:\n");
 
                 for (Tag tag : userTags) {
                     List<Post> posts = null;
                     try {
                         posts = getTagPosts(user, tag);
-                    } catch (UnirestException | InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (Throwable e) {
-                        // @TODO serialization
+                    } catch (UnirestException | InterruptedException | ParseException e) {
                         e.printStackTrace();
                     }
 
@@ -240,13 +259,68 @@ public class Crawler {
         }
     }
 
+    // get user's info
+    private User getUserInfo(String nick)  throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
+
+        Thread.sleep(200);  // delay
+        HttpResponse<String> userInfoResponse = Unirest.get("http://users.livejournal.com/" +
+                URLEncoder.encode(nick, "UTF-8") + "/data/foaf")
+                .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
+                .asString();
+
+
+        Document doc = Jsoup.parse(userInfoResponse.getBody());
+
+        Element person = doc.getElementsByTag(PERSON_SELECTOR).first();
+
+        Element httpRegion = person.getElementsByTag(REGION_SELECTOR).first();
+        String region = null;
+        if (httpRegion != null && httpRegion.hasAttr(ATTR_TITLE_SELECTOR)) {
+            region = httpRegion.attr(ATTR_TITLE_SELECTOR);
+        }
+
+        Element httpDateCreated = person.getElementsByTag(WEBLOG_SELECTOR).first();
+        String dateCreated = httpDateCreated != null ? httpDateCreated.attr(DATE_CREATED_SELECTOR).replace("T", " ") : null;
+
+        Element httpDateUpdated = person.getElementsByTag(WEBLOG_SELECTOR).first();
+        String dateUpdated = httpDateUpdated != null ? httpDateUpdated.attr(DATE_LAST_UPDATED_SELECTOR).replace("T", " ") : null;
+
+        Element httpBirthday = person.getElementsByTag(BIRTHDAY_SELECTOR).first();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", new Locale("en_US"));
+
+        String birthday = null;
+        if (httpBirthday != null) {
+            birthday = httpBirthday.text();
+            if (birthday.length() == 4) {
+                birthday += "-01-01";
+            }
+            try {
+                dateFormat.parse(birthday);
+            } catch (ParseException | NullPointerException e) {
+                birthday = null;
+            }
+        }
+
+        Elements interests = person.getElementsByTag(INTEREST_SELECTOR);
+        String interestsStr = !interests.isEmpty() ? "" : null;
+        for (Element interest: interests) {
+            interestsStr += interest.attr(ATTR_TITLE_SELECTOR) + ",";
+        }
+
+        return new User(nick, region,
+                dateCreated != null ? Timestamp.valueOf(dateCreated) : null,
+                dateUpdated != null ? Timestamp.valueOf(dateUpdated) : null,
+                birthday != null ? Date.valueOf(birthday) : null,
+                interestsStr);
+    }
+
     // get all user's friends
     private void getUserFriends(String user) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Thread.sleep(200);  // delay
         HttpResponse<String> userFriendsResponse = Unirest.get("http://www.livejournal.com/misc/fdata.bml?user=" + URLEncoder.encode(user, "UTF-8"))
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
 
         String friends = userFriendsResponse.getBody()
@@ -266,10 +340,10 @@ public class Crawler {
     // get all user's tags
     private Set<Tag> getUserTags(String user) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Thread.sleep(200);  // delay
         HttpResponse<String> userTagsResponse = Unirest.get("http://users.livejournal.com/" + URLEncoder.encode(user, "UTF-8") + "/tag/")
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
         Document doc = Jsoup.parse(userTagsResponse.getBody());
 
@@ -324,15 +398,15 @@ public class Crawler {
     }
 
     // get 25 posts by current tag
-    private List<Post> getTagPosts(final String user, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private List<Post> getTagPosts(final String user, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
-        HttpResponse<String> liveJournalResponse = Unirest.get("http://users.livejournal.com/" +
+        Thread.sleep(200);  // delay
+        HttpResponse<String> tagPostResponse = Unirest.get("http://users.livejournal.com/" +
                 URLEncoder.encode(user, "UTF-8") + "/data/rss/?tag=" + URLEncoder.encode(tag.getName(), "UTF-8"))
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
-        Document doc = Jsoup.parse(liveJournalResponse.getBody());
+        Document doc = Jsoup.parse(tagPostResponse.getBody());
 
         Elements selectionPosts = doc.select(POST_SELECTOR);
 
@@ -356,7 +430,14 @@ public class Crawler {
                 urlNumber = Integer.parseInt(matcher.group().replaceAll("/", ""));
             }
             Integer countComments = !Objects.equals(comments.text(), "") ? Integer.parseInt(comments.text()) : null;
-            postList.add(new Post(title.text(), safeText, user, date.text(), urlNumber, countComments, tagsList));
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", new Locale("en_US"));
+            Timestamp timePost = new Timestamp(dateFormat.parse(date.text()).getTime());
+            postList.add(new Post(
+                            title.text(), safeText, user,
+                            timePost, urlNumber,
+                            countComments, tagsList
+                            ));
         }
         return postList;
     }
