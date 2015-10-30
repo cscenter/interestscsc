@@ -12,9 +12,15 @@ DROP TABLE IF EXISTS Post;
 DROP TABLE IF EXISTS RawUserLJ;
 DROP TABLE IF EXISTS UserLJ;
 DROP TABLE IF EXISTS Region;
+DROP TABLE IF EXISTS Crawler;
 
 
 -- ? TODO Возможно нужно прописать касдады удаления
+
+CREATE TABLE Crawler (
+  id   SERIAL PRIMARY KEY,
+  name TEXT UNIQUE
+);
 
 CREATE TABLE Region (
   id   BIGSERIAL PRIMARY KEY,
@@ -36,8 +42,9 @@ CREATE TABLE UserLJ (
 );
 
 CREATE TABLE RawUserLJ (-- Здесь сохраняем пользователей
-  nick    TEXT PRIMARY KEY, -- при первом столкновении
-  user_id BIGINT REFERENCES UserLJ
+  nick       TEXT PRIMARY KEY, -- при первом столкновении
+  user_id    BIGINT UNIQUE NULL REFERENCES UserLJ,
+  crawler_id INT           NULL REFERENCES Crawler
 );
 
 CREATE TABLE Post (

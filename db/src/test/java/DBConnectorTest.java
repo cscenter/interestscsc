@@ -4,11 +4,9 @@ import crawler.User;
 import db.DBConnector;
 
 import java.io.FileNotFoundException;
-import java.sql.Date;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.LinkedList;
+import java.util.*;
 
 /**
  * User: allight
@@ -17,84 +15,128 @@ import java.util.LinkedList;
 public class DBConnectorTest {
 
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
-        DBConnector dbConnector = new DBConnector();
-        dbConnector.dropInitDatabase();
 
+        // Создаем коннектор, добавляем идентификатор своей машины в БД
+        DBConnector db = new DBConnector("AllightPC");
 
-        LinkedList<String> regions = new LinkedList<>();
-        regions.add("EN");
-        regions.add("EN");
-        regions.add("RU");
-        dbConnector.insertRegions(regions);
+        // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
+//        db.dropInitDatabase("AllightPC", "Bzw7HPtmHmVVqKvSHe7d");
 
+        // Собираем с LJ имена нескольких стартовых пользователей (имитация)
+        LinkedList<String> rawUsers = new LinkedList<>();
+        for (int i = 0; i < 10; ++i)
+            rawUsers.add("username" + new Random().nextInt(100));
 
-        LinkedList<User> users = new LinkedList<>();
-        users.add(new User(
-                "sssmaxusss", "RU", Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
-        ));
-        users.add(new User(
-                "mi3ch", "EN", Timestamp.valueOf("2003-04-03T08:11:41".replaceFirst("T", " ")),
-                Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                Date.valueOf("1966-03-27"), "бабель бабы байсикл"
-        ));
-        dbConnector.insertUsers(users);
+        // Добавляем стартовые ники в БД
+        db.insertRawUsers(rawUsers);
 
-        try (
-                ResultSet rs = dbConnector.getConnection().createStatement()
-                        .executeQuery("SELECT * FROM UserLJ")
-        ) {
-            while (rs.next())
-                System.out.println("id: " + rs.getInt(1) +
-                                "\tnick: " + rs.getString(2) +
-                                "\tregion_id: " + rs.getInt(3) +
-                                "\tcreated: " + rs.getTimestamp(4) +
-                                "\tuodated: " + rs.getTimestamp(5) +
-                                "\tfetched: " + rs.getTimestamp(6) +
-                                "\tbirthday: " + rs.getDate(7) +
-                                "\tinterests: " + rs.getString(8)
-                );
+        // Проверяем, есть ли недообработанные пользователи с прошлых сеансов нашего краулера
+        // Если такие есть, добавляем в очередь.
+        LinkedList<String> usersToProceed = db.getUnfinishedRawUsers();
+
+        // Берем из базы список зарезервированных для нас пользователей
+        usersToProceed.addAll(db.getReservedRawUsers());
+
+        // Если недообработанных или ранее зарезервированных пользователей нет ..
+        if (usersToProceed.size() == 0) {
+
+            // .. резервируем несколько имен пользователей в БД, чтобы никто больше их не обрабатывал, ..
+            db.reserveRawUserForCrawler(5);
+
+            // .. и берем их имена из базы
+            usersToProceed = db.getReservedRawUsers();
         }
 
-        LinkedList<Tag> tags = new LinkedList<>();
-        tags.add(new Tag("coffee", 12));
-        tags.add(new Tag("java", 120));
-        dbConnector.insertTags(tags, "sssmaxusss");
+        // Запоминаем имеющиеся регионы. Их немного, не стоит каждый раз лезть за ними в БД.
+        HashSet<String> regions = new HashSet<>(db.getRegions());
 
-        try (
-                ResultSet rs = dbConnector.getConnection().createStatement()
-                        .executeQuery("SELECT * FROM Tag")
-        ) {
-            while (rs.next())
-                System.out.println("name: " + rs.getString(2) + "\tuses: " + rs.getString(4));
+        // Начинаем обрабатывать пользователей из списка
+        for (String username : usersToProceed) {
+
+            // Собираем с LJ список ников друзей пользователя в итерабельныую коллекцию строк (имитация)
+            LinkedList<String> friends = new LinkedList<>();
+            for (int i = 0; i < 5; ++i)
+                friends.add("username" + new Random().nextInt(100));
+
+            // Добавляем в БД список ников друзей пользователя
+            db.insertRawUsers(friends);
+
+            // Собираем c LJ информацию о пользователе в объект класса User (имитация)
+            String[] r = new String[]{"RU", "other", null};
+            User user = new User(username, r[new Random().nextInt(3)],
+                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
+                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
+            );
+
+            // Если у пользователя есть регион, отсутсвующий в кэше, добавляем его
+            if (user.getRegion() != null && !regions.contains(user.getRegion())) {
+                db.insertRegion(user.getRegion());
+                regions.add(user.getRegion());
+            }
+
+            // Добавляем информацию о пользователе в базу
+            db.insertUser(user);
+
+            // Если регион нам не подходит (ПОСТАВИТЬ НУЖНОЕ УСЛОВИЕ) - пропускаем сбор постов
+            // !!! Сейчас: если регион у пользовател есть, но не 'RU' - собираем только базовую инфу
+            if (user.getRegion() != null && !user.getRegion().equals("RU")) {
+
+                // Отмечаем в базе, что вытащили все доспупные посты
+                // (т.к. посты этого пользователя нам не интересены)
+                db.updateUserFetched(username);
+                continue;
+            }
+
+            // Собираем c LJ информацию о тэгах пользователя в итерабельныую коллекцию Tag (имитация)
+            ArrayList<Tag> userTags = new ArrayList<>();
+            if (new Random().nextInt(2) > 0)
+                for (int i = 0; i < 10; ++i) // имитация удачно собранной статистики
+                    userTags.add(new Tag("tagname" + new Random().nextInt(100), new Random().nextInt(100)));
+            else
+                for (int i = 0; i < 10; ++i) // имитация не собранной статистики
+                    userTags.add(new Tag("tagname" + new Random().nextInt(100), null));
+
+            // Добавляем в базу тэги и статистику их использования данным пользователем
+            db.insertTags(userTags, username);
+
+            // Собираем c LJ информацию о постах пользователя в итерабельныую коллекцию Post (имитация)
+            ArrayList<Post> userPosts = new ArrayList<>();
+            for (int i = 0; i < 10; ++i) {
+                //Имитируем случайное кол-во тэгов из списка тэгов пользователя (повторы не страшны)
+                List<String> postTags = new LinkedList<>();
+                for (int j = new Random().nextInt(10); j > 0; --j)
+                    postTags.add(userTags.get(new Random().nextInt(userTags.size())).getName());
+                userPosts.add(new Post(
+                        "SomeTitle",
+                        "SomeText",
+                        username,
+                        Timestamp.valueOf("2015-10-19 08:11:41"),
+                        i + new Random().nextInt(10000) * 10,
+                        20,
+                        postTags
+                ));
+            }
+
+            // Добавляем в базу посты пользователя и их связь с тэгами
+            db.insertPosts(userPosts);
+
+            // Если уверены, что вытащили все выложенные на данный момент посты,
+            // ставим пользователю Timestamp на fetched
+            db.updateUserFetched(username);
+
+
         }
 
-        LinkedList<String> postTags = new LinkedList<>();
-        postTags.add("coffee");
-        postTags.add("java");
-        LinkedList<Post> posts = new LinkedList<>();
-        posts.add(new Post("No pain..", "..no game!", "sssmaxusss",
-                Timestamp.valueOf("2015-10-19 08:11:41"),
-                3098540, 20, postTags));
-        dbConnector.insertPosts(posts);
+        // Проверяем, что всех успешно обработали
+        if (db.getUnfinishedRawUsers().size() == 0)
+            System.out.println("One more cycle complete successfully");
 
-        try (
-                ResultSet rs = dbConnector.getConnection().createStatement()
-                        .executeQuery("SELECT title, text FROM Post")
-        ) {
-            while (rs.next())
-                System.out.println("title: " + rs.getString(1) + "\ttext: " + rs.getString(2));
-        }
+        // Возьмем из базы всех пользователей и выведем
+        // (сейчас не отображается fetched - его нет в User)
+        LinkedList<User> allUsers = db.getUsers();
 
-
-        dbConnector.insertNgrams(postTags, "sssmaxusss", 3098540, 2);
-
-        try (
-                ResultSet rs = dbConnector.getConnection().createStatement()
-                        .executeQuery("SELECT id, text FROM Digram")
-        ) {
-            while (rs.next())
-                System.out.println("id: " + rs.getInt(1) + "\ttext: " + rs.getString(2));
-        }
+        // TODO Если это зачем-то нужно, нужно сделать нормальный toString()
+        for (User user : allUsers)
+            System.out.print(user.writeToFile());
     }
 }
