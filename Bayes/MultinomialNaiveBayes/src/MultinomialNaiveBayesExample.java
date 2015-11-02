@@ -122,10 +122,6 @@ public class MultinomialNaiveBayesExample {
         Evaluation eTest = null;
         try {
             eTest = new Evaluation(isTrainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
             eTest.evaluateModel(cModel, isTrainingSet);
         } catch (Exception e) {
             e.printStackTrace();
@@ -321,4 +317,5 @@ public class MultinomialNaiveBayesExample {
 
     }
 }
+
 

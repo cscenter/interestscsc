@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class TomitaExecutor {
@@ -47,7 +48,7 @@ public class TomitaExecutor {
             String newText = rs.getString(TEXT_INDEX);
             String fullText = new String(title + ". " + newText);
             TomitaExecutor tomitaExec = new TomitaExecutor();
-            HashMap<String, String> wordsPositions = tomitaExec.runTomitaOnText(fullText);
+            Map<String, String> wordsPositions = tomitaExec.runTomitaOnText(fullText);
             NGramm[] nGramms = tomitaExec.toNGramm(wordsPositions, textId);
 
             ///*
@@ -66,7 +67,7 @@ public class TomitaExecutor {
     }
     //*/
 
-    public static NGramm[] toNGramm(HashMap<String, String> positionMap, String idText) {
+    public static NGramm[] toNGramm(Map<String, String> positionMap, String idText) {
         Set<String> keySet = positionMap.keySet();
         NGramm[] nGramms = new NGramm[keySet.size()];
         int i = 0;
@@ -78,7 +79,7 @@ public class TomitaExecutor {
         return nGramms;
     }
 
-    private static void printCount(HashMap<String, Integer> countMap) {
+    private static void printCount(Map<String, Integer> countMap) {
         Set<String> keySet = countMap.keySet();
         for (String string : keySet) {
             System.out.println(string + " : " + countMap.get(string));
@@ -87,7 +88,7 @@ public class TomitaExecutor {
 
 
     // processNGramms
-    public static HashMap<String, String> runTomitaOnText(String text) {
+    public static Map<String, String> runTomitaOnText(String text) {
         // here we have input file named 'test.txt' for tomita to process it!
         saveFileForTomita(text);
         // here tomita processes 'test.txt' and produces 'PrettyOutput.html'
@@ -98,14 +99,14 @@ public class TomitaExecutor {
         WordFilter wordFilter = new WordFilter();
         ArrayList<String> goodNGrams = wordFilter.filter(nGramms);
 
-        HashMap<String, Integer> nGrammCount = countOccurences(goodNGrams);
-        HashMap<String, String> nGrammPositions = getPositions(goodNGrams);
+        Map<String, Integer> nGrammCount = countOccurences(goodNGrams);
+        Map<String, String> nGrammPositions = getPositions(goodNGrams);
 
         return nGrammPositions;
     }
 
-    public static HashMap<String, String> getPositions(ArrayList<String> strArray) {
-        HashMap<String, String> positionMap = new HashMap<String, String>();
+    public static Map<String, String> getPositions(ArrayList<String> strArray) {
+        Map<String, String> positionMap = new HashMap<String, String>();
         for (int i = 0; i < strArray.size(); i++) {
             if (!positionMap.containsKey(strArray.get(i))) {
                 positionMap.put(strArray.get(i), Integer.toString(i));
@@ -118,8 +119,8 @@ public class TomitaExecutor {
         return positionMap;
     }
 
-    public static HashMap<String, Integer> countOccurences(ArrayList<String> strArray) {
-        HashMap<String, Integer> countMap = new HashMap<String, Integer>();
+    public static Map<String, Integer> countOccurences(ArrayList<String> strArray) {
+        Map<String, Integer> countMap = new HashMap<String, Integer>();
         for (String string : strArray) {
             if (!countMap.containsKey(string)) {
                 countMap.put(string, 1);
@@ -250,3 +251,4 @@ class NGramm {
         this.positions = positions;
     }
 }
+

@@ -11,184 +11,14 @@ import java.util.Random;
 
 public class BeijingExampleMultinomialNaiveBayes {
 
-    public static int getWordCountInPost(int postId) {
-        return 4;
+    public static Instance getNextInstance(FastVector fvWekaAttributes, int[] occurrencescount, String label) {
+        Instance iExample1 = new Instance(occurrencescount.length + 1);
+        for (int i = 0; i < occurrencescount.length; i++) {
+            iExample1.setValue((Attribute)fvWekaAttributes.elementAt(i), occurrencescount[i]);
+        }
+        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(occurrencescount.length), label);
+        return iExample1;
     }
-
-    public static String[] getAllnGrammsFromDB() {
-        String[] a = {"зверь", "машина", "собака"};
-        return a;
-    }
-
-    public static String[] getAllTagsFromDB() {
-        String[] a = {"животные", "авто"};
-        return a;
-    }
-
-    public static int getDocumentCountFromDB() {
-        return 2;
-    }
-
-    public static int getnGrammCountFromDB(String nGramm, int postId) {
-        if (postId == 0) {
-            if (nGramm.equals("зверь")) {
-                return 2;
-            }
-            if (nGramm.equals("машина")) {
-                return 0;
-            }
-            if (nGramm.equals("собака")) {
-                return 2;
-            }
-        }
-        if (postId == 1) {
-            if (nGramm.equals("зверь")) {
-                return 1;
-            }
-            if (nGramm.equals("машина")) {
-                return 3;
-            }
-            if (nGramm.equals("собака")) {
-                return 0;
-            }
-        }
-        return 0;
-    }
-
-    public static String[] getPostTagFromDB(int postId) {
-        if (postId == 0) {
-            String[] a = {"животные"};
-            return a;
-        } else {
-            String[] a = {"авто"};
-            return a;
-        }
-    }
-
-    public static void testNaiveBayesMultinomial() {
-        String[] nGramms = getAllnGrammsFromDB();
-        FastVector fvWekaAttributes = new FastVector(nGramms.length + 1);
-        for (String nGramm : nGramms) {
-            fvWekaAttributes.addElement(new Attribute(nGramm));
-        }
-
-        String[] allTags = getAllTagsFromDB();
-        FastVector fvClassVal = new FastVector(allTags.length);
-        for (String tag : allTags) {
-            fvClassVal.addElement(tag);
-        }
-        Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
-        fvWekaAttributes.addElement(ClassAttribute);
-
-        // Create an empty training set
-        int documentCount = getDocumentCountFromDB();
-        Instances isTrainingSet = new Instances("Rel", fvWekaAttributes, documentCount);
-        // Set class index
-        isTrainingSet.setClassIndex(nGramms.length); // нумерация с 0 же, последний элемент - Tag.
-
-        System.out.println("Word:   " + nGramms[0] + " " + nGramms[1] + " " + nGramms[2]);
-        for (int postId = 0; postId < documentCount; postId++) {
-            String[] allTagsOfPost = getPostTagFromDB(postId);
-            for (String tagOfPost : allTagsOfPost) {
-                System.out.print("Post " + postId + ":  ");
-                int totalWordCountInPost = getWordCountInPost(postId);
-                Instance iExample = new Instance(nGramms.length + 1);
-                for (int i = 0; i < nGramms.length; i++) {
-                    int wordCountInPost = getnGrammCountFromDB(nGramms[i], postId);
-                    //System.out.println(wordCountInPost);
-                    // Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
-                    double relWordCountInPost = (double) wordCountInPost; // / (double) totalWordCountInPost;
-                    iExample.setValue((Attribute) fvWekaAttributes.elementAt(i), relWordCountInPost);
-                    System.out.print(relWordCountInPost + "   ");
-                }
-                System.out.println(tagOfPost);
-                iExample.setValue((Attribute) fvWekaAttributes.elementAt(nGramms.length), tagOfPost);
-                isTrainingSet.add(iExample);
-            }
-        }
-
-        Classifier cModel = (Classifier)new NaiveBayesMultinomial();
-        try {
-            cModel.buildClassifier(isTrainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Test the model
-        Evaluation eTest = null;
-        try {
-            eTest = new Evaluation(isTrainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
-            eTest.evaluateModel(cModel, isTrainingSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Print the result à la Weka explorer:
-        String strSummary = eTest.toSummaryString();
-        System.out.println(strSummary);
-
-        // зверь
-        System.out.println("Text to predict: \"зверь\"");
-        Instance iExample = new Instance(nGramms.length);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(0), 1);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(1), 0);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(2), 0);
-
-        iExample.setDataset(isTrainingSet);
-        try {
-            double[] fDistribution = cModel.distributionForInstance(iExample);
-            for (int i = 0; i < allTags.length; i++) {
-                System.out.println("Probability that it is " + allTags[i] + " is: " + fDistribution[i]);
-            }
-            //System.out.println(fDistribution[0]);
-            //System.out.println(fDistribution[1]);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // зверь зверь
-        System.out.println("Text to predict: \"зверь зверь\"");
-        Instance iExample2 = new Instance(nGramms.length);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(0), 2);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(1), 0);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(2), 0);
-
-        iExample2.setDataset(isTrainingSet);
-        try {
-            double[] fDistribution = cModel.distributionForInstance(iExample2);
-            for (int i = 0; i < allTags.length; i++) {
-                System.out.println("Probability that it is " + allTags[i] + " is: " + fDistribution[i]);
-            }
-            //System.out.println(fDistribution[0]);
-            //System.out.println(fDistribution[1]);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // собака машина
-        System.out.println("Text to predict: \"собака машина\"");
-        Instance iExample3 = new Instance(nGramms.length);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(0), 0);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(1), 1);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(2), 1);
-
-        iExample3.setDataset(isTrainingSet);
-        try {
-            double[] fDistribution = cModel.distributionForInstance(iExample3);
-            for (int i = 0; i < allTags.length; i++) {
-                System.out.println("Probability that it is " + allTags[i] + " is: " + fDistribution[i]);
-            }
-            //System.out.println(fDistribution[0]);
-            //System.out.println(fDistribution[1]);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
 
     public static void testOnBeijing() {
         Attribute Attribute1 = new Attribute("Beijing"); // Beijing
@@ -214,57 +44,42 @@ public class BeijingExampleMultinomialNaiveBayes {
         isTrSet.setClassIndex(6);
 
 
-        Instance iExample1 = new Instance(7);
-        // Chinese Beijing Chinese
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(0), 1);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(1), 2);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(2), 0);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(3), 0);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(4), 0);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(5), 0);
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(6), "c");
-        isTrSet.add(iExample1);
+        {
+            // Chinese Beijing Chinese
+            int[] occurrencescount = {1, 2, 0, 0, 0, 0};
+            String label = "c";
+            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
+            isTrSet.add(iExample);
+        }
 
 
-        ///*
-        Instance iExample2 = new Instance(7);
-        // Chinese Chinese Shanghai
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(0), 0);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(1), 2);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(2), 0);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(3), 0);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(4), 1);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(5), 0);
-        iExample2.setValue((Attribute)fvWekaAttributes.elementAt(6), "c");
-        isTrSet.add(iExample2);
-        //*/
+        {
+            ///*
+            // Chinese Chinese Shanghai
+            int[] occurrencescount = {0, 2, 0, 0, 1, 0};
+            String label = "c";
+            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
+            isTrSet.add(iExample);
+            //*/
+        }
 
-        ///*
-        Instance iExample3 = new Instance(7);
-        // Chinese Macao
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(0), 0);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(1), 1);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(2), 0);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(3), 1);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(4), 0);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(5), 0);
-        iExample3.setValue((Attribute)fvWekaAttributes.elementAt(6), "c");
-        isTrSet.add(iExample3);
-        //*/
+        {
+            // Chinese Macao
+            int[] occurrencescount = {0, 1, 0, 1, 0, 0};
+            String label = "c";
+            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
+            isTrSet.add(iExample);
+        }
 
 
-        ///*
-        Instance iExample4 = new Instance(7);
-        // Tokyo Japan Chinese
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(0), 0);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(1), 1);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(2), 1);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(3), 0);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(4), 0);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(5), 1);
-        iExample4.setValue((Attribute)fvWekaAttributes.elementAt(6), "j");
-        isTrSet.add(iExample4);
-        //*/
+        {
+            // Tokyo Japan Chinese
+            int[] occurrencescount = {0, 1, 1, 0, 0, 1};
+            String label = "j";
+            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
+            isTrSet.add(iExample);
+        }
+
 
         Classifier cModel = (Classifier)new NaiveBayesMultinomial();
         try {
@@ -277,10 +92,6 @@ public class BeijingExampleMultinomialNaiveBayes {
         Evaluation eTest = null;
         try {
             eTest = new Evaluation(isTrSet);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
             eTest.evaluateModel(cModel, isTrSet);
         } catch (Exception e) {
             e.printStackTrace();
@@ -439,3 +250,4 @@ public class BeijingExampleMultinomialNaiveBayes {
 
     }
 }
+
