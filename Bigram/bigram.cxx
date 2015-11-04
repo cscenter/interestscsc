@@ -2,7 +2,10 @@
 #GRAMMAR_ROOT S      // указываем корневой нетерминал грамматики
 
 
-Bigrams -> Adj<gram='A', gnc-agr[1]>  Noun<gnc-agr[1], rt> | Noun<gnc-agr[1], rt>  Adj<gnc-agr[1], gram='A'>  | Adv  Verb | Verb  Adv | Noun<gnc-agr[1]>  Noun<gnc-agr[1]> | Noun<sp-agr[4]>  Verb<sp-agr[4]> ;
-
-S -> Bigrams interp(NGrams.Bigram);
+S -> Adj<gram="A"> interp(NGrams.Bigram_1::norm = "nom, sg, m") Noun<no_hom> interp(NGrams.Bigram_2::norm = "nom, sg");
+S -> Noun<no_hom> interp(NGrams.Bigram_2::norm = "nom, sg")  Adj<gram="A"> interp(NGrams.Bigram_1::norm = "nom, sg, m");
+S -> Adv interp(NGrams.Bigram_1)  Verb interp(NGrams.Bigram_2::norm = "inf");
+S -> Verb interp(NGrams.Bigram_2::norm = "inf") Adv interp(NGrams.Bigram_1);
+S -> Noun<no_hom> interp(NGrams.Bigram_1::norm = "nom, sg")  Noun<no_hom> interp(NGrams.Bigram_2::norm = "nom, sg");
+S -> Noun<no_hom> interp(NGrams.Bigram_1::norm = "nom, sg")  Verb interp(NGrams.Bigram_2::norm = "inf");
 

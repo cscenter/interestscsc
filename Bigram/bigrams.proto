@@ -3,5 +3,6 @@ import "facttypes_base.proto"; // описание protobuf-типа NFactType.T
 
 message NGrams: NFactType.TFact 
 {
-    required string Bigram = 1;
+    required string Bigram_1 = 1;
+    required string Bigram_2 = 2;   
 }
