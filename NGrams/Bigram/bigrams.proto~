@@ -1,7 +1,0 @@
-import "base.proto";           // описание protobuf-типов
-import "facttypes_base.proto"; // описание protobuf-типа NFactType.TFact
-
-message Ngram: NFactType.TFact 
-{
-    required string Bigram = 1;
-}
