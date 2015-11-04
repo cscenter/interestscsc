@@ -1,6 +1,6 @@
 package crawler;
 
-import java.util.ArrayList;
+import java.sql.Timestamp;
 import java.util.List;
 
 public class Post {
@@ -8,22 +8,16 @@ public class Post {
     private String title;
     private String text;
     private String author;
-    private String date;
+    private Timestamp date;
     private Integer url;
     private Integer countComment;
     private List<String> tags;
 
-    public Post() {
-        this.title = "";
-        this.text = "";
-        this.author = "";
-        this.date = "";
-        this.url = null;
-        this.countComment = null;
-        this.tags = new ArrayList<>();
-    }
-
-    public Post(final String title, final String text, final String author, final String date, final Integer url, final Integer countComment, final List<String> tags) {
+    public Post(
+            final String title, final String text, final String author,
+            final Timestamp date, final Integer url, final Integer countComment,
+            final List<String> tags
+    ) {
         this.title = title;
         this.text = text;
         this.author = author;
@@ -45,7 +39,7 @@ public class Post {
         return author;
     }
 
-    public String getDate() {
+    public Timestamp getDate() {
         return date;
     }
 

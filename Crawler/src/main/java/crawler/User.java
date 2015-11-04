@@ -1,23 +1,26 @@
 package crawler;
 
+import java.sql.Date;
+import java.sql.Timestamp;
+
 public class User {
 
     private String nick;
     private String region;
-    private String date_created;
-    private String date_updated;
-    private String birthday;
+    private Timestamp dateCreated;
+    private Timestamp dateUpdated;
+    private Date birthday;
     private String interests;
 
     public User(
             final String nick, final String region,
-            final String date_created, final String date_updated,
-            final String birthday, final String interests
+            final Timestamp dateCreated, final Timestamp dateUpdated,
+            final Date birthday, final String interests
     ) {
         this.nick = nick;
         this.region = region;
-        this.date_created = date_created;
-        this.date_updated = date_updated;
+        this.dateCreated = dateCreated;
+        this.dateUpdated = dateUpdated;
         this.birthday = birthday;
         this.interests = interests;
     }
@@ -30,19 +33,28 @@ public class User {
         return region;
     }
 
-    public String getDate_created() {
-        return date_created;
+    public Timestamp getDateCreated() {
+        return dateCreated;
     }
 
-    public String getDate_updated() {
-        return date_updated;
+    public Timestamp getDateUpdated() {
+        return dateUpdated;
     }
 
-    public String getBirthday() {
+    public Date getBirthday() {
         return birthday;
     }
 
     public String getInterests() {
         return interests;
+    }
+
+    public String writeToFile() {
+        return "nick : " + nick + "\n" +
+                "region : " + region + "\n" +
+                "dateCreated : " + dateCreated + "\n" +
+                "dateUpdated : " + dateUpdated + "\n" +
+                "birthday : " + birthday + "\n" +
+                "interests : " + interests + "\n";
     }
 }

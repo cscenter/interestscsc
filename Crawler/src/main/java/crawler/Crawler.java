@@ -3,6 +3,7 @@ package crawler;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -11,6 +12,10 @@ import org.jsoup.select.Elements;
 
 import java.io.*;
 import java.net.URLEncoder;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,7 +23,7 @@ import java.util.stream.Collectors;
 
 public class Crawler {
 
-    // selectors
+    // Post's selectors
     private static final String POST_SELECTOR = "item";
     private static final String TITLE_SELECTOR = "title";
     private static final String TEXT_SELECTOR = "description";
@@ -26,6 +31,16 @@ public class Crawler {
     private static final String URL_SELECTOR = "comments";
     private static final String TAG_SELECTOR = "category";
     private static final String COUNT_COMMENTS_SELECTOR = "lj:reply-count";
+
+    // User's selectors
+    private static final String PERSON_SELECTOR = "foaf:Person";
+    private static final String REGION_SELECTOR = "ya:country";
+    private static final String WEBLOG_SELECTOR = "foaf:weblog";
+    private static final String DATE_CREATED_SELECTOR = "lj:dateCreated";
+    private static final String DATE_LAST_UPDATED_SELECTOR = "lj:dateLastUpdated";
+    private static final String BIRTHDAY_SELECTOR = "foaf:dateOfBirth";
+    private static final String INTEREST_SELECTOR = "foaf:interest";
+    private static final String ATTR_TITLE_SELECTOR = "dc:title";
 
     private final int MAX_TAG_USES_POW = 6; // max uses count 1e6
     private final String PATH_TO_FILE_WITH_TAGS = "Crawler" + File.separator + "src" + File.separator +
@@ -43,15 +58,23 @@ public class Crawler {
     // dictionary where key=tags' name; value=count uses of this tags
     private Map<String, Integer> allTags;
 
+    private static final Logger logger = Logger.getLogger(Crawler.class);
+    private static int countNullRegion = 0;
+    private static int countNullDateCreated = 0;
+    private static int countNullDateUpdated = 0;
+    private static int countNullBirthday = 0;
+    private static int countNullInterests = 0;
+
     public Crawler() {
         allUsers = new HashSet<>();
         usersQueue = new LinkedList<>();
         allTags = new HashMap<>();
     }
 
-    // @TODO add logger to handle exceptions
     public void crawl(String startUser) {
 
+        Unirest.setTimeouts(10000, 60000);
+        logger.info("Start...");
         startUser = startUser.replaceAll("_", "-");
         allUsers.add(startUser);
         usersQueue.add(startUser);
@@ -67,33 +90,41 @@ public class Crawler {
         while (!usersQueue.isEmpty()) {
 
             String user = usersQueue.poll();
-            System.out.println(user);
-            System.out.println(usersQueue.size() + " / " + allUsers.size());
+            logger.info(user);
+            logger.info(usersQueue.size() + " / " + allUsers.size());
             Set<Tag> userTags = null;
+            User userInfo = null;
             try {
 
                 getUserFriends(user);
+                userInfo = getUserInfo(user);
                 userTags = getUserTags(user);
 
             } catch (UnirestException e) {
-                System.out.println("I don't know why you see this exception.");
-                e.printStackTrace();
-            } catch (InterruptedException | UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (Throwable e) {
-                // @TODO serialization
-                e.printStackTrace();
+                logger.warn("User: " + user + " haven't access. Uniress exception.");
+                logger.error("User: " + user + " haven't access. " + e);
+            } catch (InterruptedException | UnsupportedEncodingException | IllegalArgumentException | NullPointerException e) {
+                logger.error("User: " + user + " " + e);
+            }
+
+            if (userInfo == null) {
+                countUsersNoAccess++;
+                usersNoAccess.add(user);
+                logger.warn("No access to user: " + user);
+                continue;
             }
 
             if (userTags == null) {
                 countUsersNoAccess++;
                 usersNoAccess.add(user);
+                logger.warn("No access to user: " + user);
                 continue;
             }
 
             if (userTags.isEmpty()) {
                 countUsersNoTags++;
                 usersNoTags.add(user);
+                logger.info("User: " + user + " haven't any tags.");
             }
 
             long countTagsNoAccess = 0;
@@ -110,21 +141,22 @@ public class Crawler {
                 }
                 FileWriter fileWriterTags = new FileWriter(fileTags.getAbsoluteFile());
                 bufferedWriterTags = new BufferedWriter(fileWriterTags);
-
+                bufferedWriterTags.write(userInfo.writeToFile());
+                bufferedWriterTags.write("----------------------\nTags:\n");
+                logger.info("Getting posts...");
                 for (Tag tag : userTags) {
+                    logger.info("Tag: " + tag.getName() + " - " + (tag.getUses() != null ? tag.getUses() : 0) + " uses.");
                     List<Post> posts = null;
                     try {
                         posts = getTagPosts(user, tag);
-                    } catch (UnirestException | InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (Throwable e) {
-                        // @TODO serialization
-                        e.printStackTrace();
+                    } catch (UnirestException | InterruptedException | ParseException e) {
+                        logger.error("User: " + user + " " + e);
                     }
 
                     if (posts == null) {
                         countTagsNoAccess++;
                         tagsNoAccess.add(tag);
+                        logger.warn("No access to user: " + user + " with tag: " + tag.getName());
                         continue;
                     }
 
@@ -143,14 +175,13 @@ public class Crawler {
                         }
 
                     } catch (IOException e) {
-                        e.printStackTrace();
-                        System.out.println("Invalid name of tag: " + tag.getName());
+                        logger.error("Invalid name of tag: " + tag.getName() + " " + e);
                     } finally {
                         if (bufferedWriterPosts != null) {
                             try {
                                 bufferedWriterPosts.close();
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                logger.error("Problem with closing Writer. " + e);
                             }
                         }
                     }
@@ -163,30 +194,35 @@ public class Crawler {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println("Invalid name of user: " + user);
+                logger.error("Invalid name of user: " + user);
             } finally {
                 // @TODO save this to file (serialization)
-                System.out.println("Count tags no access: " + countTagsNoAccess);
+                logger.info("Count tags no access: " + countTagsNoAccess);
                 if (countTagsNoAccess != 0) {
-                    System.out.println("Tags no access:");
+                    logger.info("Tags no access:");
                     for (Tag tagNoAccess : tagsNoAccess) {
-                        System.out.println(tagNoAccess.getName());
+                        logger.info(tagNoAccess.getName());
                     }
                 }
-                System.out.println("----------------------------------------");
-                System.out.println(user + " have tags: " + countUserTags);
-                System.out.println(user + " use tags: " + countUserTagsUses);
-                System.out.println();
+                logger.info("----------------------------------------");
+                logger.info(user + " have tags: " + countUserTags);
+                logger.info(user + " use tags: " + countUserTagsUses);
                 if (bufferedWriterTags != null) {
                     try {
                         bufferedWriterTags.close();
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.error("Problem with closing Writer. " + e);
                     }
                 }
             }
         }
+        logger.info(Arrays.toString(usersNoAccess.toArray()));
+        logger.info("Count no access: " + countUsersNoAccess);
+        logger.info("Count user with null region: " + countNullRegion);
+        logger.info("Count user with null date created: " + countNullDateCreated);
+        logger.info("Count user with null date updated: " + countNullDateUpdated);
+        logger.info("Count user with null birthday: " + countNullBirthday);
+        logger.info("Count user with null interests: " + countNullInterests);
 
         long countTags = allTags.keySet().size();
         long countTagsUses = 0;
@@ -201,52 +237,122 @@ public class Crawler {
             FileWriter fileWriter = new FileWriter(file.getAbsoluteFile());
             bufferedWriter = new BufferedWriter(fileWriter);
 
-            System.out.println("++++++++++++++++++++++++++++++++++++++++++");
-            System.out.println("ALL TAGS:");
+            logger.info("++++++++++++++++++++++++++++++++++++++++++");
+            logger.info("ALL TAGS:");
 
 
             for (Map.Entry<String, Integer> tag : allTags.entrySet()) {
                 countTagsUses += tag.getValue();
                 bufferedWriter.write(tag.getKey() + " " + tag.getValue() + "\n");
 
-                System.out.println(tag.getKey() + " : " + tag.getValue() + " uses");
+                logger.info(tag.getKey() + " : " + tag.getValue() + " uses");
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Invalid name of file. All tags.");
         } finally {
-            System.out.println();
-            System.out.println("=============================================");
-            System.out.println("Count tags: " + countTags);
-            System.out.println("Count tags uses: " + countTagsUses);
-            System.out.println("Count users without tags: " + countUsersNoTags);
+            logger.info("=============================================");
+            logger.info("Count tags: " + countTags);
+            logger.info("Count tags uses: " + countTagsUses);
+            logger.info("Count users without tags: " + countUsersNoTags);
             if (countUsersNoTags != 0) {
-                System.out.println("Users without tags:");
-                usersNoTags.forEach(System.out::println);
+                logger.info("Users without tags:");
+                usersNoTags.forEach(logger::info);
             }
 
-            System.out.println("Count user no access: " + countUsersNoAccess);
+            logger.info("Count user no access: " + countUsersNoAccess);
             if (countUsersNoAccess != 0) {
-                System.out.println("Users no access:");
-                usersNoAccess.forEach(System.out::println);
+                logger.info("Users no access:");
+                usersNoAccess.forEach(logger::info);
             }
             if (bufferedWriter != null) {
                 try {
                     bufferedWriter.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error("Problem with closing Writer. " + e);
                 }
             }
         }
     }
 
+    // get user's info
+    private User getUserInfo(String nick)  throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
+
+        Thread.sleep(200);  // delay
+        HttpResponse<String> userInfoResponse = Unirest.get("http://users.livejournal.com/" +
+                URLEncoder.encode(nick, "UTF-8") + "/data/foaf")
+                .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
+                .asString();
+
+
+        Document doc = Jsoup.parse(userInfoResponse.getBody());
+
+        Element person = doc.getElementsByTag(PERSON_SELECTOR).first();
+
+        Element httpRegion = person.getElementsByTag(REGION_SELECTOR).first();
+        String region = null;
+        if (httpRegion != null && httpRegion.hasAttr(ATTR_TITLE_SELECTOR)) {
+            region = httpRegion.attr(ATTR_TITLE_SELECTOR);
+        }
+        if (region == null) {
+            countNullRegion++;
+        }
+
+        Element httpDateCreated = person.getElementsByTag(WEBLOG_SELECTOR).first();
+        String dateCreated = httpDateCreated != null ? httpDateCreated.attr(DATE_CREATED_SELECTOR).replace("T", " ") : null;
+        if (dateCreated == null) {
+            countNullDateCreated++;
+        }
+
+        Element httpDateUpdated = person.getElementsByTag(WEBLOG_SELECTOR).first();
+        String dateUpdated = httpDateUpdated != null ? httpDateUpdated.attr(DATE_LAST_UPDATED_SELECTOR).replace("T", " ") : null;
+        if (dateUpdated == null) {
+            countNullDateUpdated++;
+        }
+
+        Element httpBirthday = person.getElementsByTag(BIRTHDAY_SELECTOR).first();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", new Locale("en_US"));
+
+        String birthday = null;
+        if (httpBirthday != null) {
+            birthday = httpBirthday.text();
+            if (birthday.length() == 4) {
+                birthday += "-01-01";
+            }
+            try {
+                dateFormat.parse(birthday);
+            } catch (ParseException | NullPointerException e) {
+                logger.warn("User: " + nick + e);
+                birthday = null;
+            }
+        }
+        if (birthday == null) {
+            countNullBirthday++;
+        }
+
+        Elements interests = person.getElementsByTag(INTEREST_SELECTOR);
+        String interestsStr = !interests.isEmpty() ? "" : null;
+        for (Element interest: interests) {
+            interestsStr += interest.attr(ATTR_TITLE_SELECTOR) + ",";
+        }
+        if (interestsStr == null) {
+            countNullInterests++;
+        }
+
+        return new User(nick, region,
+                dateCreated != null ? Timestamp.valueOf(dateCreated) : null,
+                dateUpdated != null ? Timestamp.valueOf(dateUpdated) : null,
+                birthday != null ? Date.valueOf(birthday) : null,
+                interestsStr);
+    }
+
     // get all user's friends
     private void getUserFriends(String user) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Thread.sleep(200);  // delay
         HttpResponse<String> userFriendsResponse = Unirest.get("http://www.livejournal.com/misc/fdata.bml?user=" + URLEncoder.encode(user, "UTF-8"))
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
 
         String friends = userFriendsResponse.getBody()
@@ -266,10 +372,10 @@ public class Crawler {
     // get all user's tags
     private Set<Tag> getUserTags(String user) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Thread.sleep(200);  // delay
         HttpResponse<String> userTagsResponse = Unirest.get("http://users.livejournal.com/" + URLEncoder.encode(user, "UTF-8") + "/tag/")
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
         Document doc = Jsoup.parse(userTagsResponse.getBody());
 
@@ -324,15 +430,15 @@ public class Crawler {
     }
 
     // get 25 posts by current tag
-    private List<Post> getTagPosts(final String user, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private List<Post> getTagPosts(final String user, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
-        HttpResponse<String> liveJournalResponse = Unirest.get("http://users.livejournal.com/" +
+        Thread.sleep(200);  // delay
+        HttpResponse<String> tagPostResponse = Unirest.get("http://users.livejournal.com/" +
                 URLEncoder.encode(user, "UTF-8") + "/data/rss/?tag=" + URLEncoder.encode(tag.getName(), "UTF-8"))
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
-        Thread.sleep(200);  // delay
 
-        Document doc = Jsoup.parse(liveJournalResponse.getBody());
+        Document doc = Jsoup.parse(tagPostResponse.getBody());
 
         Elements selectionPosts = doc.select(POST_SELECTOR);
 
@@ -356,7 +462,14 @@ public class Crawler {
                 urlNumber = Integer.parseInt(matcher.group().replaceAll("/", ""));
             }
             Integer countComments = !Objects.equals(comments.text(), "") ? Integer.parseInt(comments.text()) : null;
-            postList.add(new Post(title.text(), safeText, user, date.text(), urlNumber, countComments, tagsList));
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", new Locale("en_US"));
+            Timestamp timePost = new Timestamp(dateFormat.parse(date.text()).getTime());
+            postList.add(new Post(
+                            title.text(), safeText, user,
+                            timePost, urlNumber,
+                            countComments, tagsList
+                            ));
         }
         return postList;
     }
