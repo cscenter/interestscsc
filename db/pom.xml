@@ -30,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>ru.cscenter.interestcsc</groupId>
-            <artifactId>crawler</artifactId>
+            <artifactId>data</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>

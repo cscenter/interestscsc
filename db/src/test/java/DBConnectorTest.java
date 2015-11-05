@@ -1,6 +1,6 @@
-import crawler.Post;
-import crawler.Tag;
-import crawler.User;
+import data.Post;
+import data.Tag;
+import data.User;
 import db.DBConnector;
 
 import java.io.FileNotFoundException;

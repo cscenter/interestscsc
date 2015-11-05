@@ -1,8 +1,8 @@
 package db;
 
-import crawler.Post;
-import crawler.Tag;
-import crawler.User;
+import data.Post;
+import data.Tag;
+import data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
 
