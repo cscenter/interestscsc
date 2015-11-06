@@ -1,7 +1,6 @@
 import crawler.Crawler;
 import org.apache.log4j.Logger;
 
-import java.io.FileNotFoundException;
 import java.sql.SQLException;
 
 public class Main {
@@ -16,8 +15,6 @@ public class Main {
             ljCrawler.crawl(startUser);
         } catch (SQLException sqle) {
             logger.error("Error working with DB. " + sqle);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         }
     }
 }
