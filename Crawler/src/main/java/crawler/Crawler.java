@@ -116,7 +116,7 @@ public class Crawler {
                     logger.info("Count tags: " + userTags.size());
                     try {
                         // add information into DB
-                        //db.insertRawUsers(friends);
+                        db.insertRawUsers(friends);
                         db.insertUser(userInfo);
                         db.insertTags(userTags, nick);
 

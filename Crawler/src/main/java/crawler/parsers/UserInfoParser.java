@@ -12,6 +12,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 public class UserInfoParser {
@@ -90,6 +91,7 @@ public class UserInfoParser {
         return new User(nick, region,
                 dateCreated != null ? Timestamp.valueOf(dateCreated) : null,
                 dateUpdated != null ? Timestamp.valueOf(dateUpdated) : null,
+                Timestamp.valueOf(LocalDateTime.now()),
                 birthday != null ? Date.valueOf(birthday) : null,
                 interestsStr);
     }

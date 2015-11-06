@@ -290,10 +290,10 @@ public class DBConnector {
     }
 
 
-    public LinkedList<User> getUsers() throws SQLException { //TODO сейчас не тащит fetched, т.к. его нет в User
+    public LinkedList<User> getUsers() throws SQLException {
         LinkedList<User> result = new LinkedList<>();
         String selectUsersString = "SELECT u.nick, r.name region, " +
-                "u.created, u.update, u.birthday, u.interests " +
+                "u.created, u.update, u.fetched, u.birthday, u.interests " +
                 "FROM UserLJ u JOIN Region r ON u.region_id = r.id;";
         try (
                 Connection con = getConnection();
@@ -305,7 +305,8 @@ public class DBConnector {
                     result.add(new User(
                             rs.getString("nick"), rs.getString("region"),
                             rs.getTimestamp("created"), rs.getTimestamp("update"),
-                            rs.getDate("birthday"), rs.getString("interests")
+                            rs.getTimestamp("fetched"), rs.getDate("birthday"),
+                            rs.getString("interests")
                     ));
         }
         return result;

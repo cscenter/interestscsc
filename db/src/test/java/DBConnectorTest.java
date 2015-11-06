@@ -65,6 +65,7 @@ public class DBConnectorTest {
             String[] r = new String[]{"RU", "other", null};
             User user = new User(username, r[new Random().nextInt(3)],
                     Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
+                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
                     Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
             );
 
@@ -135,8 +136,7 @@ public class DBConnectorTest {
         // (сейчас не отображается fetched - его нет в User)
         LinkedList<User> allUsers = db.getUsers();
 
-        // TODO Если это зачем-то нужно, нужно сделать нормальный toString()
         for (User user : allUsers)
-            System.out.print(user.writeToFile());
+            System.out.print(user.toString());
     }
 }

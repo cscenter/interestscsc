@@ -9,18 +9,21 @@ public class User {
     private String region;
     private Timestamp dateCreated;
     private Timestamp dateUpdated;
+    private Timestamp dateFetched;
     private Date birthday;
     private String interests;
 
     public User(
             final String nick, final String region,
             final Timestamp dateCreated, final Timestamp dateUpdated,
-            final Date birthday, final String interests
+            final Timestamp dateFetched, final Date birthday,
+            final String interests
     ) {
         this.nick = nick;
         this.region = region;
         this.dateCreated = dateCreated;
         this.dateUpdated = dateUpdated;
+        this.dateFetched = dateFetched;
         this.birthday = birthday;
         this.interests = interests;
     }
@@ -41,6 +44,10 @@ public class User {
         return dateUpdated;
     }
 
+    public Timestamp getDateFetched() {
+        return dateFetched;
+    }
+
     public Date getBirthday() {
         return birthday;
     }
@@ -49,11 +56,12 @@ public class User {
         return interests;
     }
 
-    public String writeToFile() {
+    public String toString() {
         return "nick : " + nick + "\n" +
                 "region : " + region + "\n" +
                 "dateCreated : " + dateCreated + "\n" +
                 "dateUpdated : " + dateUpdated + "\n" +
+                "dateFetched : " + dateFetched + "\n" +
                 "birthday : " + birthday + "\n" +
                 "interests : " + interests + "\n";
     }
