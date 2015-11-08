@@ -48,8 +48,8 @@ public class DBConnector {
         connectionPool.setUser(USER);
         connectionPool.setPassword(PASS);
         connectionPool.setMaxConnections(MAX_CONNECTIONS);
-        crawlerId = getCrawlerId(crawlerName);
-
+        if(checkTable("crawler"))
+            crawlerId = getCrawlerId(crawlerName);
     }
 
 
@@ -69,6 +69,21 @@ public class DBConnector {
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("id");
+        }
+    }
+
+
+    private boolean checkTable(String tableName) throws SQLException {
+        String selectTableString = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTable = con.prepareStatement(selectTableString)
+        ) {
+            selectTable.setString(1, tableName);
+            ResultSet rs = tryQueryTransaction(selectTable, "pg_tables");
+            if (rs == null)
+                throw new IllegalStateException("If you see this, our code needs a fix");
+            return rs.next();
         }
     }
 
@@ -680,6 +695,10 @@ public class DBConnector {
                             "table " + tableName + ". \n If you see this exception than we need a code fix");
                     //TODO как-то по другому обрабатывать?
                     throw pse;
+                } else if ("42P01".equals(ss)) { // undefined_table
+                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
+                            "try DBConnector method dropInitDatabase().");
+                    throw pse;
                 } else {
                     System.err.println(ss);
                     throw pse;
@@ -712,6 +731,10 @@ public class DBConnector {
                     System.err.println("PSQLException: suspected bad connection. Closing transaction " +
                             "with first unadded entry: " + currEntry + ". \n If you see this exception than we need a code fix");
                     //TODO как-то по другому обрабатывать?
+                    throw pse;
+                } else if ("42P01".equals(ss)) { // undefined_table
+                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
+                            "try DBConnector method dropInitDatabase().");
                     throw pse;
                 } else {
                     System.err.println(ss);
@@ -748,6 +771,10 @@ public class DBConnector {
                     System.err.println("PSQLException: suspected bad connection. Closing transaction " +
                             "with first unadded entry: " + currEntry + ". \n If you see this exception than we need a code fix");
                     //TODO как-то по другому обрабатывать?
+                    throw pse;
+                } else if ("42P01".equals(ss)) { // undefined_table
+                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
+                            "try DBConnector method dropInitDatabase().");
                     throw pse;
                 } else {
                     System.err.println(ss);
