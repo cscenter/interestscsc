@@ -12,15 +12,16 @@ import java.util.*;
  * User: allight
  * Date: 13.10.2015 0:04
  */
-public class DBConnectorTest {
+public class DBConnectorTestCrawling {
 
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
+        // TODO Не запускать на рабочей БД
         // Создаем коннектор, добавляем идентификатор своей машины в БД
-        DBConnector db = new DBConnector("AllightPC");
+        DBConnector db = new DBConnector("DBConnectorTestCrawling");
 
         // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-//        db.dropInitDatabase("AllightPC", "Bzw7HPtmHmVVqKvSHe7d");
+//        db.dropInitDatabase("DBConnectorTestCrawling", "Bzw7HPtmHmVVqKvSHe7d");
 
         // Собираем с LJ имена нескольких стартовых пользователей (имитация)
         LinkedList<String> rawUsers = new LinkedList<>();
@@ -137,6 +138,6 @@ public class DBConnectorTest {
         LinkedList<User> allUsers = db.getUsers();
 
         for (User user : allUsers)
-            System.out.print(user.toString());
+            System.out.println(user.toString() + "\n\n =========== \n\n");
     }
 }

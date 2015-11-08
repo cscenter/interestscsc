@@ -1,5 +1,6 @@
 package db;
 
+import data.NGram;
 import data.Post;
 import data.Tag;
 import data.User;
@@ -19,20 +20,24 @@ import java.util.Scanner;
  * Date: 06.10.2015 14:47
  */
 
+@SuppressWarnings("Duplicates")
 public class DBConnector {
-    private static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
     private static final String SCHEMA_PATH = "db/schema.sql";
     private static final String SCHEMA_ENCODING = "UTF-8";
+
     private static final String HOST = "185.72.144.129";
     private static final int PORT = 5432; // стандартный порт в постгрес
     private static final String DB = "veiloneru";
     private static final String USER = "veiloneru";
     private static final String PASS = "wasddsaw";
     private static final int MAX_CONNECTIONS = 100; // 100 - внутреннее ограничение постгрес
+
     private static final int MAX_TRIES = 5; // TODO число попыток выполнения при временной (*) неудаче (>1)
-    private static final String[] NGRAM_TABLE_NAMES = new String[]{"", "unigram", "digram", "trigram"};
-    private PGPoolingDataSource connectionPool;
+    private static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
+    private static final String[] N_GRAM_TABLE_NAMES = new String[]{"", "unigram", "digram", "trigram"};
     private int crawlerId;
+
+    private PGPoolingDataSource connectionPool;
 
 
     public DBConnector(String crawlerName) throws SQLException {
@@ -217,6 +222,7 @@ public class DBConnector {
 
     public LinkedList<String> getUnfinishedRawUsers() throws SQLException {
         LinkedList<String> result = new LinkedList<>();
+        //TODO По максимуму сделать вьюшки для сложных запросов
         String selectUnfinishedString = "SELECT r.nick " +
                 "FROM RawUserLJ r JOIN UserLJ u ON r.user_id = u.id " +
                 "WHERE r.crawler_id = ? AND u.fetched IS NULL;";
@@ -349,6 +355,60 @@ public class DBConnector {
         return rowsAffected;
     }
 
+
+    public LinkedList<String> getAllTagNames() throws SQLException {
+        LinkedList<String> result = new LinkedList<>();
+        String selectTagString = "SELECT text FROM Tag;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTag = con.prepareStatement(selectTagString);
+        ) {
+            ResultSet rs = tryQueryTransaction(selectTag, "Tag");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString("text"));
+        }
+        return result;
+    }
+
+
+    public LinkedList<String> getAllTagNames(String userLJNick) throws SQLException {
+        LinkedList<String> result = new LinkedList<>();
+        String selectTagString = "SELECT text FROM Tag t " +
+                "JOIN TagToUserLJ tu ON t.id = tu.tag_id " +
+                "WHERE tu.user_id = (SELECT id FROM UserLJ WHERE nick = ?);";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTag = con.prepareStatement(selectTagString);
+        ) {
+            selectTag.setString(1, userLJNick);
+            ResultSet rs = tryQueryTransaction(selectTag, "Tag");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString("text"));
+        }
+        return result;
+    }
+
+
+    public LinkedList<String> getAllTagNames(long post_id) throws SQLException {
+        LinkedList<String> result = new LinkedList<>();
+        String selectTagNamesString = "SELECT text FROM TagNameToPost tnp " +
+                "WHERE tnp.post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString);
+        ) {
+            selectTagNames.setLong(1, post_id);
+            ResultSet rs = tryQueryTransaction(selectTagNames, "TagNameToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString("text"));
+        }
+        return result;
+    }
+
+
     /**
      * Поочередно добавляет в БД посты из любого итерабельного контейнера.
      * Информация об авторах добавляемых постов уже должна быть в базе.
@@ -380,6 +440,7 @@ public class DBConnector {
 
                 rowsAffected += tryUpdateTransaction(insertPost, post.getAuthor() + ">" + post.getUrl(), "Post");
 
+                assert (post.getTags() != null);
                 for (String tag : post.getTags()) {
                     insertTagToPost.setString(1, tag);
                     insertTagToPost.setString(2, post.getAuthor());
@@ -393,44 +454,198 @@ public class DBConnector {
     }
 
 
-    /**
-     * Поочередно добавляет в БД n-граммы из любого итерабельного контейнера.
-     * Информация о посте добавляемых n-грамм уже должна быть в базе,
-     * в таблице UserLJ поле nick.
-     *
-     * @param ngrams      - итерабельный контейнер с n-граммами в строках.
-     * @param userLJNick - автор поста
-     * @param postUrl    - url поста
-     * @param nGramType   - тип добавляемых n-грамм. [1..3]
-     *                    1 - unigram, 2 - digram, 3 - trigram.
-     * @return кол-во добавленных записей
-     */
-    public int insertNgrams(Iterable<String> ngrams, String userLJNick, int postUrl, int nGramType) throws SQLException {
-        if (nGramType < 1 || nGramType > 3)
-            throw new IllegalArgumentException("Argument nGramType must be in range [1..3].");
-        String ngramTableName = NGRAM_TABLE_NAMES[nGramType];
-        int rowsAffected = 0;
-        //TODO Вроде бы SQL Injections здесь не пройдет, но надо подумать
-        String insertNgramString = "INSERT INTO " + ngramTableName + " (text) VALUES (?);";
-        String insertNgramToPostString = "INSERT INTO " + ngramTableName + "ToPost VALUES (" +//TODO (..gram_id,post_id)
-                "(SELECT id FROM " + ngramTableName + " WHERE text = ?), " +
-                "(SELECT id FROM Post WHERE user_id = (SELECT id FROM UserLJ WHERE nick = ?) AND url = ?));";
+    public LinkedList<Post> getPostsToNormalize(int limit) throws SQLException {
+        if (limit <= 0) throw new IllegalArgumentException
+                ("Argument limit must be greater than 0.");
+        LinkedList<Post> result = new LinkedList<>();
+        String selectPostsString = "SELECT id, title, text " +
+                "FROM Post WHERE NOT normalized LIMIT ?";
         try (
                 Connection con = getConnection();
-                PreparedStatement insertNgram = con.prepareStatement(insertNgramString);
-                PreparedStatement insertNgramToPost = con.prepareStatement(insertNgramToPostString)
+                PreparedStatement selectPosts = con.prepareStatement(selectPostsString)
         ) {
-            for (String ngram : ngrams) {
-                insertNgram.setString(1, ngram);
-                rowsAffected += tryUpdateTransaction(insertNgram, ngram, ngramTableName);
+            selectPosts.setInt(1, limit);
+            ResultSet rs = tryQueryTransaction(selectPosts, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(new Post(
+                            rs.getLong("id"),
+                            rs.getString("title"),
+                            rs.getString("text")));
+        }
+        return result;
+    }
 
-                insertNgramToPost.setString(1, ngram);
-                insertNgramToPost.setString(2, userLJNick);
-                insertNgramToPost.setInt(3, postUrl);        //never null
-                rowsAffected += tryUpdateTransaction(insertNgramToPost, userLJNick + ">" + postUrl + "<->" + ngram, ngramTableName + "ToPost");
+
+    public int updatePostNormalized(long postId) throws SQLException {
+        int rowsAffected = 0;
+        String updateNormalizedString =
+                "UPDATE Post SET normalized = TRUE WHERE id = ?;";
+
+        try (
+                Connection con = getConnection();
+                PreparedStatement updateNormalized = con.prepareStatement(updateNormalizedString)
+        ) {
+            updateNormalized.setLong(1, postId);
+            rowsAffected += tryUpdateTransaction(updateNormalized, "Post_id = " + postId, "Post");
+        }
+        return rowsAffected;
+    }
+
+
+    public int getPostCount() throws SQLException {
+        String selectPostCountString = "SELECT count(*) FROM Post;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostCount = con.prepareStatement(selectPostCountString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectPostCount, "Post");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("If you see this, our code needs a fix");
+            return rs.getInt("count");
+        }
+    }
+
+
+    public int getPostNormalizedCount() throws SQLException {
+        String selectPostNormalizedCountString = "SELECT count(*) FROM Post WHERE normalized;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostNormalizedCount = con.prepareStatement(selectPostNormalizedCountString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectPostNormalizedCount, "Post");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("If you see this, our code needs a fix");
+            return rs.getInt("count");
+        }
+    }
+
+    // TODO нужна реализация от postUrl+username ?
+    // TODO Для неск постов, скажем, всех постов пользователя?
+    public int getPostLength(long postId) throws SQLException {
+        String selectLengthString = "SELECT length FROM PostLength WHERE post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectLength = con.prepareStatement(selectLengthString)
+        ) {
+            selectLength.setLong(1, postId);
+            ResultSet rs = tryQueryTransaction(selectLength, "PostLength");
+            if (rs == null || !rs.next()) return -1; //TODO нормально возвращать -1, если пост еще не обработан?
+            else return rs.getInt("length");
+        }
+    }
+
+
+    public int getPostUniqueWordCount(long postId) throws SQLException {
+        String selectUniqueWordCountString = "SELECT count FROM PostUniqueWordCount WHERE post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectUniqueWordCount = con.prepareStatement(selectUniqueWordCountString)
+        ) {
+            selectUniqueWordCount.setLong(1, postId);
+            ResultSet rs = tryQueryTransaction(selectUniqueWordCount, "PostUniqueWordCount");
+            if (rs == null || !rs.next()) return -1;
+            else return rs.getInt("count");
+        }
+    }
+
+
+    /**
+     * Поочередно добавляет в БД n-граммы из любого итерабельного контейнера.
+     * Информация о посте добавляемых n-грамм уже должна быть в базе
+     *
+     * @param ngrams    - итерабельный контейнер с n-граммами в строках.
+     * @param postId    - внутренний id поста в БД, выдается в объекте Post,
+     *                  в методе getUnprocessedPosts(int num).
+     * @param nGramType - тип добавляемых n-грамм. [1..3]
+     *                  1 - unigram, 2 - digram, 3 - trigram.
+     * @return кол-во добавленных записей
+     */
+    public int insertNGrams(Iterable<NGram> ngrams, long postId, int nGramType) throws SQLException {
+        if (nGramType < 1 || nGramType > 3)
+            throw new IllegalArgumentException("Argument nGramType must be in range [1..3].");
+        String nGramTableName = N_GRAM_TABLE_NAMES[nGramType];
+        int rowsAffected = 0;
+
+        //TODO Вроде бы SQL Injections здесь не пройдет, но надо подумать
+        String insertNGramString = "INSERT INTO " + nGramTableName + " (text) VALUES (?);";
+        String insertNGramToPostString = "INSERT INTO " + nGramTableName + "ToPost " +
+                "(ngram_id, post_id, uses_str, uses_cnt) VALUES ( " +
+                "(SELECT id FROM " + nGramTableName + " WHERE text = ?), ?, ?, ?);";
+
+        try (
+                Connection con = getConnection();
+                PreparedStatement insertNGram = con.prepareStatement(insertNGramString);
+                PreparedStatement insertNGramToPost = con.prepareStatement(insertNGramToPostString)
+        ) {
+            for (NGram ngram : ngrams) {
+                insertNGram.setString(1, ngram.getText());
+                rowsAffected += tryUpdateTransaction(insertNGram, ngram.getText(), nGramTableName);
+            }
+
+            for (NGram ngram : ngrams) {
+                insertNGramToPost.setString(1, ngram.getText());
+                insertNGramToPost.setLong(2, postId);
+                insertNGramToPost.setString(3, ngram.getUsesStr());
+                insertNGramToPost.setInt(4, ngram.getUsesCnt());
+                rowsAffected += tryUpdateTransaction(insertNGramToPost, "postId<->" + ngram.getText(), nGramTableName + "ToPost");
             }
         }
         return rowsAffected;
+    }
+
+
+    public LinkedList<String> getAllNGramNames() throws SQLException {
+        LinkedList<String> result = new LinkedList<>();
+        String selectNGramString = "SELECT text FROM AllNGramTexts;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString);
+        ) {
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString("text"));
+        }
+        return result;
+    }
+
+
+    public LinkedList<String> getAllNGramNames(long postId) throws SQLException {
+        LinkedList<String> result = new LinkedList<>();
+        String selectNGramString = "SELECT text FROM AllNGramTextPost " +
+                "WHERE post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString);
+        ) {
+            selectNGram.setLong(1, postId);
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString("text"));
+        }
+        return result;
+    }
+
+
+    public int getNGramCount(long postId, int nGramType) throws SQLException {
+        if (nGramType < 1 || nGramType > 3)
+            throw new IllegalArgumentException("Argument nGramType must be in range [1..3].");
+        String nGramTableName = N_GRAM_TABLE_NAMES[nGramType];
+        int result;
+        String selectNGramCountString = "SELECT count(*) FROM " + nGramTableName + "ToPost np " +
+                "WHERE np.post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGramCount = con.prepareStatement(selectNGramCountString);
+        ) {
+            selectNGramCount.setLong(1, postId);
+            ResultSet rs = tryQueryTransaction(selectNGramCount, nGramTableName + "ToPost");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("If you see this, our code needs a fix");
+            return rs.getInt("count");
+        }
     }
 
 
