@@ -5,6 +5,7 @@ import java.util.List;
 
 public class Post {
 
+    private Long id;
     private String title;
     private String text;
     private String author;
@@ -18,6 +19,8 @@ public class Post {
             final Timestamp date, final Integer url, final Integer countComment,
             final List<String> tags
     ) {
+        if(tags == null)
+            throw new IllegalArgumentException("List of tags can't be null");
         this.title = title;
         this.text = text;
         this.author = author;
@@ -25,6 +28,16 @@ public class Post {
         this.url = url;
         this.countComment = countComment;
         this.tags = tags;
+    }
+
+    public Post(Long id, String title, String text) {
+        this.id = id;
+        this.title = title;
+        this.text = text;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getTitle() {
