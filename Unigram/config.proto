@@ -6,15 +6,18 @@ TTextMinerConfig {
     File = "input.txt"; // путь к входному файлу
   }
   Articles = [
-    { Name = "N-Grams" } // название статьи в корневом словаре,
+    { Name = "N-Grams"; } // название статьи в корневом словаре,
                                           // которая содержит запускаемую грамматику
   ]
 Facts = [
-    { Name = "NGrams" }
+    { Name = "NGrams";
+    }
 ]
+
 Output = {
     File = "facts.txt";
-    Format = text;        // можно использовать следующие форматы:
-                          // proto (Google Protobuf), xml, text
+    Format = text;      
+                       
 }
+
 }
