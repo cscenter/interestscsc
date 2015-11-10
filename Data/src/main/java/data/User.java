@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 import java.util.List;
 
 public class User {
-    public class School {
+    public static class School {
         private String title;
         private Date start;
         private Date end;
@@ -40,7 +40,7 @@ public class User {
     private String customCity;
     private Integer postsNum;
     private Integer commentsPosted;
-    private Integer commentsRecieved;
+    private Integer commentsReceived;
     private String biography;
     private List<School> schools;
 
@@ -49,7 +49,7 @@ public class User {
                 Timestamp dateFetched, Date birthday,
                 String interests, String customCity,
                 Integer postsNum, Integer commentsPosted,
-                Integer commentsRecieved,
+                Integer commentsReceived,
                 String biography, List<School> schools) {
         this.id = id;
         this.nick = nick;
@@ -62,7 +62,7 @@ public class User {
         this.customCity = customCity;
         this.postsNum = postsNum;
         this.commentsPosted = commentsPosted;
-        this.commentsRecieved = commentsRecieved;
+        this.commentsReceived = commentsReceived;
         this.biography = biography;
         this.schools = schools;
     }
@@ -126,8 +126,8 @@ public class User {
         return commentsPosted;
     }
 
-    public Integer getCommentsRecieved() {
-        return commentsRecieved;
+    public Integer getCommentsReceived() {
+        return commentsReceived;
     }
 
     public String getBiography() {
@@ -138,13 +138,23 @@ public class User {
         return schools;
     }
 
+    @Override
     public String toString() {
-        return "nick : " + nick + "\n" +
-                "region : " + region + "\n" +
-                "dateCreated : " + dateCreated + "\n" +
-                "dateUpdated : " + dateUpdated + "\n" +
-                "dateFetched : " + dateFetched + "\n" +
-                "birthday : " + birthday + "\n" +
-                "interests : " + interests + "\n";
+        return "User{" +
+                "id=" + id +
+                ", nick='" + nick + '\'' +
+                ", region='" + region + '\'' +
+                ", dateCreated=" + dateCreated +
+                ", dateUpdated=" + dateUpdated +
+                ", dateFetched=" + dateFetched +
+                ", birthday=" + birthday +
+                ", interests='" + interests + '\'' +
+                ", customCity='" + customCity + '\'' +
+                ", postsNum=" + postsNum +
+                ", commentsPosted=" + commentsPosted +
+                ", commentsReceived=" + commentsReceived +
+                ", biography='" + biography + '\'' +
+                ", schools=" + schools +
+                '}';
     }
 }
