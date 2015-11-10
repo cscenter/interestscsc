@@ -31,7 +31,7 @@ public class DBConnector {
     private static final String DB = "veiloneru";
     private static final String USER = "veiloneru";
     private static final String PASS = "wasddsaw";
-    private static final int MAX_CONNECTIONS = 100; // 100 - внутреннее ограничение постгрес
+    private static final int MAX_CONNECTIONS = 20; // * 5 < 100 - внутреннее ограничение постгрес
 
     private static final int MAX_TRIES = 5; // TODO число попыток выполнения при временной (*) неудаче (>1)
     private static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
@@ -266,14 +266,23 @@ public class DBConnector {
     public int insertUser(User userLJ) throws SQLException { //TODO возможно, здесь нужна транзакция?
         int rowsAffected = 0;
         String insertUserString =
-                "INSERT INTO UserLJ (nick, region_id, created, update, birthday, interests) VALUES " +
-                        "(?, (SELECT id FROM Region WHERE name = COALESCE(?,'')), ?, ?, ?, ?);";
+                "INSERT INTO UserLJ (nick, region_id, created, update, birthday, interests, " +
+                        "city_cstm, posts_num, cmmnt_in, cmmnt_out, bio) VALUES " +
+                        "(?, (SELECT id FROM Region WHERE name = COALESCE(?,'')), ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String selectUserLJString = "SELECT id FROM UserLJ WHERE nick = ?;";
+        String insertSchoolString = "INSERT INTO School (name) VALUES (?);";
+        String insertUserToSchoolString = "INSERT INTO UserToSchool " +
+                "(user_id, school_id, start_date, finish_date) " +
+                "VALUES (?, (SELECT id FROM School WHERE name = ?), ?, ?);";
         String updateRawUserString =
-                "UPDATE RawUserLJ SET user_id = (SELECT id FROM UserLJ WHERE nick = ?) WHERE nick = ?;";
+                "UPDATE RawUserLJ SET user_id = ? WHERE nick = ?;";
 
         try (
                 Connection con = getConnection();
                 PreparedStatement insertUser = con.prepareStatement(insertUserString);
+                PreparedStatement selectUserLJ = con.prepareStatement(selectUserLJString);
+                PreparedStatement insertSchool = con.prepareStatement(insertSchoolString);
+                PreparedStatement insertUserToSchool = con.prepareStatement(insertUserToSchoolString);
                 PreparedStatement updateRawUser = con.prepareStatement(updateRawUserString)
         ) {
             insertUser.setString(1, userLJ.getNick());
@@ -282,10 +291,42 @@ public class DBConnector {
             insertUser.setTimestamp(4, userLJ.getDateUpdated());
             insertUser.setDate(5, userLJ.getBirthday());
             insertUser.setString(6, userLJ.getInterests());
+            insertUser.setString(7, userLJ.getCustomCity());
+            if (userLJ.getPostsNum() == null)
+                insertUser.setNull(8, Types.INTEGER);
+            else insertUser.setInt(8, userLJ.getPostsNum());
+            if (userLJ.getCommentsReceived() == null)
+                insertUser.setNull(9, Types.INTEGER);
+            else insertUser.setInt(9, userLJ.getCommentsReceived());
+            if (userLJ.getCommentsPosted() == null)
+                insertUser.setNull(10, Types.INTEGER);
+            else insertUser.setInt(10, userLJ.getCommentsPosted());
+            insertUser.setString(11, userLJ.getBiography());
 
             rowsAffected += tryUpdateTransaction(insertUser, userLJ.getNick(), "UserLJ");
 
-            updateRawUser.setString(1, userLJ.getNick());
+            selectUserLJ.setString(1, userLJ.getNick());
+            ResultSet rs = tryQueryTransaction(selectUserLJ, "UserLJ");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("If you see this, our code needs a fix");
+            Long userId = rs.getLong("id");
+
+
+            for(User.School school : userLJ.getSchools()) {
+                insertSchool.setString(1, school.getTitle());
+                rowsAffected += tryUpdateTransaction(insertSchool, school.getTitle(), "School");
+            }
+
+            for(User.School school : userLJ.getSchools()) {
+                insertUserToSchool.setLong(1, userId);
+                insertUserToSchool.setString(2, school.getTitle());
+                insertUserToSchool.setDate(3, school.getStart());
+                insertUserToSchool.setDate(4, school.getEnd());
+
+                rowsAffected += tryUpdateTransaction(insertUserToSchool, userLJ.getNick() + "<->" + school.getTitle(), "UserToSchool");
+            }
+
+            updateRawUser.setLong(1, userId);
             updateRawUser.setString(2, userLJ.getNick());
 
             rowsAffected += tryUpdateTransaction(updateRawUser, userLJ.getNick(), "RawUserLJ");
@@ -311,11 +352,15 @@ public class DBConnector {
         return rowsAffected;
     }
 
-
+    /**
+     * Возвращвет все заполненные профили пользователей.
+     * Информация о школах не включается.
+     * */
     public List<User> getUsers() throws SQLException {
         List<User> result = new LinkedList<>();
-        String selectUsersString = "SELECT u.nick, r.name region, " +
-                "u.created, u.update, u.fetched, u.birthday, u.interests " +
+        String selectUsersString = "SELECT u.id, u.nick, r.name region, " +
+                "u.created, u.update, u.fetched, u.birthday, u.interests, " +
+                "u.city_cstm, u.posts_num, u.cmmnt_in , u.cmmnt_out, u.bio " +
                 "FROM UserLJ u JOIN Region r ON u.region_id = r.id;";
         try (
                 Connection con = getConnection();
@@ -325,10 +370,12 @@ public class DBConnector {
             if (rs != null)
                 while (rs.next())
                     result.add(new User(
-                            rs.getString("nick"), rs.getString("region"),
+                            rs.getLong("id"), rs.getString("nick"), rs.getString("region"),
                             rs.getTimestamp("created"), rs.getTimestamp("update"),
                             rs.getTimestamp("fetched"), rs.getDate("birthday"),
-                            rs.getString("interests")
+                            rs.getString("interests"), rs.getString("city_cstm"),
+                            rs.getInt("posts_num"), rs.getInt("cmmnt_in"),
+                            rs.getInt("cmmnt_out"), rs.getString("bio"), new LinkedList<>()
                     ));
         }
         return result;

@@ -64,10 +64,11 @@ public class DBConnectorTestCrawling {
 
             // Собираем c LJ информацию о пользователе в объект класса User (имитация)
             String[] r = new String[]{"RU", "other", null};
-            User user = new User(username, r[new Random().nextInt(3)],
+            User user = new User(null, username, r[new Random().nextInt(3)],
                     Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
                     Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
+                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
+                    null, null, null, null, null, null, null, new LinkedList<>()
             );
 
             // Если у пользователя есть регион, отсутсвующий в кэше, добавляем его

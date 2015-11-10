@@ -51,6 +51,8 @@ public class User {
                 Integer postsNum, Integer commentsPosted,
                 Integer commentsReceived,
                 String biography, List<School> schools) {
+        if(schools == null)
+            throw new IllegalArgumentException("List of schools can't be null");
         this.id = id;
         this.nick = nick;
         this.region = region;

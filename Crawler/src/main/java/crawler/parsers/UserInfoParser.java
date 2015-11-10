@@ -77,8 +77,9 @@ public class UserInfoParser {
 
         Element httpPostsCount = person.getElementsByTag(POST_COUNT_SELECTOR).first();
         Integer postPosted = null;
-        if (httpPostsCount != null && httpPostsCount.hasAttr(ATTR_POSTED_SELECTOR)) {
-            postPosted = Integer.parseInt(httpPostsCount.attr(ATTR_POSTED_SELECTOR));
+        if (httpPostsCount != null) {
+            Element postsCount = httpPostsCount.getElementsByTag(ATTR_POSTED_SELECTOR).first();
+            postPosted = postsCount != null ? Integer.parseInt(postsCount.text()) : null;
         }
         if (postPosted == null) {
             countNullPostPosted++;
@@ -86,15 +87,17 @@ public class UserInfoParser {
 
         Element httpCommentsCount = person.getElementsByTag(COMMENTS_COUNT_SELECTOR).first();
         Integer commentPosted = null;
-        if (httpCommentsCount != null && httpCommentsCount.hasAttr(ATTR_POSTED_SELECTOR)) {
-            commentPosted = Integer.parseInt(httpCommentsCount.attr(ATTR_POSTED_SELECTOR));
+        if (httpCommentsCount != null) {
+            Element commentsCount = httpCommentsCount.getElementsByTag(ATTR_POSTED_SELECTOR).first();
+            commentPosted = commentsCount != null ? Integer.parseInt(commentsCount.text()) : null;
         }
         if (commentPosted == null) {
             countNullCommentsPosted++;
         }
         Integer commentReceived = null;
-        if (httpCommentsCount != null && httpCommentsCount.hasAttr(ATTR_RECEIVED_SELECTOR)) {
-            commentReceived = Integer.parseInt(httpCommentsCount.attr(ATTR_RECEIVED_SELECTOR));
+        if (httpCommentsCount != null) {
+            Element commentsCount = httpCommentsCount.getElementsByTag(ATTR_RECEIVED_SELECTOR).first();
+            commentReceived = commentsCount != null ? Integer.parseInt(commentsCount.text()) : null;
         }
         if (commentReceived == null) {
             countNullCommentsReceived++;

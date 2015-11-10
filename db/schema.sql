@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS DigramToPost;
 DROP TABLE IF EXISTS UnigramToPost;
 DROP TABLE IF EXISTS TagToUserLJ;
 DROP TABLE IF EXISTS TagToPost;
+DROP TABLE IF EXISTS UserToSchool;
 DROP TABLE IF EXISTS Trigram;
 DROP TABLE IF EXISTS Digram;
 DROP TABLE IF EXISTS Unigram;
@@ -16,6 +17,7 @@ DROP TABLE IF EXISTS MasterTag;
 DROP TABLE IF EXISTS Post;
 DROP TABLE IF EXISTS RawUserLJ;
 DROP TABLE IF EXISTS UserLJ;
+DROP TABLE IF EXISTS School;
 DROP TABLE IF EXISTS Region;
 DROP TABLE IF EXISTS Crawler;
 
@@ -32,6 +34,11 @@ CREATE TABLE Region (
   name TEXT NOT NULL UNIQUE
 );
 
+CREATE TABLE School (
+  id   BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
 CREATE TABLE UserLJ (
   id        BIGSERIAL PRIMARY KEY,
   nick      TEXT      NOT NULL UNIQUE,
@@ -41,7 +48,12 @@ CREATE TABLE UserLJ (
   fetched   TIMESTAMP NULL, -- NULL здесь показывает, что
                             -- значение может быть пустым
   birthday  DATE      NULL,
-  interests TEXT      NULL
+  interests TEXT      NULL,
+  city_cstm TEXT      NULL,
+  posts_num INT       NULL,
+  cmmnt_in  INT       NULL,
+  cmmnt_out INT       NULL,
+  bio       TEXT      NULL
 );
 
 CREATE TABLE RawUserLJ (-- Здесь сохраняем пользователей
@@ -89,6 +101,14 @@ CREATE TABLE Trigram (
   text TEXT NOT NULL UNIQUE
 );
 
+
+CREATE TABLE UserToSchool (
+  user_id  BIGINT REFERENCES UserLJ,
+  school_id BIGINT REFERENCES School,
+  start_date DATE NULL,
+  finish_date DATE NULL,
+  PRIMARY KEY (user_id, school_id)
+);
 
 CREATE TABLE TagToPost (
   tag_id  BIGINT REFERENCES Tag,
