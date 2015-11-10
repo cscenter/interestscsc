@@ -16,7 +16,7 @@ import data.User;
 import db.DBConnector;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
@@ -28,7 +28,7 @@ public class Crawler {
     private final int MAX_NUMBER_OF_USERS_PER_SESSION = 25;
 
     // queue of users who should be considered
-    private LinkedList<String> usersQueue;
+    private Queue<String> usersQueue;
 
     // dictionary where key=tags' name; value=count uses of this tags
     private Map<String, Integer> allTags;
@@ -86,7 +86,7 @@ public class Crawler {
                     logger.info("Left in users' queue: " + usersQueue.size());
                     Set<Tag> userTags = null;
                     User userInfo = null;
-                    LinkedList<String> friends = new LinkedList<>();
+                    List<String> friends = new LinkedList<>();
                     try {
 
                         friends = getUserFriends(nick);
@@ -244,7 +244,7 @@ public class Crawler {
         db.insertRawUsers(usersQueue);
         usersQueue.clear();
 
-        LinkedList<String> usersToProceed = db.getUnfinishedRawUsers();
+        List<String> usersToProceed = db.getUnfinishedRawUsers();
         usersToProceed.addAll(db.getReservedRawUsers());
 
         if (usersToProceed.size() == 0) {
@@ -267,7 +267,7 @@ public class Crawler {
     }
 
     // get all user's friends
-    private LinkedList<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
         return UserFriendsParser.getFriends(new UserFriendsLoader().loadData(nick));
 

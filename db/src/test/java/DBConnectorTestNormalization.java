@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -38,13 +39,13 @@ public class DBConnectorTestNormalization {
         }
 
         // Извлекаем из БД несколько постов для последующей обработки
-        LinkedList<Post> unprocessedPosts = db.getPostsToNormalize(5);
+        List<Post> unprocessedPosts = db.getPostsToNormalize(5);
 
         // для каждого поста
         for (Post post : unprocessedPosts) {
 
             // Извлекаем юниграммы из поста
-            LinkedList<NGram> unigrams = new LinkedList<>();
+            List<NGram> unigrams = new LinkedList<>();
             for (int i = 0; i < 10; ++i)
                 // В объект н-граммы входит её текст, сткрока позиций в посте и количество этих позиций
                 unigrams.add(new NGram("unigram" + i + new Random().nextInt(20), "1, 2, 10", 3));

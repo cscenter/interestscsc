@@ -48,9 +48,9 @@ public class DBConnectorTestLearning {
             }
             db.insertPosts(userPosts);
         }
-        LinkedList<Post> unprocessedPosts = db.getPostsToNormalize(5);
+        List<Post> unprocessedPosts = db.getPostsToNormalize(5);
         for (Post post : unprocessedPosts) {
-            LinkedList<NGram> unigrams = new LinkedList<>();
+            List<NGram> unigrams = new LinkedList<>();
             for (int i = 0; i < 10; ++i)
                 unigrams.add(new NGram("unigram" + i + new Random().nextInt(20), "1, 2, 10", 3));
             db.insertNGrams(unigrams, post.getId(), 1);
@@ -60,7 +60,7 @@ public class DBConnectorTestLearning {
 
 
         // Возьмем для примера один из обработанных постов
-        long postId = unprocessedPosts.getFirst().getId();
+        long postId = unprocessedPosts.get(0).getId();
 
 
         // Извлекаем из БД количество n-грамм для конкретного поста и n = 1
@@ -84,7 +84,7 @@ public class DBConnectorTestLearning {
 
 
         // Извлекаем из БД список всех н-грамм
-        LinkedList<String> allNGramNames = db.getAllNGramNames();
+        List<String> allNGramNames = db.getAllNGramNames();
         System.out.println("Getting all nGramNames from DB:");
         for (String nGramName : allNGramNames)
             System.out.println("\t" + nGramName);
@@ -100,7 +100,7 @@ public class DBConnectorTestLearning {
 
 
         // Извлекаем из БД список всех тегов
-        LinkedList<String> allTagNames = db.getAllTagNames();
+        List<String> allTagNames = db.getAllTagNames();
         System.out.println("Getting all tagNames from DB:");
         for (String tagName : allTagNames)
             System.out.println("\t" + tagName);

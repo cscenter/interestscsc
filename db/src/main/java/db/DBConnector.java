@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Scanner;
 
 
@@ -149,8 +150,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getRegions() throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getRegions() throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectRegionsString = "SELECT name FROM Region;";
         try (
                 Connection con = getConnection();
@@ -217,8 +218,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getReservedRawUsers() throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getReservedRawUsers() throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectReservedString = "SELECT nick FROM RawUserLJ " +
                 "WHERE user_id IS NULL AND crawler_id = ?;";
         try (
@@ -235,8 +236,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getUnfinishedRawUsers() throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getUnfinishedRawUsers() throws SQLException {
+        List<String> result = new LinkedList<>();
         //TODO По максимуму сделать вьюшки для сложных запросов
         String selectUnfinishedString = "SELECT r.nick " +
                 "FROM RawUserLJ r JOIN UserLJ u ON r.user_id = u.id " +
@@ -311,8 +312,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<User> getUsers() throws SQLException {
-        LinkedList<User> result = new LinkedList<>();
+    public List<User> getUsers() throws SQLException {
+        List<User> result = new LinkedList<>();
         String selectUsersString = "SELECT u.nick, r.name region, " +
                 "u.created, u.update, u.fetched, u.birthday, u.interests " +
                 "FROM UserLJ u JOIN Region r ON u.region_id = r.id;";
@@ -371,8 +372,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getAllTagNames() throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getAllTagNames() throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectTagString = "SELECT text FROM Tag;";
         try (
                 Connection con = getConnection();
@@ -387,8 +388,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getAllTagNames(String userLJNick) throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getAllTagNames(String userLJNick) throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectTagString = "SELECT text FROM Tag t " +
                 "JOIN TagToUserLJ tu ON t.id = tu.tag_id " +
                 "WHERE tu.user_id = (SELECT id FROM UserLJ WHERE nick = ?);";
@@ -406,8 +407,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getAllTagNames(long post_id) throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getAllTagNames(long post_id) throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectTagNamesString = "SELECT text FROM TagNameToPost tnp " +
                 "WHERE tnp.post_id = ?;";
         try (
@@ -469,10 +470,10 @@ public class DBConnector {
     }
 
 
-    public LinkedList<Post> getPostsToNormalize(int limit) throws SQLException {
+    public List<Post> getPostsToNormalize(int limit) throws SQLException {
         if (limit <= 0) throw new IllegalArgumentException
                 ("Argument limit must be greater than 0.");
-        LinkedList<Post> result = new LinkedList<>();
+        List<Post> result = new LinkedList<>();
         String selectPostsString = "SELECT id, title, text " +
                 "FROM Post WHERE NOT normalized LIMIT ?";
         try (
@@ -610,8 +611,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getAllNGramNames() throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getAllNGramNames() throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectNGramString = "SELECT text FROM AllNGramTexts;";
         try (
                 Connection con = getConnection();
@@ -626,8 +627,8 @@ public class DBConnector {
     }
 
 
-    public LinkedList<String> getAllNGramNames(long postId) throws SQLException {
-        LinkedList<String> result = new LinkedList<>();
+    public List<String> getAllNGramNames(long postId) throws SQLException {
+        List<String> result = new LinkedList<>();
         String selectNGramString = "SELECT text FROM AllNGramTextPost " +
                 "WHERE post_id = ?;";
         try (

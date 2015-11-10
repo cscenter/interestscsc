@@ -24,7 +24,7 @@ public class DBConnectorTestCrawling {
 //        db.dropInitDatabase("DBConnectorTestCrawling", "Bzw7HPtmHmVVqKvSHe7d");
 
         // Собираем с LJ имена нескольких стартовых пользователей (имитация)
-        LinkedList<String> rawUsers = new LinkedList<>();
+        List<String> rawUsers = new LinkedList<>();
         for (int i = 0; i < 10; ++i)
             rawUsers.add("username" + new Random().nextInt(100));
 
@@ -33,7 +33,7 @@ public class DBConnectorTestCrawling {
 
         // Проверяем, есть ли недообработанные пользователи с прошлых сеансов нашего краулера
         // Если такие есть, добавляем в очередь.
-        LinkedList<String> usersToProceed = db.getUnfinishedRawUsers();
+        List<String> usersToProceed = db.getUnfinishedRawUsers();
 
         // Берем из базы список зарезервированных для нас пользователей
         usersToProceed.addAll(db.getReservedRawUsers());
@@ -55,7 +55,7 @@ public class DBConnectorTestCrawling {
         for (String username : usersToProceed) {
 
             // Собираем с LJ список ников друзей пользователя в итерабельныую коллекцию строк (имитация)
-            LinkedList<String> friends = new LinkedList<>();
+            List<String> friends = new LinkedList<>();
             for (int i = 0; i < 5; ++i)
                 friends.add("username" + new Random().nextInt(100));
 
@@ -135,7 +135,7 @@ public class DBConnectorTestCrawling {
 
         // Возьмем из базы всех пользователей и выведем
         // (сейчас не отображается fetched - его нет в User)
-        LinkedList<User> allUsers = db.getUsers();
+        List<User> allUsers = db.getUsers();
 
         for (User user : allUsers)
             System.out.println(user.toString() + "\n\n =========== \n\n");

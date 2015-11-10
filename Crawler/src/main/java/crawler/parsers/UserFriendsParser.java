@@ -2,10 +2,10 @@ package crawler.parsers;
 
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.Set;
+import java.util.List;
 
 public class UserFriendsParser {
-    public static LinkedList<String> getFriends(String response) {
+    public static List<String> getFriends(String response) {
         String friends = response
                 .replaceAll("^[^\n]*\n", "")            // delete first line
                 .replaceAll("[<>] ", "")                // delete separators < >
@@ -13,7 +13,7 @@ public class UserFriendsParser {
 
         String[] friendsArray = friends.split("\n");
 
-        LinkedList<String> friendsList = new LinkedList<>();
+        List<String> friendsList = new LinkedList<>();
         Collections.addAll(friendsList, friendsArray);
         return friendsList;
     }
