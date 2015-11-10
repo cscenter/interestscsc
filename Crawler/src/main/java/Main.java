@@ -11,7 +11,7 @@ public class Main {
 
         String startUser = "mi3ch";
         try {
-            Crawler ljCrawler = new Crawler();
+            Crawler ljCrawler = new Crawler("sssmaximusss-pc");
             ljCrawler.crawl(startUser);
         } catch (SQLException sqle) {
             logger.error("Error working with DB. " + sqle);

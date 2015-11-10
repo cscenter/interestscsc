@@ -24,8 +24,8 @@ import java.util.*;
 public class Crawler {
 
     private final int MAX_TRIES_RECONNECT = 5;
-    private final int MAX_NUMBER_OF_SESSIONS = 5;
-    private final int MAX_NUMBER_OF_USERS_PER_SESSION = 25;
+    private final int MAX_NUMBER_OF_SESSIONS = 10;
+    private final int MAX_NUMBER_OF_USERS_PER_SESSION = 1000;
 
     // queue of users who should be considered
     private Queue<String> usersQueue;
@@ -48,9 +48,9 @@ public class Crawler {
 
     private static final Logger logger = Logger.getLogger(Crawler.class);
 
-    public Crawler() throws SQLException {
+    public Crawler(String crawlerName) throws SQLException {
         try {
-            db = new DBConnector("sssmaximusss-pc");
+            db = new DBConnector(crawlerName);
         } catch (SQLException sqle) {
             logger.error("Error connection to DB. " + sqle);
             throw sqle;
@@ -157,7 +157,6 @@ public class Crawler {
 
                         try {
                             db.insertPosts(posts);
-                            db.updateUserFetched(nick);
                         } catch (SQLException sqle) {
                             logger.error("Inserting posts into DB wasn't successful!");
                             logger.error("Error working with DB. " + sqle);
@@ -168,6 +167,12 @@ public class Crawler {
                         allTags.put(tag.getName(), tagUses + lastUses);
                     }
 
+                    try {
+                        db.updateUserFetched(nick);
+                    } catch (SQLException sqle) {
+                        logger.error("Update user fetched wasn't successful!");
+                        logger.error("Error working with DB. " + sqle);
+                    }
                     // logging info about tag
                     logTagStatistics(nick, userTags);
 
