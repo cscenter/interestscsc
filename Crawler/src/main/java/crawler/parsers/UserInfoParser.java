@@ -161,6 +161,7 @@ public class UserInfoParser {
             String dateStart = null;
             if (httpSchool != null && httpSchool.hasAttr(ATTR_DATE_START_SCHOOL_SELECTOR)) {
                 dateStart = httpSchool.attr(ATTR_DATE_START_SCHOOL_SELECTOR);
+                dateStart += "-01-01";
             }
             if (dateStart == null) {
                 countNullSchoolDateStart++;
@@ -169,6 +170,7 @@ public class UserInfoParser {
             String dateFinish = null;
             if (httpSchool != null && httpSchool.hasAttr(ATTR_DATE_FINISH_SCHOOL_SELECTOR)) {
                 dateFinish = httpSchool.attr(ATTR_DATE_FINISH_SCHOOL_SELECTOR);
+                dateFinish += "-01-01";
             }
             if (dateFinish == null) {
                 countNullSchoolDateFinish++;
