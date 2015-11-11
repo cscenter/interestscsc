@@ -2,9 +2,6 @@ package posttongram;
 
 import java.util.ArrayList;
 
-/**
- * Created by jamsic on 17.10.15.
- */
 public class WordFilter {
 
     public static ArrayList<String> filter(ArrayList<String> words) {
