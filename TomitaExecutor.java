@@ -99,13 +99,8 @@ public class TomitaExecutor {
         WordFilter wordFilter = new WordFilter();
         ArrayList<String> goodNGrams = wordFilter.filter(nGramms);
 
-<<<<<<< HEAD
-        Map<String, Integer> nGrammCount = countOccurences(goodNGrams);
+        //Map<String, Integer> nGrammCount = countOccurences(goodNGrams);
         Map<String, String> nGrammPositions = getPositions(goodNGrams);
-=======
-        //HashMap<String, Integer> nGrammCount = countOccurences(goodNGrams);
-        HashMap<String, String> nGrammPositions = getPositions(goodNGrams);
->>>>>>> 7a4b603f9f4e2c5315439b07f8803c1c308dc915
 
         return nGrammPositions;
     }
