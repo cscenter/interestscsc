@@ -30,15 +30,15 @@ public class DBConnector {
         DIGRAM("digram"),
         TRIGRAM("trigram");
 
-        private final String tablename;
+        private final String tableName;
 
 
-        NGramType(String tablename) {
-            this.tablename = tablename;
+        NGramType(String tableName) {
+            this.tableName = tableName;
         }
 
         public String getTableName() {
-            return tablename;
+            return tableName;
         }
     }
 
@@ -335,7 +335,7 @@ public class DBConnector {
 
 
     public int getNGramCount(long postId, NGramType nGramType) throws SQLException {
-        String selectNGramCountString = "SELECT count(*) FROM " + nGramType.tablename + "ToPost np " +
+        String selectNGramCountString = "SELECT count(*) FROM " + nGramType.tableName + "ToPost np " +
                 "WHERE np.post_id = ?;";
         try (
                 Connection con = getConnection();

@@ -12,7 +12,7 @@ public class Main {
 
         String startUser = "mi3ch";
         try {
-            Crawler ljCrawler = new Crawler(DBConnector.DataBase.TEST, "sssmaximusss-pc");
+            Crawler ljCrawler = new Crawler(DBConnector.DataBase.TEST, System.getProperty("user.name"));
             ljCrawler.crawl(startUser);
         } catch (SQLException sqle) {
             logger.error("Error working with DB. " + sqle);
