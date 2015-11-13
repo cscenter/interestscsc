@@ -1,3 +1,6 @@
+-- =======================================
+-- 15_11_04
+
 ALTER TABLE Post RENAME COLUMN text_norm TO normalized;
 ALTER TABLE Post
 ALTER COLUMN normalized SET DATA TYPE BOOLEAN USING (normalized::BOOLEAN),
@@ -57,3 +60,13 @@ CREATE VIEW TagNameToPost AS (
   FROM Tag t
     JOIN TagToPost tp ON t.id = tp.tag_id
 );
+
+-- =======================================
+-- 15_11_13
+
+CREATE TABLE Normalizer (
+  id   SERIAL PRIMARY KEY,
+  name TEXT UNIQUE
+);
+
+ALTER TABLE Post ALTER COLUMN url SET DATA TYPE BIGINT USING (url::BIGINT);

@@ -14,6 +14,7 @@ import data.Post;
 import data.Tag;
 import data.User;
 import db.DBConnector;
+import db.DBConnectorToCrawler;
 import org.apache.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
@@ -34,7 +35,7 @@ public class Crawler {
     private Map<String, Integer> allTags;
 
     // connector to DB
-    private DBConnector db;
+    private DBConnectorToCrawler db;
 
     // set of region
     private HashSet<String> regions;
@@ -48,9 +49,9 @@ public class Crawler {
 
     private static final Logger logger = Logger.getLogger(Crawler.class);
 
-    public Crawler(String crawlerName) throws SQLException {
+    public Crawler(DBConnector.DataBase dataBase, String crawlerName) throws SQLException {
         try {
-            db = new DBConnector(crawlerName);
+            db = new DBConnectorToCrawler(dataBase, crawlerName);
         } catch (SQLException sqle) {
             logger.error("Error connection to DB. " + sqle);
             throw sqle;

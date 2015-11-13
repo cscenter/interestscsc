@@ -2,6 +2,7 @@ import data.Post;
 import data.Tag;
 import data.User;
 import db.DBConnector;
+import db.DBConnectorToCrawler;
 
 import java.io.FileNotFoundException;
 import java.sql.SQLException;
@@ -16,12 +17,15 @@ public class DBConnectorTestCrawling {
 
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
-        // TODO Не запускать на рабочей БД
-        // Создаем коннектор, добавляем идентификатор своей машины в БД
-        DBConnector db = new DBConnector("DBConnectorTestCrawling");
+        // TODO Выбрать нужную БД
+        DBConnector.DataBase dbName = DBConnector.DataBase.LOCAL;
 
         // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-//        db.dropInitDatabase("DBConnectorTestCrawling", "Bzw7HPtmHmVVqKvSHe7d");
+        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
+
+        // Создаем коннектор с правами краулера, добавляем идентификатор своей машины в БД
+        DBConnectorToCrawler db = new DBConnectorToCrawler(dbName, "DBConnectorTestCrawling");
+
 
         // Собираем с LJ имена нескольких стартовых пользователей (имитация)
         List<String> rawUsers = new LinkedList<>();
@@ -114,7 +118,7 @@ public class DBConnectorTestCrawling {
                         "SomeText",
                         username,
                         Timestamp.valueOf("2015-10-19 08:11:41"),
-                        i + new Random().nextInt(10000) * 10,
+                        i + new Random().nextLong() % 10000 * 10,
                         20,
                         postTags
                 ));

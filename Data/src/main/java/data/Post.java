@@ -1,6 +1,7 @@
 package data;
 
 import java.sql.Timestamp;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Post {
@@ -10,13 +11,13 @@ public class Post {
     private String text;
     private String author;
     private Timestamp date;
-    private Integer url;
+    private Long url;
     private Integer countComment;
     private List<String> tags;
 
     public Post(
             final String title, final String text, final String author,
-            final Timestamp date, final Integer url, final Integer countComment,
+            final Timestamp date, final Long url, final Integer countComment,
             final List<String> tags
     ) {
         if(tags == null)
@@ -34,6 +35,7 @@ public class Post {
         this.id = id;
         this.title = title;
         this.text = text;
+        this.tags = new LinkedList<>();
     }
 
     public Long getId() {
@@ -56,7 +58,7 @@ public class Post {
         return date;
     }
 
-    public Integer getUrl() {
+    public Long getUrl() {
         return url;
     }
 

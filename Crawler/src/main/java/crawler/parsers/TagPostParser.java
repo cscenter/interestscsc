@@ -48,9 +48,9 @@ public class TagPostParser {
             String regex = "/\\d+";    // the number
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(url.text());
-            Integer urlNumber = null;
+            Long urlNumber = null;
             if (matcher.find()) {
-                urlNumber = Integer.parseInt(matcher.group().replaceAll("/", ""));
+                urlNumber = Long.parseLong(matcher.group().replaceAll("/", ""));
             }
             Integer countComments = !Objects.equals(comments.text(), "") ? Integer.parseInt(comments.text()) : null;
 

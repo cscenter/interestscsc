@@ -3,6 +3,8 @@ import data.Post;
 import data.Tag;
 import data.User;
 import db.DBConnector;
+import db.DBConnectorToCrawler;
+import db.DBConnectorToNormalizer;
 
 import java.io.FileNotFoundException;
 import java.sql.SQLException;
@@ -22,49 +24,54 @@ public class DBConnectorTestLearning {
     @SuppressWarnings("Duplicates")
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
-        // Создаем коннектор, добавляем идентификатор своей машины в БД
-        DBConnector db = new DBConnector("DBConnectorTestLearning");
-
-        // TODO Не запускать на рабочей БД
-        // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-//        db.dropInitDatabase("DBConnectorTestLearning", "Bzw7HPtmHmVVqKvSHe7d");
+        // TODO Выбрать нужную БД
+        DBConnector.DataBase dbName = DBConnector.DataBase.LOCAL;
 
 // Заполняем базу тестовыми данными (если пустая)
 // ------------------------------------------------------
+        // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
+        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
+
+        DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestLearning");
         for (int i = 0; i < 5; ++i) {
             String username = "username" + i;
-            db.insertUser(new User(username, null, null, null, null, null, null));
+            dbCrawl.insertUser(new User(username, null, null, null, null, null, null));
             ArrayList<Tag> userTags = new ArrayList<>();
             for (int j = 0; j < 5; ++j)
                 userTags.add(new Tag("tagname" + new Random().nextInt(100), null));
-            db.insertTags(userTags, username);
+            dbCrawl.insertTags(userTags, username);
             ArrayList<Post> userPosts = new ArrayList<>();
             for (int j = 0; j < 5; ++j) {
                 List<String> postTags = new LinkedList<>();
                 for (int k = new Random().nextInt(10); k > 0; --k)
                     postTags.add(userTags.get(new Random().nextInt(userTags.size())).getName());
                 userPosts.add(new Post("SomeTitle", "SomeText", username, Timestamp.valueOf("2015-10-19 08:11:41"),
-                        j + new Random().nextInt(10000) * 10, 20, postTags));
+                        j + new Random().nextLong() % 10000 * 10, 20, postTags));
             }
-            db.insertPosts(userPosts);
+            dbCrawl.insertPosts(userPosts);
         }
-        List<Post> unprocessedPosts = db.getPostsToNormalize(5);
+        DBConnectorToNormalizer dbNorm = new DBConnectorToNormalizer(dbName, "DBConnectorTestLearning");
+        dbNorm.reservePostForNormalizer(5);
+        List<Post> unprocessedPosts = dbNorm.getReservedPosts();
         for (Post post : unprocessedPosts) {
             List<NGram> unigrams = new LinkedList<>();
             for (int i = 0; i < 10; ++i)
                 unigrams.add(new NGram("unigram" + i + new Random().nextInt(20), "1, 2, 10", 3));
-            db.insertNGrams(unigrams, post.getId(), 1);
-            db.updatePostNormalized(post.getId());
+            dbNorm.insertNGrams(unigrams, post.getId(), DBConnector.NGramType.UNIGRAM);
+            dbNorm.updatePostNormalized(post.getId());
         }
 // ------------------------------------------------------
+
+        // Создаем коннектор без прав записи в базу
+        DBConnector db = new DBConnector(dbName);
 
 
         // Возьмем для примера один из обработанных постов
         long postId = unprocessedPosts.get(0).getId();
 
 
-        // Извлекаем из БД количество n-грамм для конкретного поста и n = 1
-        int nGramNum = db.getNGramCount(postId, 1);
+        // Извлекаем из БД количество, например диграм, для конкретного поста
+        int nGramNum = db.getNGramCount(postId, DBConnector.NGramType.DIGRAM);
         System.out.println("\nGetting number of nGrams with n=1 and " +
                 "post_id=" + postId + " from DB:");
         System.out.println("\t" + nGramNum);

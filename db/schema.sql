@@ -19,12 +19,18 @@ DROP TABLE IF EXISTS RawUserLJ;
 DROP TABLE IF EXISTS UserLJ;
 DROP TABLE IF EXISTS School;
 DROP TABLE IF EXISTS Region;
+DROP TABLE IF EXISTS Normalizer;
 DROP TABLE IF EXISTS Crawler;
 
 
 -- ? TODO Продумать индексирование
 
 CREATE TABLE Crawler (
+  id   SERIAL PRIMARY KEY,
+  name TEXT UNIQUE
+);
+
+CREATE TABLE Normalizer (
   id   SERIAL PRIMARY KEY,
   name TEXT UNIQUE
 );
@@ -63,14 +69,15 @@ CREATE TABLE RawUserLJ (-- Здесь сохраняем пользовател�
 );
 
 CREATE TABLE Post (
-  id         BIGSERIAL PRIMARY KEY,
-  url        INT       NOT NULL, -- номер из ссылки <user>.lj.com/<number>
-  user_id    BIGINT    NOT NULL REFERENCES UserLJ,
-  date       TIMESTAMP NOT NULL,
-  title      TEXT      NOT NULL,
-  text       TEXT      NOT NULL,
-  normalized BOOLEAN   NOT NULL DEFAULT FALSE,
-  comments   INT       NULL,
+  id            BIGSERIAL PRIMARY KEY,
+  url           BIGINT    NOT NULL, -- номер из ссылки <user>.lj.com/<number>
+  user_id       BIGINT    NOT NULL REFERENCES UserLJ,
+  date          TIMESTAMP NOT NULL,
+  title         TEXT      NOT NULL,
+  text          TEXT      NOT NULL,
+  normalized    BOOLEAN   NOT NULL DEFAULT FALSE,
+  comments      INT       NULL,
+  normalizer_id INT       NULL REFERENCES Normalizer,
   UNIQUE (user_id, url)
 );
 
@@ -103,9 +110,9 @@ CREATE TABLE Trigram (
 
 
 CREATE TABLE UserToSchool (
-  user_id  BIGINT REFERENCES UserLJ,
-  school_id BIGINT REFERENCES School,
-  start_date DATE NULL,
+  user_id     BIGINT REFERENCES UserLJ,
+  school_id   BIGINT REFERENCES School,
+  start_date  DATE NULL,
   finish_date DATE NULL,
   PRIMARY KEY (user_id, school_id)
 );

@@ -1,8 +1,5 @@
 package db;
 
-import data.NGram;
-import data.Post;
-import data.Tag;
 import data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
@@ -10,7 +7,6 @@ import org.postgresql.util.PSQLException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
@@ -23,58 +19,93 @@ import java.util.Scanner;
 
 @SuppressWarnings("Duplicates")
 public class DBConnector {
-    private static final String SCHEMA_PATH = "db/schema.sql";
-    private static final String SCHEMA_ENCODING = "UTF-8";
+    protected static final String SCHEMA_PATH = "db/schema.sql";
+    protected static final String SCHEMA_ENCODING = "UTF-8";
+    protected static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
 
-    private static final String HOST = "185.72.144.129";
-    private static final int PORT = 5432; // стандартный порт в постгрес
-    private static final String DB = "veiloneru";
-    private static final String USER = "veiloneru";
-    private static final String PASS = "wasddsaw";
-    private static final int MAX_CONNECTIONS = 20; // * 5 < 100 - внутреннее ограничение постгрес
+    protected final DataBase dataBase;
 
-    private static final int MAX_TRIES = 5; // TODO число попыток выполнения при временной (*) неудаче (>1)
-    private static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
-    private static final String[] N_GRAM_TABLE_NAMES = new String[]{"", "unigram", "digram", "trigram"};
-    private int crawlerId;
+    public enum NGramType {
+        UNIGRAM("unigram"),
+        DIGRAM("digram"),
+        TRIGRAM("trigram");
 
-    private PGPoolingDataSource connectionPool;
+        private final String tablename;
 
 
-    public DBConnector(String crawlerName) throws SQLException {
-        connectionPool = new PGPoolingDataSource();
-        connectionPool.setServerName(HOST);
-        connectionPool.setPortNumber(PORT);
-        connectionPool.setDatabaseName(DB);
-        connectionPool.setUser(USER);
-        connectionPool.setPassword(PASS);
-        connectionPool.setMaxConnections(MAX_CONNECTIONS);
-        if(checkTable("crawler"))
-            crawlerId = getCrawlerId(crawlerName);
+        NGramType(String tablename) {
+            this.tablename = tablename;
+        }
+
+        public String getTableName() {
+            return tablename;
+        }
     }
 
+    public enum DataBase {
+        MAIN("185.72.144.129", 5432, "veiloneru",      "veiloneru",      "wasddsaw", 20, 5),
+        TEST("185.72.144.129", 5432, "veiloneru_test", "veiloneru_test", "wasddsaw", 20, 5),
+        LOCAL("localhost",     5432, "interests",      "interests",      "12345",    20, 5);
 
-    private int getCrawlerId(String crawlerName) throws SQLException {
-        String insertCrawlerString =
-                "INSERT INTO Crawler (name) VALUES (?);";
-        String selectCrawlerString = "SELECT id FROM Crawler WHERE name = ?;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertCrawler = con.prepareStatement(insertCrawlerString);
-                PreparedStatement selectCrawler = con.prepareStatement(selectCrawlerString)
-        ) {
-            insertCrawler.setString(1, crawlerName);
-            tryUpdateTransaction(insertCrawler, crawlerName, "Crawler");
-            selectCrawler.setString(1, crawlerName);
-            ResultSet rs = tryQueryTransaction(selectCrawler, "Crawler");
-            if (rs == null || !rs.next())
-                throw new IllegalStateException("If you see this, our code needs a fix");
-            return rs.getInt("id");
+        private final String host;
+        private final int port;                 // 5432 - стандартный порт постгрес
+        private final String db;
+        private final String user;
+        private final String pass;
+        private final int maxConnections;       // 100 - внутреннее ограничение постгрес
+        private final int maxTries;             // TODO число попыток выполнения при временной (*) неудаче (>1)
+
+        private PGPoolingDataSource connectionPool;
+
+
+        DataBase(String host, int port, String db, String user, String pass, int maxConnections, int maxTries) {
+            this.host = host;
+            this.port = port;
+            this.db = db;
+            this.user = user;
+            this.pass = pass;
+            this.maxConnections = maxConnections;
+            this.maxTries = maxTries;
+            this.connectionPool = preparePool();
+        }
+
+        private PGPoolingDataSource preparePool() {
+            PGPoolingDataSource pool = new PGPoolingDataSource();
+            pool.setServerName(host);
+            pool.setPortNumber(port);
+            pool.setDatabaseName(db);
+            pool.setUser(user);
+            pool.setPassword(pass);
+            pool.setMaxConnections(maxConnections);
+            return pool;
+        }
+
+        public int getMaxTries() {
+            return maxTries;
         }
     }
 
 
-    private boolean checkTable(String tableName) throws SQLException {
+    public DBConnector(DataBase dataBase) {
+        this.dataBase = dataBase;
+    }
+
+    /**
+     * Пересоздает указанную базу из схемы, указанной в SCHEMA_PATH
+     * с кодировкой SCHEMA_ENCODING
+     */
+    public static void dropInitDatabase(DataBase dataBase, String pass) throws FileNotFoundException, SQLException {
+        if (!DROPDATA_PASS.equalsIgnoreCase(pass))
+            throw new IllegalArgumentException("Maybe you shouldn't drop db?");
+        String schemaSQL = new Scanner(new File(SCHEMA_PATH), SCHEMA_ENCODING)
+                .useDelimiter("\\Z").next();
+        try (Connection conn = dataBase.connectionPool.getConnection()) {
+            conn.createStatement().execute(schemaSQL);
+        }
+    }
+
+
+    protected boolean checkTable(String tableName) throws SQLException {
         String selectTableString = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = ?;";
         try (
                 Connection con = getConnection();
@@ -96,7 +127,7 @@ public class DBConnector {
      * использовать try-with-resources (см., например, метод dropInitDatabase).
      */
     public Connection getConnection() throws SQLException {
-        return connectionPool.getConnection();
+        return dataBase.connectionPool.getConnection();
     }
 
 
@@ -110,43 +141,6 @@ public class DBConnector {
         //noinspection EmptyTryBlock
         try (Connection autoclose = connectionToClose) {
         }
-    }
-
-
-    /**
-     * Пересоздает базу из схемы, указанной в SCHEMA_PATH с кодировкой
-     * SCHEMA_ENCODING
-     */
-    public DBConnector dropInitDatabase(String newCrawlerName, String pass) throws FileNotFoundException, SQLException {
-        if (!DROPDATA_PASS.equalsIgnoreCase(pass))
-            throw new IllegalArgumentException("Maybe you shouldn't drop db?");
-        String schemaSQL = new Scanner(new File(SCHEMA_PATH), SCHEMA_ENCODING)
-                .useDelimiter("\\Z").next();
-        try (Connection conn = getConnection()) {
-            conn.createStatement().execute(schemaSQL);
-        }
-        crawlerId = getCrawlerId(newCrawlerName);
-        return this;
-    }
-
-
-    /**
-     * Добавляет в БД регион.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int insertRegion(String region) throws SQLException {
-        int rowsAffected = 0;
-        String insertRegionString =
-                "INSERT INTO Region (name) VALUES (?);";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertRegion = con.prepareStatement(insertRegionString)
-        ) {
-            insertRegion.setString(1, region);
-            rowsAffected += tryUpdateTransaction(insertRegion, region, "Region");
-        }
-        return rowsAffected;
     }
 
 
@@ -167,195 +161,9 @@ public class DBConnector {
 
 
     /**
-     * Поочередно добавляет в БД пользователей из любого итерабельного контейнера.
-     * Информация о регионах добавляемых пользователей уже должна быть в базе.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int insertRawUsers(Iterable<String> rawUsersLJ) throws SQLException {
-        int rowsAffected = 0;
-        String insertUserString =
-                "INSERT INTO RawUserLJ (nick) VALUES (?);";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertUser = con.prepareStatement(insertUserString)
-        ) {
-            for (String user : rawUsersLJ) {
-                insertUser.setString(1, user);
-                rowsAffected += tryUpdateTransaction(insertUser, user, "RawUserLJ");
-            }
-        }
-        return rowsAffected;
-    }
-
-
-    /**
-     * Резервирует в требуемое количество необработанных пользователей под указанный краулер.
-     * Название краулера уже должно быть в таблице Crawler.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int reserveRawUserForCrawler(int reserveNum) throws SQLException {
-        if (reserveNum <= 0) throw new IllegalArgumentException("Argument reserveNum must be greater than 0.");
-        int rowsAffected = 0;
-        String reserveUserNicksString =
-                "UPDATE RawUserLJ r SET crawler_id = ? " +
-                        "FROM ( " +
-                        "       SELECT nick FROM RawUserLJ r " +
-                        "       WHERE r.crawler_id IS NULL AND r.user_id IS NULL " +
-                        "       LIMIT ? FOR UPDATE " +
-                        "     ) free " +
-                        "WHERE r.nick = free.nick;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement reserveUserNicks = con.prepareStatement(reserveUserNicksString)
-        ) {
-            reserveUserNicks.setInt(1, crawlerId);
-            reserveUserNicks.setInt(2, reserveNum);
-            rowsAffected += tryUpdateTransaction(reserveUserNicks, "crawlerId = " + crawlerId, "RawUserLJ");
-        }
-        return rowsAffected;
-    }
-
-
-    public List<String> getReservedRawUsers() throws SQLException {
-        List<String> result = new LinkedList<>();
-        String selectReservedString = "SELECT nick FROM RawUserLJ " +
-                "WHERE user_id IS NULL AND crawler_id = ?;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectReserved = con.prepareStatement(selectReservedString);
-        ) {
-            selectReserved.setInt(1, crawlerId);
-            ResultSet rs = tryQueryTransaction(selectReserved, "RawUserLJ");
-            if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString("nick"));
-        }
-        return result;
-    }
-
-
-    public List<String> getUnfinishedRawUsers() throws SQLException {
-        List<String> result = new LinkedList<>();
-        //TODO По максимуму сделать вьюшки для сложных запросов
-        String selectUnfinishedString = "SELECT r.nick " +
-                "FROM RawUserLJ r JOIN UserLJ u ON r.user_id = u.id " +
-                "WHERE r.crawler_id = ? AND u.fetched IS NULL;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectUnfinished = con.prepareStatement(selectUnfinishedString);
-        ) {
-            selectUnfinished.setInt(1, crawlerId);
-            ResultSet rs = tryQueryTransaction(selectUnfinished, "RawUserLJ JOIN UserLJ");
-            if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString("nick"));
-        }
-        return result;
-    }
-
-
-    /**
-     * Поочередно добавляет в БД пользователей из любого итерабельного контейнера.
-     * Информация о регионах добавляемых пользователей уже должна быть в базе, их
-     * имена должны присутствовать в RawUserLJ.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int insertUser(User userLJ) throws SQLException { //TODO возможно, здесь нужна транзакция?
-        int rowsAffected = 0;
-        String insertUserString =
-                "INSERT INTO UserLJ (nick, region_id, created, update, birthday, interests, " +
-                        "city_cstm, posts_num, cmmnt_in, cmmnt_out, bio) VALUES " +
-                        "(?, (SELECT id FROM Region WHERE name = COALESCE(?,'')), ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-        String selectUserLJString = "SELECT id FROM UserLJ WHERE nick = ?;";
-        String insertSchoolString = "INSERT INTO School (name) VALUES (?);";
-        String insertUserToSchoolString = "INSERT INTO UserToSchool " +
-                "(user_id, school_id, start_date, finish_date) " +
-                "VALUES (?, (SELECT id FROM School WHERE name = ?), ?, ?);";
-        String updateRawUserString =
-                "UPDATE RawUserLJ SET user_id = ? WHERE nick = ?;";
-
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertUser = con.prepareStatement(insertUserString);
-                PreparedStatement selectUserLJ = con.prepareStatement(selectUserLJString);
-                PreparedStatement insertSchool = con.prepareStatement(insertSchoolString);
-                PreparedStatement insertUserToSchool = con.prepareStatement(insertUserToSchoolString);
-                PreparedStatement updateRawUser = con.prepareStatement(updateRawUserString)
-        ) {
-            insertUser.setString(1, userLJ.getNick());
-            insertUser.setString(2, userLJ.getRegion());
-            insertUser.setTimestamp(3, userLJ.getDateCreated());
-            insertUser.setTimestamp(4, userLJ.getDateUpdated());
-            insertUser.setDate(5, userLJ.getBirthday());
-            insertUser.setString(6, userLJ.getInterests());
-            insertUser.setString(7, userLJ.getCustomCity());
-            if (userLJ.getPostsNum() == null)
-                insertUser.setNull(8, Types.INTEGER);
-            else insertUser.setInt(8, userLJ.getPostsNum());
-            if (userLJ.getCommentsReceived() == null)
-                insertUser.setNull(9, Types.INTEGER);
-            else insertUser.setInt(9, userLJ.getCommentsReceived());
-            if (userLJ.getCommentsPosted() == null)
-                insertUser.setNull(10, Types.INTEGER);
-            else insertUser.setInt(10, userLJ.getCommentsPosted());
-            insertUser.setString(11, userLJ.getBiography());
-
-            rowsAffected += tryUpdateTransaction(insertUser, userLJ.getNick(), "UserLJ");
-
-            selectUserLJ.setString(1, userLJ.getNick());
-            ResultSet rs = tryQueryTransaction(selectUserLJ, "UserLJ");
-            if (rs == null || !rs.next())
-                throw new IllegalStateException("If you see this, our code needs a fix");
-            Long userId = rs.getLong("id");
-
-
-            for(User.School school : userLJ.getSchools()) {
-                insertSchool.setString(1, school.getTitle());
-                rowsAffected += tryUpdateTransaction(insertSchool, school.getTitle(), "School");
-            }
-
-            for(User.School school : userLJ.getSchools()) {
-                insertUserToSchool.setLong(1, userId);
-                insertUserToSchool.setString(2, school.getTitle());
-                insertUserToSchool.setDate(3, school.getStart());
-                insertUserToSchool.setDate(4, school.getEnd());
-
-                rowsAffected += tryUpdateTransaction(insertUserToSchool, userLJ.getNick() + "<->" + school.getTitle(), "UserToSchool");
-            }
-
-            updateRawUser.setLong(1, userId);
-            updateRawUser.setString(2, userLJ.getNick());
-
-            rowsAffected += tryUpdateTransaction(updateRawUser, userLJ.getNick(), "RawUserLJ");
-        }
-        return rowsAffected;
-    }
-
-
-    public int updateUserFetched(String userLJNick) throws SQLException {
-        int rowsAffected = 0;
-        String updateFetchedString =
-                "UPDATE UserLJ SET fetched = ? WHERE nick = ?;";
-
-        try (
-                Connection con = getConnection();
-                PreparedStatement updateFetched = con.prepareStatement(updateFetchedString)
-        ) {
-            updateFetched.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-            updateFetched.setString(2, userLJNick);
-
-            rowsAffected += tryUpdateTransaction(updateFetched, userLJNick, "UserLJ");
-        }
-        return rowsAffected;
-    }
-
-    /**
      * Возвращвет все заполненные профили пользователей.
      * Информация о школах не включается.
-     * */
+     */
     public List<User> getUsers() throws SQLException {
         List<User> result = new LinkedList<>();
         String selectUsersString = "SELECT u.id, u.nick, r.name region, " +
@@ -382,49 +190,12 @@ public class DBConnector {
     }
 
 
-    /**
-     * Поочередно добавляет в БД тэги из любого итерабельного контейнера.
-     * Информация о пользователе добавляемых тэгов уже должна быть в базе,
-     * в таблице UserLJ поле nick.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int insertTags(Iterable<Tag> tags, String userLJNick) throws SQLException {
-        int rowsAffected = 0;
-        String insertTagString = "INSERT INTO Tag (text) VALUES (?);";
-        String insertTagToUserLJString = "INSERT INTO TagToUserLJ (tag_id, user_id, uses) " +
-                "VALUES (" +
-                "(SELECT id FROM Tag WHERE text = ?), " +
-                "(SELECT id FROM UserLJ WHERE nick = ?), " +
-                "?" +
-                ");";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertTag = con.prepareStatement(insertTagString);
-                PreparedStatement insertTagToUserLJ = con.prepareStatement(insertTagToUserLJString)
-        ) {
-            for (Tag tag : tags) {
-                insertTag.setString(1, tag.getName());
-                rowsAffected += tryUpdateTransaction(insertTag, tag.getName(), "Tag");
-
-                insertTagToUserLJ.setString(1, tag.getName());
-                insertTagToUserLJ.setString(2, userLJNick);
-                if (tag.getUses() == null)
-                    insertTagToUserLJ.setNull(3, Types.INTEGER);
-                else insertTagToUserLJ.setInt(3, tag.getUses());
-                rowsAffected += tryUpdateTransaction(insertTagToUserLJ, tag.getName() + "<->" + userLJNick, "TagToUserLJ");
-            }
-        }
-        return rowsAffected;
-    }
-
-
     public List<String> getAllTagNames() throws SQLException {
         List<String> result = new LinkedList<>();
         String selectTagString = "SELECT text FROM Tag;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectTag = con.prepareStatement(selectTagString);
+                PreparedStatement selectTag = con.prepareStatement(selectTagString)
         ) {
             ResultSet rs = tryQueryTransaction(selectTag, "Tag");
             if (rs != null)
@@ -442,7 +213,7 @@ public class DBConnector {
                 "WHERE tu.user_id = (SELECT id FROM UserLJ WHERE nick = ?);";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectTag = con.prepareStatement(selectTagString);
+                PreparedStatement selectTag = con.prepareStatement(selectTagString)
         ) {
             selectTag.setString(1, userLJNick);
             ResultSet rs = tryQueryTransaction(selectTag, "Tag");
@@ -469,90 +240,6 @@ public class DBConnector {
                     result.add(rs.getString("text"));
         }
         return result;
-    }
-
-
-    /**
-     * Поочередно добавляет в БД посты из любого итерабельного контейнера.
-     * Информация об авторах добавляемых постов уже должна быть в базе.
-     *
-     * @return кол-во добавленных записей
-     */
-    public int insertPosts(Iterable<Post> posts) throws SQLException {
-        int rowsAffected = 0;
-        String insertPostString =
-                "INSERT INTO Post (url, user_id, date, title, text, comments) " +
-                        "VALUES (?, (SELECT id FROM UserLJ WHERE nick = ?), ?, ?, ?, ?);";
-        String insertTagToPostString = "INSERT INTO TagToPost (tag_id, post_id) VALUES (" +
-                "(SELECT id FROM Tag WHERE text = ?), " +
-                "(SELECT id FROM Post WHERE user_id = (SELECT id FROM UserLJ WHERE nick = ?) AND url = ?));";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertPost = con.prepareStatement(insertPostString);
-                PreparedStatement insertTagToPost = con.prepareStatement(insertTagToPostString)
-        ) {
-            for (Post post : posts) {
-                insertPost.setInt(1, post.getUrl());        //never null
-                insertPost.setString(2, post.getAuthor());
-                insertPost.setTimestamp(3, post.getDate());
-                insertPost.setString(4, post.getTitle());
-                insertPost.setString(5, post.getText());
-                if (post.getCountComment() == null)
-                    insertPost.setNull(6, Types.INTEGER);
-                else insertPost.setInt(6, post.getCountComment());
-
-                rowsAffected += tryUpdateTransaction(insertPost, post.getAuthor() + ">" + post.getUrl(), "Post");
-
-                assert (post.getTags() != null);
-                for (String tag : post.getTags()) {
-                    insertTagToPost.setString(1, tag);
-                    insertTagToPost.setString(2, post.getAuthor());
-                    insertTagToPost.setInt(3, post.getUrl());      //never null
-                    rowsAffected += tryUpdateTransaction(insertTagToPost, post.getAuthor() + ">" + post.getUrl() + "<->" + tag, "TagTOPost");
-                }
-
-            }
-        }
-        return rowsAffected;
-    }
-
-
-    public List<Post> getPostsToNormalize(int limit) throws SQLException {
-        if (limit <= 0) throw new IllegalArgumentException
-                ("Argument limit must be greater than 0.");
-        List<Post> result = new LinkedList<>();
-        String selectPostsString = "SELECT id, title, text " +
-                "FROM Post WHERE NOT normalized LIMIT ?";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectPosts = con.prepareStatement(selectPostsString)
-        ) {
-            selectPosts.setInt(1, limit);
-            ResultSet rs = tryQueryTransaction(selectPosts, "Post");
-            if (rs != null)
-                while (rs.next())
-                    result.add(new Post(
-                            rs.getLong("id"),
-                            rs.getString("title"),
-                            rs.getString("text")));
-        }
-        return result;
-    }
-
-
-    public int updatePostNormalized(long postId) throws SQLException {
-        int rowsAffected = 0;
-        String updateNormalizedString =
-                "UPDATE Post SET normalized = TRUE WHERE id = ?;";
-
-        try (
-                Connection con = getConnection();
-                PreparedStatement updateNormalized = con.prepareStatement(updateNormalizedString)
-        ) {
-            updateNormalized.setLong(1, postId);
-            rowsAffected += tryUpdateTransaction(updateNormalized, "Post_id = " + postId, "Post");
-        }
-        return rowsAffected;
     }
 
 
@@ -613,51 +300,6 @@ public class DBConnector {
     }
 
 
-    /**
-     * Поочередно добавляет в БД n-граммы из любого итерабельного контейнера.
-     * Информация о посте добавляемых n-грамм уже должна быть в базе
-     *
-     * @param ngrams    - итерабельный контейнер с n-граммами в строках.
-     * @param postId    - внутренний id поста в БД, выдается в объекте Post,
-     *                  в методе getUnprocessedPosts(int num).
-     * @param nGramType - тип добавляемых n-грамм. [1..3]
-     *                  1 - unigram, 2 - digram, 3 - trigram.
-     * @return кол-во добавленных записей
-     */
-    public int insertNGrams(Iterable<NGram> ngrams, long postId, int nGramType) throws SQLException {
-        if (nGramType < 1 || nGramType > 3)
-            throw new IllegalArgumentException("Argument nGramType must be in range [1..3].");
-        String nGramTableName = N_GRAM_TABLE_NAMES[nGramType];
-        int rowsAffected = 0;
-
-        //TODO Вроде бы SQL Injections здесь не пройдет, но надо подумать
-        String insertNGramString = "INSERT INTO " + nGramTableName + " (text) VALUES (?);";
-        String insertNGramToPostString = "INSERT INTO " + nGramTableName + "ToPost " +
-                "(ngram_id, post_id, uses_str, uses_cnt) VALUES ( " +
-                "(SELECT id FROM " + nGramTableName + " WHERE text = ?), ?, ?, ?);";
-
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertNGram = con.prepareStatement(insertNGramString);
-                PreparedStatement insertNGramToPost = con.prepareStatement(insertNGramToPostString)
-        ) {
-            for (NGram ngram : ngrams) {
-                insertNGram.setString(1, ngram.getText());
-                rowsAffected += tryUpdateTransaction(insertNGram, ngram.getText(), nGramTableName);
-            }
-
-            for (NGram ngram : ngrams) {
-                insertNGramToPost.setString(1, ngram.getText());
-                insertNGramToPost.setLong(2, postId);
-                insertNGramToPost.setString(3, ngram.getUsesStr());
-                insertNGramToPost.setInt(4, ngram.getUsesCnt());
-                rowsAffected += tryUpdateTransaction(insertNGramToPost, "postId<->" + ngram.getText(), nGramTableName + "ToPost");
-            }
-        }
-        return rowsAffected;
-    }
-
-
     public List<String> getAllNGramNames() throws SQLException {
         List<String> result = new LinkedList<>();
         String selectNGramString = "SELECT text FROM AllNGramTexts;";
@@ -692,19 +334,15 @@ public class DBConnector {
     }
 
 
-    public int getNGramCount(long postId, int nGramType) throws SQLException {
-        if (nGramType < 1 || nGramType > 3)
-            throw new IllegalArgumentException("Argument nGramType must be in range [1..3].");
-        String nGramTableName = N_GRAM_TABLE_NAMES[nGramType];
-        int result;
-        String selectNGramCountString = "SELECT count(*) FROM " + nGramTableName + "ToPost np " +
+    public int getNGramCount(long postId, NGramType nGramType) throws SQLException {
+        String selectNGramCountString = "SELECT count(*) FROM " + nGramType.tablename + "ToPost np " +
                 "WHERE np.post_id = ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectNGramCount = con.prepareStatement(selectNGramCountString);
         ) {
             selectNGramCount.setLong(1, postId);
-            ResultSet rs = tryQueryTransaction(selectNGramCount, nGramTableName + "ToPost");
+            ResultSet rs = tryQueryTransaction(selectNGramCount, nGramType.getTableName() + "ToPost");
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("count");
@@ -719,9 +357,9 @@ public class DBConnector {
      * @return объект класса <code>ResultSet</code>, содержащий результат запроса;
      * надо проверять на <code>null</code>      //TODO хочется никогда не возвращать null
      */
-    private ResultSet tryQueryTransaction(PreparedStatement statement, String tableName) throws SQLException {   //SQLException пробрасываем
+    protected ResultSet tryQueryTransaction(PreparedStatement statement, String tableName) throws SQLException {
         boolean retryTransaction = true;
-        int tries = MAX_TRIES;
+        int tries = dataBase.maxTries;
         ResultSet resultSet = null;
         while (retryTransaction && tries > 0)
             try {
@@ -756,9 +394,10 @@ public class DBConnector {
     }
 
 
-    private int tryUpdateTransaction(PreparedStatement toExecute, String currEntry, String tableName) throws SQLException {   //SQLException пробрасываем
+    protected int tryUpdateTransaction(PreparedStatement toExecute, String currEntry,
+                                       String tableName) throws SQLException {
         boolean retryTransaction = true;
-        int tries = MAX_TRIES;
+        int tries = dataBase.maxTries;
         int affected = 0;
         while (retryTransaction && tries > 0)
             try {
@@ -793,9 +432,10 @@ public class DBConnector {
     }
 
 
-    private int tryUpdateTransaction(Connection con, Iterable<PreparedStatement> toExecute, String currEntry, String tableName) throws SQLException {   //SQLException пробрасываем
+    protected int tryUpdateTransaction(Connection con, Iterable<PreparedStatement> toExecute,
+                                       String currEntry, String tableName) throws SQLException {
         boolean retryTransaction = true;
-        int tries = MAX_TRIES;
+        int tries = dataBase.maxTries;
         int affected = 0;
         while (retryTransaction && tries > 0)
             try {
