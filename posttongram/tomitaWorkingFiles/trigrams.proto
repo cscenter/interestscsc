@@ -1,0 +1,7 @@
+import "base.proto";           // описание protobuf-типов
+import "facttypes_base.proto"; // описание protobuf-типа NFactType.TFact
+
+message NGrams: NFactType.TFact 
+{
+    required string Trigram = 1;
+}
