@@ -1,7 +1,5 @@
 package posttongram;
 
-import db.DBConnector;
-import data.Post;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
@@ -10,11 +8,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import data.NGram;
-
 import java.io.*;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.*;
+
 
 public class TomitaExecutor {
 
@@ -31,43 +27,9 @@ public class TomitaExecutor {
         configFileNgrammType.put("config3.proto", "Trigram");
     }
 
-
-    public static void main(String[] args) throws Exception {
-        DBConnector db = new DBConnector("DBConnectorTestNormalization");
-
-        //Statement st = dbConnector.getConnection().createStatement();
-
-        //ResultSet rs = st.executeQuery("SELECT * FROM Post");
-        LinkedList<Post> unprocessedPosts = db.getPostsToNormalize(1);
-
-        for (Post post : unprocessedPosts) {
-            long textId = post.getId();
-            System.out.println("id: " + textId);
-            String title = post.getTitle();
-            System.out.println("title: " + title);
-            String newText = post.getText();
-            String fullText = new String(title + ". " + newText);
-            TomitaExecutor tomitaExec = new TomitaExecutor();
-            // here we have input file named 'test.txt' for tomita to process it!
-            tomitaExec.saveFileForTomita(fullText);
-
-            for (String protoFileName : configFileNgrammType.keySet()) {
-                String ngrammType = configFileNgrammType.get(protoFileName);
-                Map<String, String> wordsCount = tomitaExec.runTomitaOnText(protoFileName);
-                List<NGram> nGramms = tomitaExec.toNGramm(wordsCount, textId);
-
-                for (NGram nGramm : nGramms) {
-                    System.out.println(post.getId() + " " + nGramm.getText() + " " + nGramm.getUsesCnt()
-                            + " " + nGramm.getUsesStr());
-                }
-            }
-        }
-    }
-
-    public static List<NGram> toNGramm(Map<String, String> positionMap, long idText) {
+    public static List<NGram> toNGramm(Map<String, String> positionMap) {
         Set<String> keySet = positionMap.keySet();
-        NGram[] nGramms = new NGram[keySet.size()];
-        List<NGram> nGrams = new LinkedList<NGram>();
+        List<NGram> nGrams = new LinkedList<>();
         int i = 0;
         for (String nGramm : keySet) {
             int usescount = positionMap.get(nGramm).split(",").length;
@@ -77,14 +39,6 @@ public class TomitaExecutor {
         return nGrams;
     }
 
-    private static void printCount(Map<String, Integer> countMap) {
-        Set<String> keySet = countMap.keySet();
-        for (String string : keySet) {
-            System.out.println(string + " : " + countMap.get(string));
-        }
-    }
-
-
     // processNGrams
     public static Map<String, String> runTomitaOnText(String protoFileName) {
         // here tomita processes 'test.txt' and produces 'PrettyOutput.html'
@@ -92,13 +46,13 @@ public class TomitaExecutor {
         // here we get nGrams (with repeats) from our 'PrettyOutput.html'
         ArrayList<String> nGramms = getNGramms();
         WordFilter wordFilter = new WordFilter();
-        ArrayList<String> goodNGrams = wordFilter.filter(nGramms);
+        List<String> goodNGrams = wordFilter.normalize(wordFilter.filter(nGramms));
         Map<String, String> nGrammPositions = getPositions(goodNGrams);
         return nGrammPositions;
     }
 
-    public static Map<String, String> getPositions(ArrayList<String> strArray) {
-        Map<String, String> positionMap = new HashMap<String, String>();
+    public static Map<String, String> getPositions(List<String> strArray) {
+        Map<String, String> positionMap = new HashMap<>();
         for (int i = 0; i < strArray.size(); i++) {
             if (!positionMap.containsKey(strArray.get(i))) {
                 positionMap.put(strArray.get(i), Integer.toString(i));
@@ -113,7 +67,7 @@ public class TomitaExecutor {
 
     public static ArrayList<String> getNGramms() {
         File tomitaOutputFile = new File(TOMITA_WORKING_DIR + File.separator + TOMITA_OUTPUT_FILE_NAME);
-        ArrayList<String> nGramms = new ArrayList<String>();
+        ArrayList<String> nGramms = new ArrayList<>();
         Document doc = null;
         try {
             doc = Jsoup.parse(tomitaOutputFile, "UTF-8");
@@ -165,19 +119,16 @@ public class TomitaExecutor {
 
     // запускает tomita с готовым config.proto
     public static void runTomita(String protoFileName) {
-        System.out.println(protoFileName);
+        File tomitaExecutiveFile = new File(TOMITA_WORKING_DIR + File.separator + getTomitFileName());
 
-        File acroRd32Script = new File(TOMITA_WORKING_DIR + File.separator + getTomitFileName());
-        System.out.println(acroRd32Script.getPath());
-
-        CommandLine cmdLine = new CommandLine(acroRd32Script);
+        CommandLine cmdLine = new CommandLine(tomitaExecutiveFile);
         cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + protoFileName);
         DefaultExecutor executor = new DefaultExecutor();
         executor.setExitValue(0);
         ExecuteWatchdog watchdog = new ExecuteWatchdog(WATCHDOG_CONST);
         executor.setWatchdog(watchdog);
         try {
-            int exitValue = executor.execute(cmdLine);
+            executor.execute(cmdLine);
         } catch (IOException e) {
             e.printStackTrace();
         }
