@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS RawUserLJRanked;
 DROP VIEW IF EXISTS TagNameToPost;
 DROP VIEW IF EXISTS AllNGramTextPost;
 DROP VIEW IF EXISTS AllNGramTexts;
@@ -189,4 +190,11 @@ CREATE VIEW TagNameToPost AS (
   SELECT t.text, tp.post_id
   FROM Tag t
     JOIN TagToPost tp ON t.id = tp.tag_id
+);
+
+CREATE VIEW RawUserLJRanked AS (
+  SELECT r.nick, row_number() OVER(ORDER BY r.nick)
+  FROM RawUserLJ r
+  WHERE r.crawler_id IS NULL
+        AND r.user_id IS NULL
 );

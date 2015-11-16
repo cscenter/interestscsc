@@ -107,13 +107,16 @@ public class DBConnectorToCrawler extends DBConnector {
         if (reserveNum <= 0) throw new IllegalArgumentException("Argument reserveNum must be greater than 0.");
         int rowsAffected = 0;
         String reserveUserNicksString =
+                "BEGIN; " +
+                "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
                 "UPDATE RawUserLJ r SET crawler_id = ? " +
-                        "FROM ( " +
-                        "       SELECT nick FROM RawUserLJ r " +
-                        "       WHERE r.crawler_id IS NULL AND r.user_id IS NULL " +
-                        "       LIMIT ? FOR UPDATE " +
-                        "     ) free " +
-                        "WHERE r.nick = free.nick;";
+                "FROM ( " +
+                "       WITH mod AS (SELECT count(*)/? AS mod FROM RawUserLJRanked) " +
+                "       SELECT nick FROM RawUserLJRanked r " +
+                "       WHERE r.row_number % (SELECT mod FROM mod) = 0 " +
+                "     ) free " +
+                "WHERE r.nick = free.nick; " +
+                "COMMIT;";
         try (
                 Connection con = getConnection();
                 PreparedStatement reserveUserNicks = con.prepareStatement(reserveUserNicksString)

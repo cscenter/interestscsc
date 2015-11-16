@@ -18,10 +18,10 @@ public class DBConnectorTestCrawling {
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
         // TODO Выбрать нужную БД
-        DBConnector.DataBase dbName = DBConnector.DataBase.LOCAL;
+        DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
 
         // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
+//        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
 
         // Создаем коннектор с правами краулера, добавляем идентификатор своей машины в БД
         DBConnectorToCrawler db = new DBConnectorToCrawler(dbName, "DBConnectorTestCrawling");

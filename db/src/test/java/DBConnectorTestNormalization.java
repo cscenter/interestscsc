@@ -23,12 +23,12 @@ public class DBConnectorTestNormalization {
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
         // TODO Выбрать нужную БД
-        DBConnector.DataBase dbName = DBConnector.DataBase.LOCAL;
+        DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
 
 // Заполняем базу тестовыми данными (если пустая)
 // ------------------------------------------------------
         // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
+//        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
 
         DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestNormalization");
         for (int i = 0; i < 5; ++i) {
