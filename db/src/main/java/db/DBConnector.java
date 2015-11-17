@@ -11,7 +11,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 
-
 /**
  * User: allight
  * Date: 06.10.2015 14:47
@@ -26,19 +25,24 @@ public class DBConnector {
     protected final DataBase dataBase;
 
     public enum NGramType {
-        UNIGRAM("unigram"),
-        DIGRAM("digram"),
-        TRIGRAM("trigram");
+        UNIGRAM("unigram","unigramToPost"),
+        DIGRAM("digram","digramToPost"),
+        TRIGRAM("trigram","trigramToPost");
 
         private final String tableName;
+        private final String tableToPostName;
 
-
-        NGramType(String tableName) {
+        NGramType(String tableName, String tableToPostName) {
             this.tableName = tableName;
+            this.tableToPostName = tableToPostName;
         }
 
         public String getTableName() {
             return tableName;
+        }
+
+        public String getTableToPostName() {
+            return tableToPostName;
         }
     }
 
@@ -56,7 +60,6 @@ public class DBConnector {
         private final int maxTries;             // TODO число попыток выполнения при временной (*) неудаче (>1)
 
         private PGPoolingDataSource connectionPool;
-
 
         DataBase(String host, int port, String db, String user, String pass, int maxConnections, int maxTries) {
             this.host = host;
@@ -85,7 +88,6 @@ public class DBConnector {
         }
     }
 
-
     public DBConnector(DataBase dataBase) {
         this.dataBase = dataBase;
     }
@@ -104,21 +106,20 @@ public class DBConnector {
         }
     }
 
-
     protected boolean checkTable(String tableName) throws SQLException {
         String selectTableString = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTable = con.prepareStatement(selectTableString)
         ) {
-            selectTable.setString(1, tableName);
+            int i = 0;
+            selectTable.setString(++i, tableName);
             ResultSet rs = tryQueryTransaction(selectTable, "pg_tables");
             if (rs == null)
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.next();
         }
     }
-
 
     /**
      * Выдает соединение для использования в качестве контекстного объекта.
@@ -129,7 +130,6 @@ public class DBConnector {
     public Connection getConnection() throws SQLException {
         return dataBase.connectionPool.getConnection();
     }
-
 
     /**
      * Возвращает соединение в очередь.
@@ -143,22 +143,20 @@ public class DBConnector {
         }
     }
 
-
     public List<String> getRegions() throws SQLException {
         List<String> result = new LinkedList<>();
         String selectRegionsString = "SELECT name FROM Region;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectRegions = con.prepareStatement(selectRegionsString);
+                PreparedStatement selectRegions = con.prepareStatement(selectRegionsString)
         ) {
             ResultSet rs = tryQueryTransaction(selectRegions, "Region");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("name"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     /**
      * Возвращвет все заполненные профили пользователей.
@@ -172,23 +170,24 @@ public class DBConnector {
                 "FROM UserLJ u JOIN Region r ON u.region_id = r.id;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectUsers = con.prepareStatement(selectUsersString);
+                PreparedStatement selectUsers = con.prepareStatement(selectUsersString)
         ) {
             ResultSet rs = tryQueryTransaction(selectUsers, "UserLJ");
             if (rs != null)
-                while (rs.next())
+                while (rs.next()) {
+                    int i = 0;
                     result.add(new User(
-                            rs.getLong("id"), rs.getString("nick"), rs.getString("region"),
-                            rs.getTimestamp("created"), rs.getTimestamp("update"),
-                            rs.getTimestamp("fetched"), rs.getDate("birthday"),
-                            rs.getString("interests"), rs.getString("city_cstm"),
-                            rs.getInt("posts_num"), rs.getInt("cmmnt_in"),
-                            rs.getInt("cmmnt_out"), rs.getString("bio"), new LinkedList<>()
+                            rs.getLong(++i), rs.getString(++i), rs.getString(++i),
+                            rs.getTimestamp(++i), rs.getTimestamp(++i),
+                            rs.getTimestamp(++i), rs.getDate(++i),
+                            rs.getString(++i), rs.getString(++i),
+                            rs.getInt(++i), rs.getInt(++i),
+                            rs.getInt(++i), rs.getString(++i), new LinkedList<>()
                     ));
+                }
         }
         return result;
     }
-
 
     public List<String> getAllTagNames() throws SQLException {
         List<String> result = new LinkedList<>();
@@ -200,11 +199,10 @@ public class DBConnector {
             ResultSet rs = tryQueryTransaction(selectTag, "Tag");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("text"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     public List<String> getAllTagNames(String userLJNick) throws SQLException {
         List<String> result = new LinkedList<>();
@@ -215,15 +213,15 @@ public class DBConnector {
                 Connection con = getConnection();
                 PreparedStatement selectTag = con.prepareStatement(selectTagString)
         ) {
-            selectTag.setString(1, userLJNick);
+            int i = 0;
+            selectTag.setString(++i, userLJNick);
             ResultSet rs = tryQueryTransaction(selectTag, "Tag");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("text"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     public List<String> getAllTagNames(long post_id) throws SQLException {
         List<String> result = new LinkedList<>();
@@ -231,17 +229,17 @@ public class DBConnector {
                 "WHERE tnp.post_id = ?;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString);
+                PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
         ) {
-            selectTagNames.setLong(1, post_id);
+            int i = 0;
+            selectTagNames.setLong(++i, post_id);
             ResultSet rs = tryQueryTransaction(selectTagNames, "TagNameToPost");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("text"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     public int getPostCount() throws SQLException {
         String selectPostCountString = "SELECT count(*) FROM Post;";
@@ -255,7 +253,6 @@ public class DBConnector {
             return rs.getInt("count");
         }
     }
-
 
     public int getPostNormalizedCount() throws SQLException {
         String selectPostNormalizedCountString = "SELECT count(*) FROM Post WHERE normalized;";
@@ -278,13 +275,15 @@ public class DBConnector {
                 Connection con = getConnection();
                 PreparedStatement selectLength = con.prepareStatement(selectLengthString)
         ) {
-            selectLength.setLong(1, postId);
+            int i = 0;
+            selectLength.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectLength, "PostLength");
-            if (rs == null || !rs.next()) return -1; //TODO нормально возвращать -1, если пост еще не обработан?
-            else return rs.getInt("length");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("Requested post wasn't normalized yet");
+            else
+                return rs.getInt("length");
         }
     }
-
 
     public int getPostUniqueWordCount(long postId) throws SQLException {
         String selectUniqueWordCountString = "SELECT count FROM PostUniqueWordCount WHERE post_id = ?;";
@@ -292,29 +291,30 @@ public class DBConnector {
                 Connection con = getConnection();
                 PreparedStatement selectUniqueWordCount = con.prepareStatement(selectUniqueWordCountString)
         ) {
-            selectUniqueWordCount.setLong(1, postId);
+            int i = 0;
+            selectUniqueWordCount.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectUniqueWordCount, "PostUniqueWordCount");
-            if (rs == null || !rs.next()) return -1;
-            else return rs.getInt("count");
+            if (rs == null || !rs.next())
+                throw new IllegalStateException("Requested post wasn't normalized yet");
+            else
+                return rs.getInt("count");
         }
     }
-
 
     public List<String> getAllNGramNames() throws SQLException {
         List<String> result = new LinkedList<>();
         String selectNGramString = "SELECT text FROM AllNGramTexts;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectNGram = con.prepareStatement(selectNGramString);
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
         ) {
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("text"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     public List<String> getAllNGramNames(long postId) throws SQLException {
         List<String> result = new LinkedList<>();
@@ -322,33 +322,34 @@ public class DBConnector {
                 "WHERE post_id = ?;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectNGram = con.prepareStatement(selectNGramString);
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
         ) {
-            selectNGram.setLong(1, postId);
+            int i = 0;
+            selectNGram.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("text"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
 
-
+    @SuppressWarnings("SqlResolve")
     public int getNGramCount(long postId, NGramType nGramType) throws SQLException {
-        String selectNGramCountString = "SELECT count(*) FROM " + nGramType.tableName + "ToPost np " +
+        String selectNGramCountString = "SELECT count(*) FROM " + nGramType.getTableToPostName() + " np " +
                 "WHERE np.post_id = ?;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectNGramCount = con.prepareStatement(selectNGramCountString);
+                PreparedStatement selectNGramCount = con.prepareStatement(selectNGramCountString)
         ) {
-            selectNGramCount.setLong(1, postId);
-            ResultSet rs = tryQueryTransaction(selectNGramCount, nGramType.getTableName() + "ToPost");
+            int i = 0;
+            selectNGramCount.setLong(++i, postId);
+            ResultSet rs = tryQueryTransaction(selectNGramCount, nGramType.getTableToPostName());
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("count");
         }
     }
-
 
     /**
      * Пытается выполнить запрос к БД, обрабатывая некоторые исключения.
@@ -393,7 +394,6 @@ public class DBConnector {
         return resultSet;
     }
 
-
     protected int tryUpdateTransaction(PreparedStatement toExecute, String currEntry,
                                        String tableName) throws SQLException {
         boolean retryTransaction = true;
@@ -430,7 +430,6 @@ public class DBConnector {
             }
         return affected;
     }
-
 
     protected int tryUpdateTransaction(Connection con, Iterable<PreparedStatement> toExecute,
                                        String currEntry, String tableName) throws SQLException {

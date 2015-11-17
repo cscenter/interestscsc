@@ -26,7 +26,6 @@ public class DBConnectorTestCrawling {
         // Создаем коннектор с правами краулера, добавляем идентификатор своей машины в БД
         DBConnectorToCrawler db = new DBConnectorToCrawler(dbName, "DBConnectorTestCrawling");
 
-
         // Собираем с LJ имена нескольких стартовых пользователей (имитация)
         List<String> rawUsers = new LinkedList<>();
         for (int i = 0; i < 10; ++i)
@@ -130,8 +129,6 @@ public class DBConnectorTestCrawling {
             // Если уверены, что вытащили все выложенные на данный момент посты,
             // ставим пользователю Timestamp на fetched
             db.updateUserFetched(username);
-
-
         }
 
         // Проверяем, что всех успешно обработали

@@ -34,7 +34,6 @@ public class DBConnectorToNormalizer extends DBConnector {
                     "and then manually set you normalizer name with method <code>setNewNormalizerName(..)</code>");
     }
 
-
     private Integer getNormalizerId(String normalizerName) throws SQLException {
         String insertNormalizerString =
                 "INSERT INTO normalizer (name) VALUES (?);";
@@ -44,16 +43,17 @@ public class DBConnectorToNormalizer extends DBConnector {
                 PreparedStatement insertNormalizer = con.prepareStatement(insertNormalizerString);
                 PreparedStatement selectNormalizer = con.prepareStatement(selectNormalizerString)
         ) {
-            insertNormalizer.setString(1, normalizerName);
+            int i = 0;
+            insertNormalizer.setString(++i, normalizerName);
             tryUpdateTransaction(insertNormalizer, normalizerName, "normalizer");
-            selectNormalizer.setString(1, normalizerName);
+            i = 0;
+            selectNormalizer.setString(++i, normalizerName);
             ResultSet rs = tryQueryTransaction(selectNormalizer, "normalizer");
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("id");
         }
     }
-
 
     public int reservePostForNormalizer(int reserveNum) throws SQLException {
         if (reserveNum <= 0) throw new IllegalArgumentException("Argument reserveNum must be greater than 0.");
@@ -70,13 +70,13 @@ public class DBConnectorToNormalizer extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement reservePosts = con.prepareStatement(reservePostsString)
         ) {
-            reservePosts.setInt(1, normalizerId);
-            reservePosts.setInt(2, reserveNum);
+            int i = 0;
+            reservePosts.setInt(++i, normalizerId);
+            reservePosts.setInt(++i, reserveNum);
             rowsAffected += tryUpdateTransaction(reservePosts, "normalizerId = " + normalizerId, "Post");
         }
         return rowsAffected;
     }
-
 
     public List<Post> getReservedPosts() throws SQLException {
         List<Post> result = new LinkedList<>();
@@ -86,18 +86,20 @@ public class DBConnectorToNormalizer extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement selectPosts = con.prepareStatement(selectPostsString)
         ) {
-            selectPosts.setInt(1, normalizerId);
+            int i = 0;
+            selectPosts.setInt(++i, normalizerId);
             ResultSet rs = tryQueryTransaction(selectPosts, "Post");
             if (rs != null)
-                while (rs.next())
+                while (rs.next()) {
+                    i = 0;
                     result.add(new Post(
-                            rs.getLong("id"),
-                            rs.getString("title"),
-                            rs.getString("text")));
+                            rs.getLong(++i),
+                            rs.getString(++i),
+                            rs.getString(++i)));
+                }
         }
         return result;
     }
-
 
     public int updatePostNormalized(long postId) throws SQLException {                                                                     //TODO
         int rowsAffected = 0;
@@ -108,12 +110,12 @@ public class DBConnectorToNormalizer extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement updateNormalized = con.prepareStatement(updateNormalizedString)
         ) {
-            updateNormalized.setLong(1, postId);
+            int i = 0;
+            updateNormalized.setLong(++i, postId);
             rowsAffected += tryUpdateTransaction(updateNormalized, "Post_id = " + postId, "Post");
         }
         return rowsAffected;
     }
-
 
     /**
      * Поочередно добавляет в БД n-граммы из любого итерабельного контейнера.
@@ -126,10 +128,11 @@ public class DBConnectorToNormalizer extends DBConnector {
      *                  1 - unigram, 2 - digram, 3 - trigram.
      * @return кол-во добавленных записей
      */
+    @SuppressWarnings("SqlResolve")
     public int insertNGrams(Iterable<NGram> ngrams, long postId, NGramType nGramType) throws SQLException {
         int rowsAffected = 0;
         String insertNGramString = "INSERT INTO " + nGramType.getTableName() + " (text) VALUES (?);";
-        String insertNGramToPostString = "INSERT INTO " + nGramType.getTableName() + "ToPost " +
+        String insertNGramToPostString = "INSERT INTO " + nGramType.getTableToPostName() + " " +
                 "(ngram_id, post_id, uses_str, uses_cnt) VALUES ( " +
                 "(SELECT id FROM " + nGramType.getTableName() + " WHERE text = ?), ?, ?, ?);";
 
@@ -139,17 +142,19 @@ public class DBConnectorToNormalizer extends DBConnector {
                 PreparedStatement insertNGramToPost = con.prepareStatement(insertNGramToPostString)
         ) {
             for (NGram ngram : ngrams) {
-                insertNGram.setString(1, ngram.getText());
+                int i = 0;
+                insertNGram.setString(++i, ngram.getText());
                 rowsAffected += tryUpdateTransaction(insertNGram, ngram.getText(), nGramType.getTableName());
             }
 
             for (NGram ngram : ngrams) {
-                insertNGramToPost.setString(1, ngram.getText());
-                insertNGramToPost.setLong(2, postId);
-                insertNGramToPost.setString(3, ngram.getUsesStr());
-                insertNGramToPost.setInt(4, ngram.getUsesCnt());
+                int i = 0;
+                insertNGramToPost.setString(++i, ngram.getText());
+                insertNGramToPost.setLong(++i, postId);
+                insertNGramToPost.setString(++i, ngram.getUsesStr());
+                insertNGramToPost.setInt(++i, ngram.getUsesCnt());
                 rowsAffected += tryUpdateTransaction(insertNGramToPost, "postId<->" + ngram.getText(),
-                        nGramType.getTableName() + "ToPost");
+                        nGramType.getTableToPostName());
             }
         }
         return rowsAffected;

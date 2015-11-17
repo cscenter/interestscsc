@@ -33,7 +33,6 @@ public class DBConnectorToCrawler extends DBConnector {
                     "and then manually set you crawler name with method <code>setNewCrawlerName(..)</code>");
     }
 
-
     private Integer getCrawlerId(String crawlerName) throws SQLException {
         String insertCrawlerString =
                 "INSERT INTO crawler (name) VALUES (?);";
@@ -43,16 +42,17 @@ public class DBConnectorToCrawler extends DBConnector {
                 PreparedStatement insertCrawler = con.prepareStatement(insertCrawlerString);
                 PreparedStatement selectCrawler = con.prepareStatement(selectCrawlerString)
         ) {
-            insertCrawler.setString(1, crawlerName);
+            int i = 0;
+            insertCrawler.setString(++i, crawlerName);
             tryUpdateTransaction(insertCrawler, crawlerName, "crawler");
-            selectCrawler.setString(1, crawlerName);
+            i = 0;
+            selectCrawler.setString(++i, crawlerName);
             ResultSet rs = tryQueryTransaction(selectCrawler, "crawler");
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("id");
         }
     }
-
 
     /**
      * Добавляет в БД регион.
@@ -67,12 +67,12 @@ public class DBConnectorToCrawler extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement insertRegion = con.prepareStatement(insertRegionString)
         ) {
-            insertRegion.setString(1, region);
+            int i = 0;
+            insertRegion.setString(++i, region);
             rowsAffected += tryUpdateTransaction(insertRegion, region, "Region");
         }
         return rowsAffected;
     }
-
 
     /**
      * Поочередно добавляет в БД пользователей из любого итерабельного контейнера.
@@ -89,13 +89,13 @@ public class DBConnectorToCrawler extends DBConnector {
                 PreparedStatement insertUser = con.prepareStatement(insertUserString)
         ) {
             for (String user : rawUsersLJ) {
-                insertUser.setString(1, user);
+                int i = 0;
+                insertUser.setString(++i, user);
                 rowsAffected += tryUpdateTransaction(insertUser, user, "RawUserLJ");
             }
         }
         return rowsAffected;
     }
-
 
     /**
      * Резервирует в требуемое количество необработанных пользователей под указанный краулер.
@@ -122,14 +122,14 @@ public class DBConnectorToCrawler extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement reserveUserNicks = con.prepareStatement(reserveUserNicksString)
         ) {
-            reserveUserNicks.setInt(1, crawlerId);
-            reserveUserNicks.setInt(2, reserveNum);
-            reserveUserNicks.setInt(3, reserveNum);
+            int i = 0;
+            reserveUserNicks.setInt(++i, crawlerId);
+            reserveUserNicks.setInt(++i, reserveNum);
+            reserveUserNicks.setInt(++i, reserveNum);
             rowsAffected += tryUpdateTransaction(reserveUserNicks, "crawlerId = " + crawlerId, "RawUserLJ");
         }
         return rowsAffected;
     }
-
 
     public List<String> getReservedRawUsers() throws SQLException {
         List<String> result = new LinkedList<>();
@@ -137,17 +137,17 @@ public class DBConnectorToCrawler extends DBConnector {
                 "WHERE user_id IS NULL AND crawler_id = ?;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectReserved = con.prepareStatement(selectReservedString);
+                PreparedStatement selectReserved = con.prepareStatement(selectReservedString)
         ) {
-            selectReserved.setInt(1, crawlerId);
+            int i = 0;
+            selectReserved.setInt(++i, crawlerId);
             ResultSet rs = tryQueryTransaction(selectReserved, "RawUserLJ");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("nick"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     public List<String> getUnfinishedRawUsers() throws SQLException {
         List<String> result = new LinkedList<>();
@@ -157,17 +157,17 @@ public class DBConnectorToCrawler extends DBConnector {
                 "WHERE r.crawler_id = ? AND u.fetched IS NULL;";
         try (
                 Connection con = getConnection();
-                PreparedStatement selectUnfinished = con.prepareStatement(selectUnfinishedString);
+                PreparedStatement selectUnfinished = con.prepareStatement(selectUnfinishedString)
         ) {
-            selectUnfinished.setInt(1, crawlerId);
+            int i = 0;
+            selectUnfinished.setInt(++i, crawlerId);
             ResultSet rs = tryQueryTransaction(selectUnfinished, "RawUserLJ JOIN UserLJ");
             if (rs != null)
                 while (rs.next())
-                    result.add(rs.getString("nick"));
+                    result.add(rs.getString(1));
         }
         return result;
     }
-
 
     /**
      * Поочередно добавляет в БД пользователей из любого итерабельного контейнера.
@@ -198,56 +198,59 @@ public class DBConnectorToCrawler extends DBConnector {
                 PreparedStatement insertUserToSchool = con.prepareStatement(insertUserToSchoolString);
                 PreparedStatement updateRawUser = con.prepareStatement(updateRawUserString)
         ) {
-            insertUser.setString(1, userLJ.getNick());
-            insertUser.setString(2, userLJ.getRegion());
-            insertUser.setTimestamp(3, userLJ.getDateCreated());
-            insertUser.setTimestamp(4, userLJ.getDateUpdated());
-            insertUser.setDate(5, userLJ.getBirthday());
-            insertUser.setString(6, userLJ.getInterests());
-            insertUser.setString(7, userLJ.getCustomCity());
+            int i = 0;
+            insertUser.setString(++i, userLJ.getNick());
+            insertUser.setString(++i, userLJ.getRegion());
+            insertUser.setTimestamp(++i, userLJ.getDateCreated());
+            insertUser.setTimestamp(++i, userLJ.getDateUpdated());
+            insertUser.setDate(++i, userLJ.getBirthday());
+            insertUser.setString(++i, userLJ.getInterests());
+            insertUser.setString(++i, userLJ.getCustomCity());
             if (userLJ.getPostsNum() == null)
-                insertUser.setNull(8, Types.INTEGER);
-            else insertUser.setInt(8, userLJ.getPostsNum());
+                insertUser.setNull(++i, Types.INTEGER);
+            else insertUser.setInt(++i, userLJ.getPostsNum());
             if (userLJ.getCommentsReceived() == null)
-                insertUser.setNull(9, Types.INTEGER);
-            else insertUser.setInt(9, userLJ.getCommentsReceived());
+                insertUser.setNull(++i, Types.INTEGER);
+            else insertUser.setInt(++i, userLJ.getCommentsReceived());
             if (userLJ.getCommentsPosted() == null)
-                insertUser.setNull(10, Types.INTEGER);
-            else insertUser.setInt(10, userLJ.getCommentsPosted());
-            insertUser.setString(11, userLJ.getBiography());
+                insertUser.setNull(++i, Types.INTEGER);
+            else insertUser.setInt(++i, userLJ.getCommentsPosted());
+            insertUser.setString(++i, userLJ.getBiography());
 
             rowsAffected += tryUpdateTransaction(insertUser, userLJ.getNick(), "UserLJ");
 
-            selectUserLJ.setString(1, userLJ.getNick());
+            i = 0;
+            selectUserLJ.setString(++i, userLJ.getNick());
             ResultSet rs = tryQueryTransaction(selectUserLJ, "UserLJ");
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             Long userId = rs.getLong("id");
 
-
             for (User.School school : userLJ.getSchools()) {
-                insertSchool.setString(1, school.getTitle());
+                i = 0;
+                insertSchool.setString(++i, school.getTitle());
                 rowsAffected += tryUpdateTransaction(insertSchool, school.getTitle(), "School");
             }
 
             for (User.School school : userLJ.getSchools()) {
-                insertUserToSchool.setLong(1, userId);
-                insertUserToSchool.setString(2, school.getTitle());
-                insertUserToSchool.setDate(3, school.getStart());
-                insertUserToSchool.setDate(4, school.getEnd());
+                i = 0;
+                insertUserToSchool.setLong(++i, userId);
+                insertUserToSchool.setString(++i, school.getTitle());
+                insertUserToSchool.setDate(++i, school.getStart());
+                insertUserToSchool.setDate(++i, school.getEnd());
 
                 rowsAffected += tryUpdateTransaction(insertUserToSchool,
                         userLJ.getNick() + "<->" + school.getTitle(), "UserToSchool");
             }
 
-            updateRawUser.setLong(1, userId);
-            updateRawUser.setString(2, userLJ.getNick());
+            i = 0;
+            updateRawUser.setLong(++i, userId);
+            updateRawUser.setString(++i, userLJ.getNick());
 
             rowsAffected += tryUpdateTransaction(updateRawUser, userLJ.getNick(), "RawUserLJ");
         }
         return rowsAffected;
     }
-
 
     public int updateUserFetched(String userLJNick) throws SQLException {
         int rowsAffected = 0;
@@ -258,14 +261,14 @@ public class DBConnectorToCrawler extends DBConnector {
                 Connection con = getConnection();
                 PreparedStatement updateFetched = con.prepareStatement(updateFetchedString)
         ) {
-            updateFetched.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-            updateFetched.setString(2, userLJNick);
+            int i = 0;
+            updateFetched.setTimestamp(++i, Timestamp.valueOf(LocalDateTime.now()));
+            updateFetched.setString(++i, userLJNick);
 
             rowsAffected += tryUpdateTransaction(updateFetched, userLJNick, "UserLJ");
         }
         return rowsAffected;
     }
-
 
     /**
      * Поочередно добавляет в БД тэги из любого итерабельного контейнера.
@@ -289,21 +292,22 @@ public class DBConnectorToCrawler extends DBConnector {
                 PreparedStatement insertTagToUserLJ = con.prepareStatement(insertTagToUserLJString)
         ) {
             for (Tag tag : tags) {
-                insertTag.setString(1, tag.getName());
+                int i = 0;
+                insertTag.setString(++i, tag.getName());
                 rowsAffected += tryUpdateTransaction(insertTag, tag.getName(), "Tag");
 
-                insertTagToUserLJ.setString(1, tag.getName());
-                insertTagToUserLJ.setString(2, userLJNick);
+                i = 0;
+                insertTagToUserLJ.setString(++i, tag.getName());
+                insertTagToUserLJ.setString(++i, userLJNick);
                 if (tag.getUses() == null)
-                    insertTagToUserLJ.setNull(3, Types.INTEGER);
-                else insertTagToUserLJ.setInt(3, tag.getUses());
+                    insertTagToUserLJ.setNull(++i, Types.INTEGER);
+                else insertTagToUserLJ.setInt(++i, tag.getUses());
                 rowsAffected += tryUpdateTransaction(insertTagToUserLJ,
                         tag.getName() + "<->" + userLJNick, "TagToUserLJ");
             }
         }
         return rowsAffected;
     }
-
 
     /**
      * Поочередно добавляет в БД посты из любого итерабельного контейнера.
@@ -325,22 +329,24 @@ public class DBConnectorToCrawler extends DBConnector {
                 PreparedStatement insertTagToPost = con.prepareStatement(insertTagToPostString)
         ) {
             for (Post post : posts) {
-                insertPost.setLong(1, post.getUrl());        //never null
-                insertPost.setString(2, post.getAuthor());
-                insertPost.setTimestamp(3, post.getDate());
-                insertPost.setString(4, post.getTitle());
-                insertPost.setString(5, post.getText());
+                int i = 0;
+                insertPost.setLong(++i, post.getUrl());        //never null
+                insertPost.setString(++i, post.getAuthor());
+                insertPost.setTimestamp(++i, post.getDate());
+                insertPost.setString(++i, post.getTitle());
+                insertPost.setString(++i, post.getText());
                 if (post.getCountComment() == null)
-                    insertPost.setNull(6, Types.INTEGER);
-                else insertPost.setInt(6, post.getCountComment());
+                    insertPost.setNull(++i, Types.INTEGER);
+                else insertPost.setInt(++i, post.getCountComment());
 
                 rowsAffected += tryUpdateTransaction(insertPost, post.getAuthor() + ">" + post.getUrl(), "Post");
 
                 assert (post.getTags() != null);
                 for (String tag : post.getTags()) {
-                    insertTagToPost.setString(1, tag);
-                    insertTagToPost.setString(2, post.getAuthor());
-                    insertTagToPost.setLong(3, post.getUrl());      //never null
+                    i = 0;
+                    insertTagToPost.setString(++i, tag);
+                    insertTagToPost.setString(++i, post.getAuthor());
+                    insertTagToPost.setLong(++i, post.getUrl());      //never null
                     rowsAffected += tryUpdateTransaction(insertTagToPost,
                             post.getAuthor() + ">" + post.getUrl() + "<->" + tag, "TagTOPost");
                 }
