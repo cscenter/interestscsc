@@ -111,9 +111,10 @@ public class DBConnectorToCrawler extends DBConnector {
                 "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
                 "UPDATE RawUserLJ r SET crawler_id = ? " +
                 "FROM ( " +
-                "       WITH mod AS (SELECT count(*)/? AS mod FROM RawUserLJRanked) " +
+                "       WITH mod AS (SELECT GREATEST(count(*)/?, 1) FROM RawUserLJRanked) " +
                 "       SELECT nick FROM RawUserLJRanked r " +
-                "       WHERE r.row_number % (SELECT mod FROM mod) = 0 " +
+                "       WHERE r.row_number % (SELECT * FROM mod) = 0 " +
+                "       LIMIT ?" +
                 "     ) free " +
                 "WHERE r.nick = free.nick; " +
                 "COMMIT;";
@@ -123,6 +124,7 @@ public class DBConnectorToCrawler extends DBConnector {
         ) {
             reserveUserNicks.setInt(1, crawlerId);
             reserveUserNicks.setInt(2, reserveNum);
+            reserveUserNicks.setInt(3, reserveNum);
             rowsAffected += tryUpdateTransaction(reserveUserNicks, "crawlerId = " + crawlerId, "RawUserLJ");
         }
         return rowsAffected;
