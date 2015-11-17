@@ -2,6 +2,7 @@ package data;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.LinkedList;
 import java.util.List;
 
 public class User {
@@ -82,6 +83,7 @@ public class User {
         this.dateFetched = dateFetched;
         this.birthday = birthday;
         this.interests = interests;
+        this.schools = new LinkedList<>();
     }
 
     public Long getId() {
