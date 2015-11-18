@@ -14,9 +14,10 @@ import java.util.*;
 
 public class TomitaExecutor {
 
+    private static final String TOMITA_FILENAME = "";
     private static final int WATCHDOG_CONST = 60000;
-    static final String TOMITA_INPUT_FILE_NAME = "input.txt";
-    static final String TOMITA_OUTPUT_FILE_NAME = "PrettyOutput.html";
+    private static final String TOMITA_INPUT_FILE_NAME = "input.txt";
+    private static final String TOMITA_OUTPUT_FILE_NAME = "PrettyOutput.html";
     private static final String TOMITA_MESSAGE_NAME = "NGrams";
     private static final File TOMITA_WORKING_DIR = new File("posttongram/tomitaWorkingFiles");
 
@@ -102,18 +103,22 @@ public class TomitaExecutor {
     }
 
     public static String getTomitFileName() {
-        String oSName = System.getProperty("os.name");
-        if (oSName.equals("Linux")) {
-            // разрядность?
-            return "tomita-linux64";
+        if (!TOMITA_FILENAME.isEmpty()) {
+            return TOMITA_FILENAME;
+        } else {
+            String oSName = System.getProperty("os.name");
+            if (oSName.equals("Linux")) {
+                // разрядность?
+                return "tomita-linux64";
+            }
+            if (oSName.equals("Windows")) {
+                return "tomita-win32";
+            }
+            if (oSName.equals("Mac")) {
+                return "tomita-mac";
+            }
+            return "tomita-freebsd";
         }
-        if (oSName.equals("Windows")) {
-            return "tomita-win32";
-        }
-        if (oSName.equals("Mac")) {
-            return "tomita-mac";
-        }
-        return "tomita-freebsd";
     }
 
 
