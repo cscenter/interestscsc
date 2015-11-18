@@ -4,11 +4,13 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import crawler.loaders.*;
 import crawler.parsers.*;
+import crawler.proxy.ProxyFactory;
 import data.Post;
 import data.Tag;
 import data.User;
 import db.DBConnector;
 import db.DBConnectorToCrawler;
+import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
@@ -31,6 +33,11 @@ public class Crawler {
     // connector to DB
     private DBConnectorToCrawler db;
 
+    // proxyFactory-factory
+    private ProxyFactory proxyFactory;
+    private HttpHost proxy;
+
+    // set of all user's post's url
     public static Set<Long> userPostUrls;
 
     // set of region
@@ -55,6 +62,7 @@ public class Crawler {
         Unirest.setTimeouts(10000, 60000);
         usersQueue = new LinkedList<>();
         allTags = new HashMap<>();
+        proxyFactory = new ProxyFactory();
     }
 
     public void crawl(String startUser) throws SQLException {
@@ -232,6 +240,7 @@ public class Crawler {
     // add starting user and get list of users from DB
     private void initStartUsersQueue(final String startUser) throws SQLException {
         usersQueue.add(startUser);
+        proxy = proxyFactory.getProxy();
 
         //get regions
         regions = new HashSet<>(db.getRegions());
@@ -256,6 +265,7 @@ public class Crawler {
     // get user's info
     private User getUserInfo(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
 
+        tryConnectToProxy();
         String response = new UserInfoLoader().loadData(nick);
         if ("ERROR".equals(response)) {
             return null;
@@ -267,6 +277,7 @@ public class Crawler {
     // get all user's friends
     private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Unirest.setProxy(null);
         String response = new UserFriendsLoader().loadData(nick);
         if ("ERROR".equals(response)) {
             return null;
@@ -278,6 +289,7 @@ public class Crawler {
     // get all user's tags
     private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        tryConnectToProxy();
         String response = new UserTagsLoader().loadData(nick);
         if ("ERROR".equals(response)) {
             return null;
@@ -289,6 +301,7 @@ public class Crawler {
     // get 25 posts by current tag
     private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
+        Unirest.setProxy(null);
         String response = new TagPostLoader().loadData(nick, tag.getName());
         if ("ERROR".equals(response)) {
             return null;
@@ -299,8 +312,18 @@ public class Crawler {
 
     private boolean doesUserAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
+        Unirest.setProxy(null);
         String response = new UserRobotsLoader().loadData(nick);
         return !"ERROR".equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
 
+    }
+
+    private void tryConnectToProxy() {
+        try {
+            Unirest.setProxy(proxy);
+            logger.info("Use proxy: " + proxy.toString());
+        } catch (RuntimeException e) {
+            proxy = proxyFactory.getProxy();
+        }
     }
 }

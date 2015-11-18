@@ -6,7 +6,6 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.Objects;
 
 public abstract class BaseLoader {
 
