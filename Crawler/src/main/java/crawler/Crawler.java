@@ -31,8 +31,10 @@ public class Crawler {
     // connector to DB
     private DBConnectorToCrawler db;
 
+    public static Set<Post> userPosts;
+
     // set of region
-    private HashSet<String> regions;
+    private Set<String> regions;
 
     // only statistics
     private List<String> usersNoTags;
@@ -133,7 +135,7 @@ public class Crawler {
                     }
 
                     tagsNoAccess = new ArrayList<>();
-
+                    userPosts = new HashSet<>();
                     logger.info("Getting posts...");
                     for (Tag tag : userTags) {
                         logger.info("Tag: " + tag.getName() + " - " + (tag.getUses() != null ? tag.getUses() : 0) + " uses.");

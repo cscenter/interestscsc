@@ -84,4 +84,20 @@ public class Post {
     public String toString() {
         return title + text;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Post post = (Post) o;
+
+        return url.equals(post.url);
+
+    }
+
+    @Override
+    public int hashCode() {
+        return url.hashCode();
+    }
 }

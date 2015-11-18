@@ -1,5 +1,6 @@
 package crawler.parsers;
 
+import crawler.Crawler;
 import data.Post;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -56,11 +57,14 @@ public class TagPostParser {
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", new Locale("en_US"));
             Timestamp timePost = new Timestamp(dateFormat.parse(date.text()).getTime());
-            postList.add(new Post(
+            Post post = new Post(
                     title.text(), safeText, nick,
                     timePost, urlNumber,
                     countComments, tagsList
-            ));
+            );
+            if (Crawler.userPosts.add(post)) {
+                postList.add(post);
+            }
         }
         return postList;
 
