@@ -42,7 +42,7 @@ public class TagPostParser {
             Elements postTags = selectionPost.select(TAG_SELECTOR);
             Elements comments = selectionPost.getElementsByTag(COUNT_COMMENTS_SELECTOR);
 
-            String safeText = Jsoup.clean(text.text(), Whitelist.none());
+            String safeText = Jsoup.clean(text.text().replaceAll("<", " <"), Whitelist.none());
             List<String> tagsList = postTags.stream().map(Element::text).collect(Collectors.toList());
 
             String regex = "/\\d+";    // the number

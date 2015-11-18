@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.sql.*;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Scanner;
 
 /**
@@ -25,9 +26,9 @@ public class DBConnector {
     protected final DataBase dataBase;
 
     public enum NGramType {
-        UNIGRAM("unigram","unigramToPost"),
-        DIGRAM("digram","digramToPost"),
-        TRIGRAM("trigram","trigramToPost");
+        UNIGRAM("unigram", "unigramToPost"),
+        DIGRAM("digram", "digramToPost"),
+        TRIGRAM("trigram", "trigramToPost");
 
         private final String tableName;
         private final String tableToPostName;
@@ -47,9 +48,9 @@ public class DBConnector {
     }
 
     public enum DataBase {
-        MAIN("185.72.144.129", 5432, "veiloneru",      "veiloneru",      "wasddsaw", 20, 5),
+        MAIN("185.72.144.129", 5432, "veiloneru", "veiloneru", "wasddsaw", 20, 5),
         TEST("185.72.144.129", 5432, "veiloneru_test", "veiloneru_test", "wasddsaw", 20, 5),
-        LOCAL("localhost",     5432, "interests",      "interests",      "12345",    20, 5);
+        LOCAL("localhost", 5432, "interests", "interests", "12345", 20, 5);
 
         private final String host;
         private final int port;                 // 5432 - стандартный порт постгрес
@@ -151,6 +152,21 @@ public class DBConnector {
                 PreparedStatement selectRegions = con.prepareStatement(selectRegionsString)
         ) {
             ResultSet rs = tryQueryTransaction(selectRegions, "Region");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
+    public Queue<String> getRawUsers() throws SQLException {
+        Queue<String> result = new LinkedList<>();
+        String selectRawUsersString = "SELECT nick FROM RawUserLJ;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectRawUsers = con.prepareStatement(selectRawUsersString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectRawUsers, "RawUserLJ");
             if (rs != null)
                 while (rs.next())
                     result.add(rs.getString(1));

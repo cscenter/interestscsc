@@ -6,6 +6,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Objects;
 
 public abstract class BaseLoader {
 
@@ -22,6 +23,9 @@ public abstract class BaseLoader {
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
 
+        if (!Objects.equals(response.getStatusText(), "OK")) {
+            return "ERROR";
+        }
         return response.getBody();
     }
 

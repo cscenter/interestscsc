@@ -2,14 +2,8 @@ package crawler;
 
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import crawler.loaders.TagPostLoader;
-import crawler.loaders.UserFriendsLoader;
-import crawler.loaders.UserInfoLoader;
-import crawler.loaders.UserTagsLoader;
-import crawler.parsers.TagPostParser;
-import crawler.parsers.UserFriendsParser;
-import crawler.parsers.UserInfoParser;
-import crawler.parsers.UserTagsParser;
+import crawler.loaders.*;
+import crawler.parsers.*;
 import data.Post;
 import data.Tag;
 import data.User;
@@ -87,13 +81,13 @@ public class Crawler {
                     logger.info("Left in users' queue: " + usersQueue.size());
                     Set<Tag> userTags = null;
                     User userInfo = null;
-                    List<String> friends = new LinkedList<>();
+                    List<String> friends = null;
                     try {
-
-                        friends = getUserFriends(nick);
-                        userInfo = getUserInfo(nick);
-                        userTags = getUserTags(nick);
-
+                        if (isUserHavingAllowPages(nick)) {
+                            friends = getUserFriends(nick);
+                            userInfo = getUserInfo(nick);
+                            userTags = getUserTags(nick);
+                        }
                     } catch (UnirestException e) {
                         logger.warn("User: " + nick + " haven't access. Uniress exception.");
                         logger.error("User: " + nick + " haven't access. " + e);
@@ -218,21 +212,8 @@ public class Crawler {
     private void logFinalStatistics() {
 
         long countTags = allTags.keySet().size();
-        long countTagsUses = 0;
-
-        logger.info("++++++++++++++++++++++++++++++++++++++++++");
-        logger.info("ALL TAGS:");
-
-
-        for (Map.Entry<String, Integer> tag : allTags.entrySet()) {
-            countTagsUses += tag.getValue();
-
-            logger.info(tag.getKey() + " : " + tag.getValue() + " uses");
-        }
-
         logger.info("=============================================");
         logger.info("Count tags: " + countTags);
-        logger.info("Count tags uses: " + countTagsUses);
         logger.info("Count users without tags: " + usersNoTags.size());
         if (!usersNoTags.isEmpty()) {
             logger.info("Users without tags:");
@@ -268,28 +249,51 @@ public class Crawler {
     // get user's info
     private User getUserInfo(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
 
-        return UserInfoParser.getUserInfo(new UserInfoLoader().loadData(nick), nick);
+        String response = new UserInfoLoader().loadData(nick);
+        if (Objects.equals(response, "ERROR")) {
+            return null;
+        }
+        return UserInfoParser.getUserInfo(response, nick);
 
     }
 
     // get all user's friends
     private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
-        return UserFriendsParser.getFriends(new UserFriendsLoader().loadData(nick));
+        String response = new UserFriendsLoader().loadData(nick);
+        if (Objects.equals(response, "ERROR")) {
+            return null;
+        }
+        return UserFriendsParser.getFriends(response);
 
     }
 
     // get all user's tags
     private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
-        return UserTagsParser.getTags(new UserTagsLoader().loadData(nick), nick);
+        String response = new UserTagsLoader().loadData(nick);
+        if (Objects.equals(response, "ERROR")) {
+            return null;
+        }
+        return UserTagsParser.getTags(response, nick);
 
     }
 
     // get 25 posts by current tag
     private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
-        return TagPostParser.getPosts(new TagPostLoader().loadData(nick, tag.getName()), nick);
+        String response = new TagPostLoader().loadData(nick, tag.getName());
+        if (Objects.equals(response, "ERROR")) {
+            return null;
+        }
+        return TagPostParser.getPosts(response, nick);
+
+    }
+
+    private boolean isUserHavingAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+
+        String response = new UserRobotsLoader().loadData(nick);
+        return !Objects.equals(response, "ERROR") && !UserRobotsParser.getDisallowPages(response).contains("/");
 
     }
 }
