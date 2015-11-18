@@ -1,7 +1,7 @@
 package crawler;
 
 import com.mashape.unirest.http.exceptions.UnirestException;
-import crawler.loaders.UserInfoLoader;
+import crawler.loaders.TagPostLoader;
 import db.DBConnector;
 import db.DBConnectorToCrawler;
 import org.apache.log4j.Logger;
@@ -11,11 +11,13 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
-public class InfGetUserInfoTest {
+public class InfGetRssTest {
     private DBConnector db;
-    private static final Logger logger = Logger.getLogger(InfGetUserInfoTest.class);
+    private static final Logger logger = Logger.getLogger(InfGetRssTest.class);
 
     @Before
     public void setUp() {
@@ -27,27 +29,29 @@ public class InfGetUserInfoTest {
     }
 
     @Test
-    public void testGettingUserInfo() {
-        Queue<String> rawUsers = null;
+    public void testGettingRSS() {
+
+        String nick = "mi3ch";
+        List<String> rawTags = null;
         try {
-            rawUsers = db.getRawUsers();
+            rawTags = db.getAllTagNames(nick);
         } catch (SQLException e) {
-            logger.error("Error getting raw users. " + e);
+            logger.error("User: " + nick + " " + e);
         }
 
-        Assert.assertNotNull(rawUsers);
-        Queue<String> workingUsers = new LinkedList<>(rawUsers);
+        Assert.assertNotNull(rawTags);
+        Queue<String> workingTags = new LinkedList<>(rawTags);
         long iter = 0;
-        UserInfoLoader loader = new UserInfoLoader();
         while (true) {
-            if (workingUsers.isEmpty()) {
-                workingUsers.addAll(rawUsers);
+            if (workingTags.isEmpty()) {
+                workingTags.addAll(rawTags);
             }
-            String nick = workingUsers.poll();
+            String tagname = workingTags.poll();
             String response = null;
-            logger.info("Iteration: " + ++iter + " : " + nick);
+            logger.info("Iteration: " + ++iter + " : " + tagname);
             try {
-                response = loader.loadData(nick);
+                TagPostLoader loader = new TagPostLoader();
+                response = loader.loadData(nick, tagname);
             } catch (UnirestException e) {
                 logger.warn("User: " + nick + " haven't access. Uniress exception.");
                 logger.error("User: " + nick + " haven't access. " + e);

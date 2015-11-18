@@ -31,7 +31,7 @@ public class Crawler {
     // connector to DB
     private DBConnectorToCrawler db;
 
-    public static Set<Post> userPosts;
+    public static Set<Long> userPostUrls;
 
     // set of region
     private Set<String> regions;
@@ -85,7 +85,7 @@ public class Crawler {
                     User userInfo = null;
                     List<String> friends = null;
                     try {
-                        if (isUserHavingAllowPages(nick)) {
+                        if (doesUserAllowPages(nick)) {
                             friends = getUserFriends(nick);
                             userInfo = getUserInfo(nick);
                             userTags = getUserTags(nick);
@@ -135,7 +135,7 @@ public class Crawler {
                     }
 
                     tagsNoAccess = new ArrayList<>();
-                    userPosts = new HashSet<>();
+                    userPostUrls = db.getAllUserPostUrls(nick);
                     logger.info("Getting posts...");
                     for (Tag tag : userTags) {
                         logger.info("Tag: " + tag.getName() + " - " + (tag.getUses() != null ? tag.getUses() : 0) + " uses.");
@@ -149,6 +149,11 @@ public class Crawler {
                         if (posts == null) {
                             tagsNoAccess.add(tag);
                             logger.warn("No access to user: " + nick + " with tag: " + tag.getName());
+                            continue;
+                        }
+
+                        if (posts.isEmpty()) {
+                            logger.info("User: " + nick + " haven't new posts with tag: " + tag.getName());
                             continue;
                         }
 
@@ -252,7 +257,7 @@ public class Crawler {
     private User getUserInfo(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
 
         String response = new UserInfoLoader().loadData(nick);
-        if (Objects.equals(response, "ERROR")) {
+        if ("ERROR".equals(response)) {
             return null;
         }
         return UserInfoParser.getUserInfo(response, nick);
@@ -263,7 +268,7 @@ public class Crawler {
     private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
         String response = new UserFriendsLoader().loadData(nick);
-        if (Objects.equals(response, "ERROR")) {
+        if ("ERROR".equals(response)) {
             return null;
         }
         return UserFriendsParser.getFriends(response);
@@ -274,7 +279,7 @@ public class Crawler {
     private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
         String response = new UserTagsLoader().loadData(nick);
-        if (Objects.equals(response, "ERROR")) {
+        if ("ERROR".equals(response)) {
             return null;
         }
         return UserTagsParser.getTags(response, nick);
@@ -285,17 +290,17 @@ public class Crawler {
     private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
         String response = new TagPostLoader().loadData(nick, tag.getName());
-        if (Objects.equals(response, "ERROR")) {
+        if ("ERROR".equals(response)) {
             return null;
         }
         return TagPostParser.getPosts(response, nick);
 
     }
 
-    private boolean isUserHavingAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private boolean doesUserAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
         String response = new UserRobotsLoader().loadData(nick);
-        return !Objects.equals(response, "ERROR") && !UserRobotsParser.getDisallowPages(response).contains("/");
+        return !"ERROR".equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
 
     }
 }

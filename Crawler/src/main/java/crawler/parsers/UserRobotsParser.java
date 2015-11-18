@@ -11,9 +11,10 @@ public class UserRobotsParser {
 
         String[] rawDisallow = anyUserAgent.split("User-Agent: \\*");
 
+        final int SECOND_PART_AFTER_SPLIT = 1;
         Set<String> disallow = new HashSet<>();
-        if (rawDisallow.length == 2) {
-            String[] userAgentDisallow = rawDisallow[1].split("\n");
+        if (rawDisallow.length > SECOND_PART_AFTER_SPLIT) {
+            String[] userAgentDisallow = rawDisallow[SECOND_PART_AFTER_SPLIT].split("\n");
             Collections.addAll(disallow, userAgentDisallow);
         }
         return disallow;

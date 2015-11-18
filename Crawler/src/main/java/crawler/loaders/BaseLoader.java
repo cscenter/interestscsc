@@ -23,7 +23,7 @@ public abstract class BaseLoader {
                 .header("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3")
                 .asString();
 
-        if (!Objects.equals(response.getStatusText(), "OK")) {
+        if (!"OK".equals(response.getStatusText())) {
             return "ERROR";
         }
         return response.getBody();

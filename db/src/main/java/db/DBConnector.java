@@ -7,10 +7,7 @@ import org.postgresql.util.PSQLException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.sql.*;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * User: allight
@@ -262,6 +259,24 @@ public class DBConnector {
             if (rs != null)
                 while (rs.next())
                     result.add(rs.getString(1));
+        }
+        return result;
+    }
+
+    public Set<Long> getAllUserPostUrls(String userLJNick) throws SQLException {
+        Set<Long> result = new HashSet<>();
+        String selectUserPostUrlsString = "SELECT url FROM Post p " +
+                "WHERE p.user_id = (SELECT id FROM UserLJ WHERE nick = ?);";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectUserPostUrls = con.prepareStatement(selectUserPostUrlsString)
+        ) {
+            int i = 0;
+            selectUserPostUrls.setString(++i, userLJNick);
+            ResultSet rs = tryQueryTransaction(selectUserPostUrls, "UserLJ");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
         }
         return result;
     }
