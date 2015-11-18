@@ -33,7 +33,7 @@ public class DBConnectorTestNormalization {
         DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestNormalization");
         for (int i = 0; i < 5; ++i) {
             String username = "username" + i;
-            dbCrawl.insertUser(new User(username, null, null, null, null, null, null));
+            dbCrawl.insertUser(new User.UserBuilder(username).build());
             ArrayList<Post> userPosts = new ArrayList<>();
             for (int j = 0; j < 5; ++j)
                 userPosts.add(new Post("SomeTitle", "SomeText", username, Timestamp.valueOf("2015-10-19 08:11:41"),
