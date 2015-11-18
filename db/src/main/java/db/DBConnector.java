@@ -192,14 +192,23 @@ public class DBConnector {
             if (rs != null)
                 while (rs.next()) {
                     int i = 0;
-                    result.add(new User(
-                            rs.getLong(++i), rs.getString(++i), rs.getString(++i),
-                            rs.getTimestamp(++i), rs.getTimestamp(++i),
-                            rs.getTimestamp(++i), rs.getDate(++i),
-                            rs.getString(++i), rs.getString(++i),
-                            rs.getInt(++i), rs.getInt(++i),
-                            rs.getInt(++i), rs.getString(++i), new LinkedList<>()
-                    ));
+                    Long id = rs.getLong(++i);
+                    result.add(new User.UserBuilder(rs.getString(++i))
+                            .setId(id)
+                            .setRegion(rs.getString(++i))
+                            .setDateCreated(rs.getTimestamp(++i))
+                            .setDateUpdated(rs.getTimestamp(++i))
+                            .setDateFetched(rs.getTimestamp(++i))
+                            .setBirthday(rs.getDate(++i))
+                            .setInterests(rs.getString(++i))
+                            .setCustomCity(rs.getString(++i))
+                            .setPostsNum(rs.getInt(++i))
+                            .setCommentsPosted(rs.getInt(++i))
+                            .setCommentsReceived(rs.getInt(++i))
+                            .setBiography(rs.getString(++i))
+                            .setSchools(new LinkedList<>())
+                            .build()
+                    );
                 }
         }
         return result;

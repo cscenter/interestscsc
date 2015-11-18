@@ -67,12 +67,13 @@ public class DBConnectorTestCrawling {
 
             // Собираем c LJ информацию о пользователе в объект класса User (имитация)
             String[] r = new String[]{"RU", "other", null};
-            User user = new User(null, username, r[new Random().nextInt(3)],
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    null, null, null, null, null, null, null, new LinkedList<>()
-            );
+            User user = new User.UserBuilder(username)
+                    .setRegion(r[new Random().nextInt(3)])
+                    .setDateCreated(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setDateUpdated(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setDateFetched(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setSchools(new LinkedList<>())
+                    .build();
 
             // Если у пользователя есть регион, отсутсвующий в кэше, добавляем его
             if (user.getRegion() != null && !regions.contains(user.getRegion())) {

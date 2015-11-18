@@ -194,14 +194,20 @@ public class UserInfoParser {
             countNullInterests++;
         }
 
-        return new User(null, nick, region,
-                dateCreated != null ? Timestamp.valueOf(dateCreated) : null,
-                dateUpdated != null ? Timestamp.valueOf(dateUpdated) : null,
-                Timestamp.valueOf(LocalDateTime.now()),
-                birthday != null ? Date.valueOf(birthday) : null,
-                interestsStr, city, postPosted,
-                commentPosted, commentReceived,
-                bio, schools);
+        return new User.UserBuilder(nick)
+                .setRegion(region)
+                .setDateCreated(dateCreated != null ? Timestamp.valueOf(dateCreated) : null)
+                .setDateUpdated(dateUpdated != null ? Timestamp.valueOf(dateUpdated) : null)
+                .setDateFetched(Timestamp.valueOf(LocalDateTime.now()))
+                .setBirthday(birthday != null ? Date.valueOf(birthday) : null)
+                .setInterests(interestsStr)
+                .setCustomCity(city)
+                .setPostsNum(postPosted)
+                .setCommentsPosted(commentPosted)
+                .setCommentsReceived(commentReceived)
+                .setBiography(bio)
+                .setSchools(schools)
+                .build();
     }
 
     // logging information about the number of users without any data(region, date of creation, etc)

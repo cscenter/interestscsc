@@ -35,7 +35,7 @@ public class DBConnectorTestLearning {
         DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestLearning");
         for (int i = 0; i < 5; ++i) {
             String username = "username" + i;
-            dbCrawl.insertUser(new User(username, null, null, null, null, null, null));
+            dbCrawl.insertUser(new User.UserBuilder(username).build());
             ArrayList<Tag> userTags = new ArrayList<>();
             for (int j = 0; j < 5; ++j)
                 userTags.add(new Tag("tagname" + new Random().nextInt(100), null));
