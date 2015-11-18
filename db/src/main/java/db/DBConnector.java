@@ -368,28 +368,7 @@ public class DBConnector {
                 --tries;
                 resultSet = statement.executeQuery();
             } catch (PSQLException pse) {
-                final String ss = pse.getSQLState();
-                if ("23505".equals(ss)) { // unique_violation
-                    System.err.println("PSQLException: unique_violation on query <" +
-                            statement + ">. Continue."); //TODO statement печатается норм
-                    break;
-                } else if ("40001".equals(ss) || "40P01".equals(ss)) { // serialization_failure, deadlock_detected
-                    retryTransaction = true; //TODO переписать как отдельные методы
-                    System.err.println("PSQLException: serialization_failure or deadlock_detected. " +
-                            "Retrying transaction.");
-                } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
-                    System.err.println("PSQLException: suspected bad connection. Closing query transaction to " +
-                            "table " + tableName + ". \n If you see this exception than we need a code fix");
-                    //TODO как-то по другому обрабатывать?
-                    throw pse;
-                } else if ("42P01".equals(ss)) { // undefined_table
-                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
-                            "try DBConnector method dropInitDatabase().");
-                    throw pse;
-                } else {
-                    System.err.println(ss);
-                    throw pse;
-                }
+                retryTransaction = processPSE(pse,tableName,null);
             }
         return resultSet;
     }
@@ -405,71 +384,59 @@ public class DBConnector {
                 --tries;
                 affected += toExecute.executeUpdate();
             } catch (PSQLException pse) {
-                final String ss = pse.getSQLState();
-                if ("23505".equals(ss)) { // unique_violation
-                    System.err.println("PSQLException: unique_violation. We already have entry \"" +
-                            currEntry + "\" in table \"" + tableName + "\". Continue."); //TODO нормальный лог
-                    break;
-                } else if ("40001".equals(ss) || "40P01".equals(ss)) { // serialization_failure, deadlock_detected
-                    retryTransaction = true;
-                    System.err.println("PSQLException: serialization_failure or deadlock_detected. " +
-                            "Retrying transaction.");
-                } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
-                    System.err.println("PSQLException: suspected bad connection. Closing transaction " +
-                            "with first unadded entry: " + currEntry + ". \n If you see this exception than we need a code fix");
-                    //TODO как-то по другому обрабатывать?
-                    throw pse;
-                } else if ("42P01".equals(ss)) { // undefined_table
-                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
-                            "try DBConnector method dropInitDatabase().");
-                    throw pse;
-                } else {
-                    System.err.println(ss);
-                    throw pse;
-                }
+                retryTransaction = processPSE(pse,tableName,currEntry);
             }
         return affected;
     }
 
-    protected int tryUpdateTransaction(Connection con, Iterable<PreparedStatement> toExecute,
-                                       String currEntry, String tableName) throws SQLException {
+    protected void tryBatchTransaction(Connection con, Iterable<PreparedStatement> toExecute,
+                                       String tableName) throws SQLException {
         boolean retryTransaction = true;
         int tries = dataBase.maxTries;
-        int affected = 0;
         while (retryTransaction && tries > 0)
             try {
                 retryTransaction = false;
                 --tries;
                 con.setAutoCommit(false);
-                for (PreparedStatement st : toExecute)
-                    affected += st.executeUpdate();
+                for (PreparedStatement st : toExecute) {
+                    if (con != st.getConnection())
+                        throw new IllegalArgumentException(
+                                "One of the Statements doesn't related with current Connection");
+                    st.execute();
+                }
                 con.commit();
             } catch (PSQLException pse) {
-                final String ss = pse.getSQLState();
-                if ("23505".equals(ss)) { // unique_violation
-                    System.err.println("PSQLException: unique_violation. We already have entry \"" +
-                            currEntry + "\" in table \"" + tableName + "\". Continue.");
-                    break;
-                } else if ("40001".equals(ss) || "40P01".equals(ss)) { // serialization_failure, deadlock_detected
-                    retryTransaction = true;
-                    System.err.println("PSQLException: serialization_failure or deadlock_detected. " +
-                            "Retrying transaction.");
-                } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
-                    System.err.println("PSQLException: suspected bad connection. Closing transaction " +
-                            "with first unadded entry: " + currEntry + ". \n If you see this exception than we need a code fix");
-                    //TODO как-то по другому обрабатывать?
-                    throw pse;
-                } else if ("42P01".equals(ss)) { // undefined_table
-                    System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
-                            "try DBConnector method dropInitDatabase().");
-                    throw pse;
-                } else {
-                    System.err.println(ss);
-                    throw pse;
-                }
+                retryTransaction = processPSE(pse,tableName,null);
             } finally {
                 con.setAutoCommit(true);
             }
-        return affected;
+    }
+
+    protected boolean processPSE(PSQLException pse, String tableName, String currEntry) throws PSQLException {
+        final String ss = pse.getSQLState();
+        boolean entry = currEntry != null;
+        if ("23505".equals(ss)) { // unique_violation
+            System.err.println("PSQLException: unique_violation" +
+                    (entry ? ". We already have entry \"" + currEntry + "\"" : "") +
+                    " in table \"" + tableName + "\". Continue.");
+            return false;
+        } else if ("40001".equals(ss) || "40P01".equals(ss)) { // serialization_failure, deadlock_detected
+            System.err.println("PSQLException: serialization_failure or deadlock_detected. " +
+                    "Retrying transaction.");
+            return true;
+        } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
+            System.err.println("PSQLException: suspected bad connection. Closing transaction " +
+                    (entry ? "with first unprocessed entry: \"" + currEntry + "\"": "") +
+                    ". \n If you see this exception than we need a code fix");
+            //TODO как-то по другому обрабатывать?
+            throw pse;
+        } else if ("42P01".equals(ss)) { // undefined_table
+            System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
+                    "try DBConnector method dropInitDatabase().");
+            throw pse;
+        } else {
+            System.err.println(ss);
+            throw pse;
+        }
     }
 }

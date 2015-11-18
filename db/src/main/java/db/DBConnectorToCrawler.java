@@ -3,6 +3,7 @@ package db;
 import data.Post;
 import data.Tag;
 import data.User;
+import org.postgresql.util.PSQLException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -75,26 +76,46 @@ public class DBConnectorToCrawler extends DBConnector {
     }
 
     /**
-     * Поочередно добавляет в БД пользователей из любого итерабельного контейнера.
-     * Информация о регионах добавляемых пользователей уже должна быть в базе.
-     *
-     * @return кол-во добавленных записей
+     * Добавляет в БД ники пользователей из любого итерабельного контейнера.
      */
-    public int insertRawUsers(Iterable<String> rawUsersLJ) throws SQLException {
-        int rowsAffected = 0;
+    public void insertRawUsers(Iterable<String> rawUsersLJ) throws SQLException {
+        String createTempTableString =
+                "CREATE TEMPORARY TABLE RawUserLJTemp (nick TEXT) ON COMMIT DROP";
         String insertUserString =
-                "INSERT INTO RawUserLJ (nick) VALUES (?);";
-        try (
-                Connection con = getConnection();
-                PreparedStatement insertUser = con.prepareStatement(insertUserString)
-        ) {
-            for (String user : rawUsersLJ) {
-                int i = 0;
-                insertUser.setString(++i, user);
-                rowsAffected += tryUpdateTransaction(insertUser, user, "RawUserLJ");
+                "INSERT INTO RawUserLJTemp (nick) VALUES (?);";
+        String updateMainTableString =
+                "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
+                "DELETE FROM RawUserLJTemp rt USING RawUserLJ r WHERE rt.nick = r.nick; " +
+                "INSERT INTO rawuserlj (nick) SELECT nick FROM RawUserLJTemp GROUP BY nick; ";
+
+        boolean retryTransaction = true;
+        int tries = dataBase.getMaxTries();
+        while (retryTransaction && tries > 0)
+            try (
+                    Connection con = getConnection();
+                    PreparedStatement createTempTable = con.prepareStatement(createTempTableString);
+                    PreparedStatement insertUser = con.prepareStatement(insertUserString);
+                    PreparedStatement updateMainTable = con.prepareStatement(updateMainTableString)
+            ) {
+                retryTransaction = false;
+                --tries;
+
+                try {
+                    con.setAutoCommit(false);
+                    createTempTable.execute();
+                    for (String user : rawUsersLJ) {
+                        int i = 0;
+                        insertUser.setString(++i, user);
+                        insertUser.execute();
+                    }
+                    updateMainTable.execute();
+                    con.commit();
+                } finally {
+                    con.setAutoCommit(true);
+                }
+            } catch (PSQLException pse) {
+                retryTransaction = processPSE(pse,"RawUserLJ",null);
             }
-        }
-        return rowsAffected;
     }
 
     /**
