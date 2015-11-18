@@ -121,7 +121,9 @@ public class Crawler {
                     logger.info("Count tags: " + userTags.size());
                     try {
                         // add information into DB
+                        logger.info("Insertion friends to DB...");
                         db.insertRawUsers(friends);
+                        logger.info("Insertion user info and tags to DB...");
                         db.insertUser(userInfo);
                         db.insertTags(userTags, nick);
 
@@ -161,7 +163,8 @@ public class Crawler {
                         }
 
                         if (posts.isEmpty()) {
-                            logger.info("User: " + nick + " haven't new posts with tag: " + tag.getName());
+                            logger.info("User: " + nick + " haven't NEW posts with tag: " + tag.getName()
+                                    + ". All posts with this tag are already in DB.");
                             continue;
                         }
 
