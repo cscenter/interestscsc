@@ -68,13 +68,15 @@ public class ProxyFactory {
         );
 
         service.shutdown();
-        boolean done = false;
-        try {
-            done = service.awaitTermination(1, TimeUnit.HOURS);
-        } catch (InterruptedException e) {
-            logger.error("Shutdown service was interrupted. " + e);
+        while (!service.isTerminated()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                logger.error("Interrupt error");
+            }
         }
-        logger.info("All thread was finished? " + done);
+
+        logger.info("All thread was finished.");
         writeWorkingProxiesToFile("working-proxies.txt");
     }
 
@@ -111,7 +113,9 @@ public class ProxyFactory {
 
         if (!BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             logger.info("Find new working proxy: " + proxy.toString());
-            workingProxies.add(proxy);
+            if (!workingProxies.contains(proxy)) {
+                workingProxies.add(proxy);
+            }
         }
         else {
             logger.info("No access to LJ for proxy: " + proxy.toString());

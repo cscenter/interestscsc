@@ -270,8 +270,8 @@ public class Crawler {
     // initialization of user's queue
     // add starting user and get list of users from DB
     private void initStartUsersQueue() throws SQLException {
-        proxyFactory.insertFromFile(RAW_PROXIES_FILE, false);
         proxyFactory.insertFromFile(WORKING_PROXIES_FILE, true);
+        proxyFactory.insertFromFile(RAW_PROXIES_FILE, false);
         Set<String> rawAllUsers = new HashSet<>(db.getRawUsers());
         Thread proxyThread = new Thread(() -> {
             proxyFactory.findWorkingProxy(rawAllUsers);
