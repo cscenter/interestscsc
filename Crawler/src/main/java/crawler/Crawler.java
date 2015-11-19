@@ -20,9 +20,9 @@ import java.util.*;
 
 public class Crawler {
 
-    private final int MAX_TRIES_RECONNECT = 5;
-    private final int MAX_NUMBER_OF_SESSIONS = 10;
-    private final int MAX_NUMBER_OF_USERS_PER_SESSION = 1000;
+    private static final int MAX_TRIES_RECONNECT = 5;
+    private static final int MAX_NUMBER_OF_SESSIONS = 10;
+    private static final int MAX_NUMBER_OF_USERS_PER_SESSION = 1000;
 
     // queue of users who should be considered
     private Queue<String> usersQueue;
@@ -68,12 +68,15 @@ public class Crawler {
     public void crawl(String startUser) throws SQLException {
 
         logger.info("Start...");
-        //
+
+        usersQueue.add(startUser.replaceAll("_", "-"));
+        db.insertRawUsers(usersQueue);
+        usersQueue.clear();
         int numberSession = MAX_NUMBER_OF_SESSIONS;
         while (numberSession-- > 0) {
             logger.info("Start " + (MAX_NUMBER_OF_SESSIONS - numberSession) + " session...");
             try {
-                initStartUsersQueue(startUser.replaceAll("_", "-"));
+                initStartUsersQueue();
             } catch (SQLException sqle) {
                 logger.error("Error initialization of user's queue from DB. " + sqle);
                 throw sqle;
@@ -171,7 +174,7 @@ public class Crawler {
                         try {
                             db.insertPosts(posts);
                         } catch (SQLException sqle) {
-                            logger.error("Inserting posts into DB wasn't successful!");
+                            logger.error("Inserting posts into DB wasn't successful! Tag: " + tag.getName());
                             logger.error("Error working with DB. " + sqle);
                         }
 
@@ -241,14 +244,11 @@ public class Crawler {
 
     // initialization of user's queue
     // add starting user and get list of users from DB
-    private void initStartUsersQueue(final String startUser) throws SQLException {
-        usersQueue.add(startUser);
+    private void initStartUsersQueue() throws SQLException {
         proxy = proxyFactory.getProxy();
 
         //get regions
         regions = new HashSet<>(db.getRegions());
-        db.insertRawUsers(usersQueue);
-        usersQueue.clear();
 
         List<String> usersToProceed = db.getUnfinishedRawUsers();
         usersToProceed.addAll(db.getReservedRawUsers());
@@ -270,7 +270,7 @@ public class Crawler {
 
         tryConnectToProxy();
         String response = new UserInfoLoader().loadData(nick);
-        if ("ERROR".equals(response)) {
+        if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
         return UserInfoParser.getUserInfo(response, nick);
@@ -282,7 +282,7 @@ public class Crawler {
 
         Unirest.setProxy(null);
         String response = new UserFriendsLoader().loadData(nick);
-        if ("ERROR".equals(response)) {
+        if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
         return UserFriendsParser.getFriends(response);
@@ -294,7 +294,7 @@ public class Crawler {
 
         tryConnectToProxy();
         String response = new UserTagsLoader().loadData(nick);
-        if ("ERROR".equals(response)) {
+        if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
         return UserTagsParser.getTags(response, nick);
@@ -306,7 +306,7 @@ public class Crawler {
 
         Unirest.setProxy(null);
         String response = new TagPostLoader().loadData(nick, tag.getName());
-        if ("ERROR".equals(response)) {
+        if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
         return TagPostParser.getPosts(response, nick);
@@ -317,7 +317,7 @@ public class Crawler {
 
         Unirest.setProxy(null);
         String response = new UserRobotsLoader().loadData(nick);
-        return !"ERROR".equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
+        return !BaseLoader.ERROR_STATUS_PAGE.equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
 
     }
 

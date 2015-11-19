@@ -8,6 +8,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 public abstract class BaseLoader {
+    public static final String ERROR_STATUS_PAGE = "ERROR";
 
     public String loadData(String... argsToEncode) throws UnsupportedEncodingException, UnirestException, InterruptedException {
         String url = getUrl();
@@ -23,7 +24,7 @@ public abstract class BaseLoader {
                 .asString();
 
         if (!"OK".equals(response.getStatusText())) {
-            return "ERROR";
+            return ERROR_STATUS_PAGE;
         }
         return response.getBody();
     }
