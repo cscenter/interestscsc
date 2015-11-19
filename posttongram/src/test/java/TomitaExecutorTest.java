@@ -5,6 +5,7 @@ import db.DBConnectorToNormalizer;
 import org.apache.log4j.Logger;
 import posttongram.TomitaExecutor;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
@@ -22,7 +23,7 @@ public class TomitaExecutorTest {
         //configFileNgrammType.put("config3.proto", DBConnector.NGramType.TRIGRAM);
     }
 
-    public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
+    public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
 
         DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
 
@@ -49,11 +50,12 @@ public class TomitaExecutorTest {
             // here we have input file named 'test.txt' for tomita to process it!
             TomitaExecutor.saveFileForTomita(fullText);
 
-            for (String protoFileName : configFileNgrammType.keySet()) {
-                Map<String, String> wordsCount = TomitaExecutor.runTomitaOnText(protoFileName);
-                List<NGram> nGramms = TomitaExecutor.toNGramm(wordsCount);
 
-                //*/
+            for (String protoFileName : configFileNgrammType.keySet()) {
+                Map<String, String> wordPosition = TomitaExecutor.runTomitaOnText(protoFileName);
+                List<NGram> nGramms = TomitaExecutor.toNGramm(wordPosition);
+
+                ///*
                 for (NGram nGramm : nGramms) {
                     logger.info(post.getId() + " " + nGramm.getText() + " " + nGramm.getUsesCnt()
                             + " " + nGramm.getUsesStr());
@@ -66,4 +68,3 @@ public class TomitaExecutorTest {
         }
     }
 }
-

@@ -21,13 +21,6 @@ public class TomitaExecutor {
     private static final String TOMITA_MESSAGE_NAME = "NGrams";
     private static final File TOMITA_WORKING_DIR = new File("posttongram/tomitaWorkingFiles");
 
-    static final HashMap<String, String> configFileNgrammType = new HashMap();
-    static {
-        configFileNgrammType.put("config1.proto", "Unigram");
-        configFileNgrammType.put("config2.proto", "Bigram");
-        configFileNgrammType.put("config3.proto", "Trigram");
-    }
-
     public static List<NGram> toNGramm(Map<String, String> positionMap) {
         Set<String> keySet = positionMap.keySet();
         List<NGram> nGrams = new LinkedList<>();
@@ -41,7 +34,7 @@ public class TomitaExecutor {
     }
 
     // processNGrams
-    public static Map<String, String> runTomitaOnText(String protoFileName) {
+    public static Map<String, String> runTomitaOnText(String protoFileName) throws IOException {
         // here tomita processes 'test.txt' and produces 'PrettyOutput.html'
         runTomita(protoFileName);
         // here we get nGrams (with repeats) from our 'PrettyOutput.html'
@@ -103,9 +96,7 @@ public class TomitaExecutor {
     }
 
     public static String getTomitFileName() {
-        if (!TOMITA_FILENAME.isEmpty()) {
-            return TOMITA_FILENAME;
-        } else {
+        if (TOMITA_FILENAME.isEmpty()) {
             String oSName = System.getProperty("os.name");
             if (oSName.equals("Linux")) {
                 // разрядность?
@@ -118,25 +109,27 @@ public class TomitaExecutor {
                 return "tomita-mac";
             }
             return "tomita-freebsd";
+        } else {
+            return TOMITA_FILENAME;
         }
     }
 
 
     // запускает tomita с готовым config.proto
-    public static void runTomita(String protoFileName) {
+    public static void runTomita(String protoFileName) throws IOException {
         File tomitaExecutiveFile = new File(TOMITA_WORKING_DIR + File.separator + getTomitFileName());
 
+        //System.out.println();
         CommandLine cmdLine = new CommandLine(tomitaExecutiveFile);
         cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + protoFileName);
         DefaultExecutor executor = new DefaultExecutor();
         executor.setExitValue(0);
         ExecuteWatchdog watchdog = new ExecuteWatchdog(WATCHDOG_CONST);
         executor.setWatchdog(watchdog);
-        try {
+        //try {
             executor.execute(cmdLine);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //} catch (IOException e) {
+        //    e.printStackTrace();
+        //}
     }
 }
-
