@@ -103,7 +103,7 @@ public class ProxyFactory {
         try {
             logger.info("Check proxy: " + proxy.toString());
             response = new UserInfoLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
-        } catch (RuntimeException | InterruptedException | UnsupportedEncodingException | UnirestException e) {
+        } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
             logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
             Thread.currentThread().interrupt();
             return;

@@ -5,13 +5,13 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHost;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.net.URLEncoder;
 
 public abstract class BaseLoader {
     public static final String ERROR_STATUS_PAGE = "ERROR";
 
-    public synchronized String loadData(HttpHost proxy, String... argsToEncode) throws UnsupportedEncodingException, UnirestException, InterruptedException {
+    public synchronized String loadData(HttpHost proxy, String... argsToEncode) throws UnirestException, InterruptedException, IOException {
         String url = getUrl();
         String[] encodedArgs = new String[argsToEncode.length];
 

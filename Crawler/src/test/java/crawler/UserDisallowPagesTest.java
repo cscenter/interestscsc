@@ -12,9 +12,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
@@ -70,7 +69,7 @@ public class UserDisallowPagesTest {
                 proxy = proxyFactory.getNextProxy();
                 logger.warn("User: " + nick + " haven't access. Uniress exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
-            } catch (InterruptedException | UnsupportedEncodingException | IllegalArgumentException | NullPointerException e) {
+            } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
                 logger.error("User: " + nick + " " + e);
             }
 

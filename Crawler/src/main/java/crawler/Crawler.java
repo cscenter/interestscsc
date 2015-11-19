@@ -13,7 +13,7 @@ import db.DBConnectorToCrawler;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
@@ -109,7 +109,7 @@ public class Crawler {
                     } catch (UnirestException e) {
                         logger.warn("User: " + nick + " haven't access. Uniress exception.");
                         logger.error("User: " + nick + " haven't access. " + e);
-                    } catch (InterruptedException | UnsupportedEncodingException | IllegalArgumentException | NullPointerException e) {
+                    } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
                         logger.error("User: " + nick + " " + e);
                     }
 
@@ -175,7 +175,7 @@ public class Crawler {
                         List<Post> posts = null;
                         try {
                             posts = getTagPosts(nick, tag);
-                        } catch (UnirestException | InterruptedException | ParseException | UnsupportedEncodingException e) {
+                        } catch (UnirestException | InterruptedException | ParseException | IOException e) {
                             logger.error("User: " + nick + " " + e);
                         }
 
@@ -299,7 +299,7 @@ public class Crawler {
     }
 
     // get user's info
-    private User getUserInfo(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
+    private User getUserInfo(final String nick) throws UnirestException, InterruptedException, IllegalArgumentException, IOException {
 
         logger.info("Use proxy: " + proxy.toString() + " for getting user info.");
         String response = new UserInfoLoader().loadData(proxy, nick);
@@ -312,7 +312,7 @@ public class Crawler {
     }
 
     // get all user's friends
-    private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, IOException {
 
         String response = new UserFriendsLoader().loadData(null, nick);
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
@@ -323,7 +323,7 @@ public class Crawler {
     }
 
     // get all user's tags
-    private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, IOException {
 
         logger.info("Use proxy: " + proxy.toString() + " for getting tags.");
         String response = new UserTagsLoader().loadData(proxy, nick);
@@ -336,7 +336,7 @@ public class Crawler {
     }
 
     // get 25 posts by current tag
-    private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
+    private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, ParseException, IOException {
 
         String response = new TagPostLoader().loadData(null, nick, tag.getName());
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
@@ -346,7 +346,7 @@ public class Crawler {
 
     }
 
-    private boolean doesUserAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
+    private boolean doesUserAllowPages(final String nick) throws UnirestException, InterruptedException, IOException {
 
         String response = new UserRobotsLoader().loadData(null, nick);
         return !BaseLoader.ERROR_STATUS_PAGE.equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
