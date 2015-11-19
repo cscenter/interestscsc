@@ -3,8 +3,10 @@ package crawler;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import crawler.loaders.UserRobotsLoader;
 import crawler.parsers.UserRobotsParser;
+import crawler.proxy.ProxyFactory;
 import db.DBConnector;
 import db.DBConnectorToCrawler;
+import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,6 +21,7 @@ import java.util.Set;
 
 public class UserDisallowPagesTest {
     private DBConnector db;
+    private ProxyFactory proxyFactory;
     private static final Logger logger = Logger.getLogger(UserDisallowPagesTest.class);
 
     @Before
@@ -28,6 +31,7 @@ public class UserDisallowPagesTest {
         } catch (SQLException sqle) {
             logger.error("Error connection to DB. " + sqle);
         }
+        proxyFactory = new ProxyFactory();
     }
 
     @Test
@@ -54,14 +58,16 @@ public class UserDisallowPagesTest {
         int countUser = usersQueue.size();
         Set<String> userDisallowNone = new HashSet<>();
         long iter = 0;
+        HttpHost proxy = proxyFactory.getNextProxy();
         UserRobotsLoader loader = new UserRobotsLoader();
         while (!usersQueue.isEmpty()) {
             String nick = usersQueue.poll();
             Set<String> userDisallowPages = null;
             logger.info("Iteration: " + ++iter + " : " + nick);
             try {
-                userDisallowPages = UserRobotsParser.getDisallowPages(loader.loadData(nick));
+                userDisallowPages = UserRobotsParser.getDisallowPages(loader.loadData(proxy, nick));
             } catch (UnirestException e) {
+                proxy = proxyFactory.getNextProxy();
                 logger.warn("User: " + nick + " haven't access. Uniress exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
             } catch (InterruptedException | UnsupportedEncodingException | IllegalArgumentException | NullPointerException e) {

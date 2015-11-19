@@ -23,6 +23,8 @@ public class Crawler {
     private static final int MAX_TRIES_RECONNECT = 5;
     private static final int MAX_NUMBER_OF_SESSIONS = 10;
     private static final int MAX_NUMBER_OF_USERS_PER_SESSION = 1000;
+    private static final String RAW_PROXIES_FILE = "proxies.txt";
+    private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
 
     // queue of users who should be considered
     private Queue<String> usersQueue;
@@ -44,6 +46,7 @@ public class Crawler {
     private Set<String> regions;
 
     // only statistics
+    private List<String> usersDisallow;
     private List<String> usersNoTags;
     private List<Tag> tagsNoAccess;
 
@@ -95,8 +98,10 @@ public class Crawler {
                     Set<Tag> userTags = null;
                     User userInfo = null;
                     List<String> friends = null;
+                    Boolean allowedUsers = null;
                     try {
-                        if (doesUserAllowPages(nick)) {
+                        allowedUsers = doesUserAllowPages(nick);
+                        if (allowedUsers) {
                             friends = getUserFriends(nick);
                             userInfo = getUserInfo(nick);
                             userTags = getUserTags(nick);
@@ -108,8 +113,23 @@ public class Crawler {
                         logger.error("User: " + nick + " " + e);
                     }
 
+                    if (allowedUsers == null) {
+                        usersNoAccess.add(nick);
+                        proxy = proxyFactory.getNextProxy();
+                        logger.warn("No access to user: " + nick);
+                        continue;
+                    }
+
+                    if (!allowedUsers) {
+                        usersDisallow.add(nick);
+                        db.updateUserFetched(nick);
+                        logger.warn("User: " + nick + " disallow our pages.");
+                        continue;
+                    }
+
                     if (userInfo == null || userTags == null || friends == null) {
                         usersNoAccess.add(nick);
+                        proxy = proxyFactory.getNextProxy();
                         logger.warn("No access to user: " + nick);
                         continue;
                     }
@@ -234,6 +254,11 @@ public class Crawler {
 
         long countTags = allTags.keySet().size();
         logger.info("=============================================");
+        logger.info("Count users without allowed pages: " + usersDisallow.size());
+        if (!usersDisallow.isEmpty()) {
+            logger.info("Users without allowed pages:");
+            usersDisallow.forEach(logger::info);
+        }
         logger.info("Count tags: " + countTags);
         logger.info("Count users without tags: " + usersNoTags.size());
         if (!usersNoTags.isEmpty()) {
@@ -245,7 +270,14 @@ public class Crawler {
     // initialization of user's queue
     // add starting user and get list of users from DB
     private void initStartUsersQueue() throws SQLException {
-        proxy = proxyFactory.getProxy();
+        proxyFactory.insertFromFile(RAW_PROXIES_FILE, false);
+        proxyFactory.insertFromFile(WORKING_PROXIES_FILE, true);
+        Set<String> rawAllUsers = new HashSet<>(db.getRawUsers());
+        Thread proxyThread = new Thread(() -> {
+            proxyFactory.findWorkingProxy(rawAllUsers);
+        });
+        proxyThread.start();
+        proxy = proxyFactory.getNextProxy();
 
         //get regions
         regions = new HashSet<>(db.getRegions());
@@ -261,6 +293,7 @@ public class Crawler {
         usersQueue.addAll(usersToProceed);
 
         // get users without tags
+        usersDisallow = new ArrayList<>();
         usersNoTags = new ArrayList<>();
         usersNoAccess = new ArrayList<>();
     }
@@ -268,9 +301,10 @@ public class Crawler {
     // get user's info
     private User getUserInfo(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException, IllegalArgumentException {
 
-        tryConnectToProxy();
-        String response = new UserInfoLoader().loadData(nick);
+        logger.info("Use proxy: " + proxy.toString() + " for getting user info.");
+        String response = new UserInfoLoader().loadData(proxy, nick);
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
+            proxy = proxyFactory.getNextProxy();
             return null;
         }
         return UserInfoParser.getUserInfo(response, nick);
@@ -280,8 +314,7 @@ public class Crawler {
     // get all user's friends
     private List<String> getUserFriends(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
-        Unirest.setProxy(null);
-        String response = new UserFriendsLoader().loadData(nick);
+        String response = new UserFriendsLoader().loadData(null, nick);
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
@@ -292,9 +325,10 @@ public class Crawler {
     // get all user's tags
     private Set<Tag> getUserTags(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
-        tryConnectToProxy();
-        String response = new UserTagsLoader().loadData(nick);
+        logger.info("Use proxy: " + proxy.toString() + " for getting tags.");
+        String response = new UserTagsLoader().loadData(proxy, nick);
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
+            proxy = proxyFactory.getNextProxy();
             return null;
         }
         return UserTagsParser.getTags(response, nick);
@@ -304,8 +338,7 @@ public class Crawler {
     // get 25 posts by current tag
     private List<Post> getTagPosts(final String nick, final Tag tag) throws UnirestException, InterruptedException, UnsupportedEncodingException, ParseException {
 
-        Unirest.setProxy(null);
-        String response = new TagPostLoader().loadData(nick, tag.getName());
+        String response = new TagPostLoader().loadData(null, nick, tag.getName());
         if (BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
             return null;
         }
@@ -315,18 +348,8 @@ public class Crawler {
 
     private boolean doesUserAllowPages(final String nick) throws UnirestException, InterruptedException, UnsupportedEncodingException {
 
-        Unirest.setProxy(null);
-        String response = new UserRobotsLoader().loadData(nick);
+        String response = new UserRobotsLoader().loadData(null, nick);
         return !BaseLoader.ERROR_STATUS_PAGE.equals(response) && !UserRobotsParser.getDisallowPages(response).contains("/");
 
-    }
-
-    private void tryConnectToProxy() {
-        try {
-            Unirest.setProxy(proxy);
-            logger.info("Use proxy: " + proxy.toString());
-        } catch (RuntimeException e) {
-            proxy = proxyFactory.getProxy();
-        }
     }
 }

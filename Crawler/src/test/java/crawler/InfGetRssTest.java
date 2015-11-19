@@ -51,7 +51,7 @@ public class InfGetRssTest {
             logger.info("Iteration: " + ++iter + " : " + tagname);
             try {
                 TagPostLoader loader = new TagPostLoader();
-                response = loader.loadData(nick, tagname);
+                response = loader.loadData(null, nick, tagname);
             } catch (UnirestException e) {
                 logger.warn("User: " + nick + " haven't access. Uniress exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
