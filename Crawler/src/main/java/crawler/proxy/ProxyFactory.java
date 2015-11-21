@@ -10,7 +10,6 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class ProxyFactory {
     private Set<HttpHost> rawProxies;
@@ -24,6 +23,7 @@ public class ProxyFactory {
     public ProxyFactory() {
         rawProxies = new HashSet<>();
         workingProxies = new LinkedList<>();
+        workingProxies.add(new HttpHost("24.246.127.180", 8080));
     }
 
     public HttpHost getNextProxy() {
@@ -42,17 +42,13 @@ public class ProxyFactory {
         return workingProxies.size();
     }
 
-    public void insertFromFile(String fileName, boolean working) {
+    public void insertFromFile(String fileName) {
         File file = new File(PATH_TO_FILE_WITH_PROXY + fileName);
         try (BufferedReader bufferedReaderProxy = new BufferedReader(new FileReader(file.getAbsoluteFile()))) {
             String line;
             while ((line = bufferedReaderProxy.readLine()) != null) {
                 String[] proxyString = line.split(":");
-                if (working) {
-                    workingProxies.add(new HttpHost(proxyString[0], Integer.parseInt(proxyString[1])));
-                }else {
-                    rawProxies.add(new HttpHost(proxyString[0], Integer.parseInt(proxyString[1])));
-                }
+                rawProxies.add(new HttpHost(proxyString[0], Integer.parseInt(proxyString[1])));
             }
         } catch (IOException e) {
             logger.error("Invalid filename: " + fileName + " or error reading data from the file. " + e);

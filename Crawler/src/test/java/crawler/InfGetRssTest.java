@@ -9,7 +9,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,11 +53,18 @@ public class InfGetRssTest {
                 TagPostLoader loader = new TagPostLoader();
                 response = loader.loadData(null, nick, tagname);
             } catch (UnirestException e) {
-                logger.warn("User: " + nick + " haven't access. Uniress exception.");
+                logger.warn("User: " + nick + " haven't access. Unirest exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
 
-            } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
+            } catch (InterruptedException | IllegalArgumentException | NullPointerException | UnsupportedEncodingException e) {
                 logger.error("User: " + nick + " " + e);
+            } catch (RuntimeException e) {
+                logger.error("User: " + nick + " " + e);
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ie) {
+                    logger.error("Interrupted sleeping. " + ie);
+                }
             }
 
             if (response == null) {

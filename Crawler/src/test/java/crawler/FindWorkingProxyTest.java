@@ -24,7 +24,7 @@ public class FindWorkingProxyTest {
     @Test
     public void findWorkingProxy() throws SQLException {
         String fileName = "proxies.txt";
-        proxyFactory.insertFromFile(fileName, false);
+        proxyFactory.insertFromFile(fileName);
         DBConnector db;
         try {
             db = new DBConnectorToCrawler(DBConnector.DataBase.TEST, System.getProperty("user.name"));

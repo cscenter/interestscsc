@@ -67,10 +67,17 @@ public class UserDisallowPagesTest {
                 userDisallowPages = UserRobotsParser.getDisallowPages(loader.loadData(proxy, nick));
             } catch (UnirestException e) {
                 proxy = proxyFactory.getNextProxy();
-                logger.warn("User: " + nick + " haven't access. Uniress exception.");
+                logger.warn("User: " + nick + " haven't access. Unirest exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
             } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
                 logger.error("User: " + nick + " " + e);
+            } catch (RuntimeException e) {
+                logger.error("User: " + nick + " " + e);
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ie) {
+                    logger.error("Interrupted sleeping. " + ie);
+                }
             }
 
             boolean disallowed = false;
