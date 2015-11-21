@@ -4,6 +4,7 @@ import db.DBConnector;
 import db.DBConnectorToNormalizer;
 import org.apache.log4j.Logger;
 import posttongram.TomitaExecutor;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -23,11 +24,11 @@ public class TomitaExecutorTest {
         //configFileNgrammType.put("config3.proto", DBConnector.NGramType.TRIGRAM);
     }
 
-    public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
+    public static void main(String[] args) throws SQLException, IOException {
 
-        DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
+        DBConnector.DataBase dbName = DBConnector.DataBase.MAIN;
 
-        DBConnectorToNormalizer db = new DBConnectorToNormalizer(dbName, "DBConnectorTestNormalization");
+        DBConnectorToNormalizer db = new DBConnectorToNormalizer(dbName, System.getProperty("user.name"));
 
         List<Post> postToNormalize = db.getReservedPosts();
 

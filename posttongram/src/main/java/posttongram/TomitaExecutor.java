@@ -24,7 +24,6 @@ public class TomitaExecutor {
     public static List<NGram> toNGramm(Map<String, String> positionMap) {
         Set<String> keySet = positionMap.keySet();
         List<NGram> nGrams = new LinkedList<>();
-        int i = 0;
         for (String nGramm : keySet) {
             int usescount = positionMap.get(nGramm).split(",").length;
             NGram newNGramm = new NGram(nGramm, positionMap.get(nGramm), usescount);
@@ -40,7 +39,7 @@ public class TomitaExecutor {
         // here we get nGrams (with repeats) from our 'PrettyOutput.html'
         ArrayList<String> nGramms = getNGramms();
         WordFilter wordFilter = new WordFilter();
-        List<String> goodNGrams = wordFilter.normalize(wordFilter.filter(nGramms));
+        List<String> goodNGrams = wordFilter.normalize(nGramms);
         Map<String, String> nGrammPositions = getPositions(goodNGrams);
         return nGrammPositions;
     }
@@ -59,15 +58,10 @@ public class TomitaExecutor {
         return positionMap;
     }
 
-    public static ArrayList<String> getNGramms() {
+    public static ArrayList<String> getNGramms() throws IOException {
         File tomitaOutputFile = new File(TOMITA_WORKING_DIR + File.separator + TOMITA_OUTPUT_FILE_NAME);
         ArrayList<String> nGramms = new ArrayList<>();
-        Document doc = null;
-        try {
-            doc = Jsoup.parse(tomitaOutputFile, "UTF-8");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Document doc = Jsoup.parse(tomitaOutputFile, "UTF-8");
         Elements tables = doc.select("table");
         for (Element table : tables) {
             Element firstTr = table.getElementsByTag("tr").first();
@@ -81,16 +75,9 @@ public class TomitaExecutor {
         return nGramms;
     }
 
-    public static void saveFileForTomita(String text) {
-        PrintWriter writer = null;
-        try {
-            File inputFile = new File(TOMITA_WORKING_DIR + File.separator + TOMITA_INPUT_FILE_NAME);
-            writer = new PrintWriter(inputFile, "UTF-8");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+    public static void saveFileForTomita(String text) throws FileNotFoundException, UnsupportedEncodingException {
+        File inputFile = new File(TOMITA_WORKING_DIR + File.separator + TOMITA_INPUT_FILE_NAME);
+        PrintWriter writer = new PrintWriter(inputFile, "UTF-8");
         writer.println(text);
         writer.close();
     }
@@ -98,17 +85,21 @@ public class TomitaExecutor {
     public static String getTomitFileName() {
         if (TOMITA_FILENAME.isEmpty()) {
             String oSName = System.getProperty("os.name");
-            if (oSName.equals("Linux")) {
+            if (oSName.indexOf("Linux") >= 0) {
                 // разрядность?
-                return "tomita-linux64";
+                if (System.getProperty("os.arch").indexOf("64") >= 0) {
+                    return "tomita-linux64";
+                } else {
+                    return "tomita-linux32";
+                }
             }
-            if (oSName.equals("Windows")) {
-                return "tomita-win32";
+            if (oSName.indexOf("Windows") >= 0) {
+                return "tomitaparser.exe";
             }
-            if (oSName.equals("Mac")) {
+            if (oSName.indexOf("Mac") >= 0) {
                 return "tomita-mac";
             }
-            return "tomita-freebsd";
+            return "tomita-freebsd64";
         } else {
             return TOMITA_FILENAME;
         }
@@ -118,18 +109,12 @@ public class TomitaExecutor {
     // запускает tomita с готовым config.proto
     public static void runTomita(String protoFileName) throws IOException {
         File tomitaExecutiveFile = new File(TOMITA_WORKING_DIR + File.separator + getTomitFileName());
-
-        //System.out.println();
         CommandLine cmdLine = new CommandLine(tomitaExecutiveFile);
         cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + protoFileName);
         DefaultExecutor executor = new DefaultExecutor();
         executor.setExitValue(0);
         ExecuteWatchdog watchdog = new ExecuteWatchdog(WATCHDOG_CONST);
         executor.setWatchdog(watchdog);
-        //try {
-            executor.execute(cmdLine);
-        //} catch (IOException e) {
-        //    e.printStackTrace();
-        //}
+        executor.execute(cmdLine);
     }
 }

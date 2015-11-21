@@ -2,6 +2,7 @@ package posttongram;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class WordFilter {
 
@@ -12,10 +13,7 @@ public class WordFilter {
     }
 
     public static List<String> normalize(List<String> words){
-        List<String> normalizedWords = new ArrayList<>();
-        for (String word : words) {
-            normalizedWords.add(normalizeWord(word));
-        }
+        List<String> normalizedWords = words.stream().map(p -> normalizeWord(p)).collect(Collectors.toList());
         return normalizedWords;
     }
 
