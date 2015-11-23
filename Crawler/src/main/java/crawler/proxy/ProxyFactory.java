@@ -11,18 +11,45 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ProxyFactory {
+
+    final static double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.85;
+
     private Set<HttpHost> rawProxies;
     private List<HttpHost> workingProxies;
-    final Random random = new Random();
+    private List<HttpHost> brokenProxies;
+    private Set<String> rawAllUsers;
+    private final Random random = new Random();
     private static final Logger logger = Logger.getLogger(ProxyFactory.class);
 
+    private static final HttpHost defaultWorkingProxy = new HttpHost("24.246.127.180", 8080);
+    private static final String defaultUser = "mi3ch";
+
+    private static final String RAW_PROXIES_FILE = "proxies.txt";
+    private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
     private final String PATH_TO_FILE_WITH_PROXY = "Crawler" + File.separator + "src" + File.separator +
             "main" + File.separator + "resources" + File.separator;
 
     public ProxyFactory() {
         rawProxies = new HashSet<>();
         workingProxies = new ArrayList<>();
-        workingProxies.add(new HttpHost("24.246.127.180", 8080));
+        workingProxies.add(defaultWorkingProxy);
+        brokenProxies = new ArrayList<>();
+        rawAllUsers = new HashSet<>();
+        rawAllUsers.add(defaultUser);
+    }
+
+    public void setRawAllUsers(final Set<String> rawAllUsers) {
+        this.rawAllUsers = rawAllUsers;
+    }
+
+    public void setBrokenProxies(final HttpHost proxy) {
+        logger.info("Proxy: " + proxy + " is not working! It goes to broken list.");
+        workingProxies.remove(proxy);
+        brokenProxies.add(proxy);
+        if (1.f * brokenProxies.size() / rawProxies.size() > PERCENT_BROKEN_PROXY_TO_RECHECKING ) {
+            logger.info("Broken proxies are too much. Maybe, need to change proxy list?!");
+            startCheckingProxy();
+        }
     }
 
     public HttpHost getNextProxy() {
@@ -52,6 +79,18 @@ public class ProxyFactory {
         } catch (IOException e) {
             logger.error("Invalid filename: " + fileName + " or error reading data from the file. " + e);
         }
+    }
+
+    public void startCheckingProxy() {
+        if (rawProxies.isEmpty()) {
+            insertFromFile(WORKING_PROXIES_FILE);
+            insertFromFile(RAW_PROXIES_FILE);
+        }
+        logger.info("Start new session of checking proxies!");
+        Thread proxyThread = new Thread(() -> {
+            findWorkingProxy(rawAllUsers);
+        });
+        proxyThread.start();
     }
 
     public void findWorkingProxy(final Set<String> rawUsers) {
@@ -114,6 +153,7 @@ public class ProxyFactory {
         }
         else {
             logger.info("No access to LJ for proxy: " + proxy.toString());
+            brokenProxies.add(proxy);
         }
     }
 }
