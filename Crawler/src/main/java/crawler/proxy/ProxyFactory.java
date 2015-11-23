@@ -1,8 +1,7 @@
 package crawler.proxy;
 
 import com.mashape.unirest.http.exceptions.UnirestException;
-import crawler.loaders.BaseLoader;
-import crawler.loaders.UserInfoLoader;
+import crawler.loaders.ProxyLoader;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
@@ -22,7 +21,7 @@ public class ProxyFactory {
 
     public ProxyFactory() {
         rawProxies = new HashSet<>();
-        workingProxies = new LinkedList<>();
+        workingProxies = new ArrayList<>();
         workingProxies.add(new HttpHost("24.246.127.180", 8080));
     }
 
@@ -97,17 +96,17 @@ public class ProxyFactory {
     }
 
     private synchronized void checkProxy(final HttpHost proxy, final String nick) {
-        String response;
+        int response;
         try {
             logger.info("Check proxy: " + proxy.toString());
-            response = new UserInfoLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
+            response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
         } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
             logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
             Thread.currentThread().interrupt();
             return;
         }
 
-        if (!BaseLoader.ERROR_STATUS_PAGE.equals(response)) {
+        if (response == 0) {
             logger.info("Find new working proxy: " + proxy.toString());
             if (!workingProxies.contains(proxy)) {
                 workingProxies.add(proxy);

@@ -120,6 +120,8 @@ public class Crawler {
                         } catch (InterruptedException ie) {
                             logger.error("Interrupted sleeping. " + ie);
                         }
+                    } finally {
+                        proxy = proxyFactory.getNextProxy();
                     }
 
                     if (allowedUser == null) {
@@ -135,7 +137,6 @@ public class Crawler {
 
                     if (userInfo == null || userTags == null || friends == null) {
                         usersNoAccess.add(nick);
-                        proxy = proxyFactory.getNextProxy();
                         logger.warn("No access to user: " + nick);
                         continue;
                     }
@@ -196,6 +197,7 @@ public class Crawler {
 
                         if (posts == null) {
                             tagsNoAccess.add(tag);
+                            proxy = proxyFactory.getNextProxy();
                             logger.warn("No access to user: " + nick + " with tag: " + tag.getName());
                             continue;
                         }
