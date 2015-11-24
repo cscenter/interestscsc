@@ -1,12 +1,16 @@
 package db;
 
+import data.NGram;
 import data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -307,6 +311,21 @@ public class DBConnector {
         }
     }
 
+    public List<Long> getAllPostNormalizedIds() throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectPostNormalizedIdsString = "SELECT id FROM Post WHERE normalized;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
     // TODO нужна реализация от postUrl+username ?
     // TODO Для неск постов, скажем, всех постов пользователя?
     public int getPostLength(long postId) throws SQLException {
@@ -356,9 +375,9 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getAllNGramNames(long postId) throws SQLException {
-        List<String> result = new LinkedList<>();
-        String selectNGramString = "SELECT text FROM AllNGramTextPost " +
+    public List<NGram> getAllNGramNames(long postId) throws SQLException {
+        List<NGram> result = new LinkedList<>();
+        String selectNGramString = "SELECT text, uses_cnt FROM AllNGramTextUsesPost " +
                 "WHERE post_id = ?;";
         try (
                 Connection con = getConnection();
@@ -368,8 +387,32 @@ public class DBConnector {
             selectNGram.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
             if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString(1));
+                while (rs.next()){
+                    i = 0;
+                    result.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+        }
+        return result;
+    }
+    public List<NGram> getAllNGramNames(long postId, NGramType nGramType) throws SQLException {
+        List<NGram> result = new LinkedList<>();
+        @SuppressWarnings("SqlResolve")
+        String selectNGramString = "SELECT n.text, np.uses_cnt " +
+                "FROM " + nGramType.getTableName() + " n " +
+                "JOIN " + nGramType.getTableToPostName() + " np ON n.id = np.ngram_id " +
+                "WHERE np.post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            selectNGram.setLong(++i, postId);
+            ResultSet rs = tryQueryTransaction(selectNGram, nGramType.getTableName());
+            if (rs != null)
+                while (rs.next()){
+                    i = 0;
+                    result.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
         }
         return result;
     }
