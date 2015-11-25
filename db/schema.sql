@@ -1,8 +1,15 @@
+DROP VIEW IF EXISTS RawUserLJRanked;
+DROP VIEW IF EXISTS TagNameToPost;
+DROP VIEW IF EXISTS AllNGramTextPost;
+DROP VIEW IF EXISTS AllNGramTexts;
+DROP VIEW IF EXISTS PostUniqueWordCount;
+DROP VIEW IF EXISTS PostLength;
 DROP TABLE IF EXISTS TrigramToPost;
 DROP TABLE IF EXISTS DigramToPost;
 DROP TABLE IF EXISTS UnigramToPost;
 DROP TABLE IF EXISTS TagToUserLJ;
 DROP TABLE IF EXISTS TagToPost;
+DROP TABLE IF EXISTS UserToSchool;
 DROP TABLE IF EXISTS Trigram;
 DROP TABLE IF EXISTS Digram;
 DROP TABLE IF EXISTS Unigram;
@@ -11,18 +18,30 @@ DROP TABLE IF EXISTS MasterTag;
 DROP TABLE IF EXISTS Post;
 DROP TABLE IF EXISTS RawUserLJ;
 DROP TABLE IF EXISTS UserLJ;
+DROP TABLE IF EXISTS School;
 DROP TABLE IF EXISTS Region;
+DROP TABLE IF EXISTS Normalizer;
 DROP TABLE IF EXISTS Crawler;
 
 
--- ? TODO Возможно нужно прописать касдады удаления
+-- ? TODO Продумать индексирование
 
 CREATE TABLE Crawler (
   id   SERIAL PRIMARY KEY,
   name TEXT UNIQUE
 );
 
+CREATE TABLE Normalizer (
+  id   SERIAL PRIMARY KEY,
+  name TEXT UNIQUE
+);
+
 CREATE TABLE Region (
+  id   BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE School (
   id   BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE
 );
@@ -36,9 +55,12 @@ CREATE TABLE UserLJ (
   fetched   TIMESTAMP NULL, -- NULL здесь показывает, что
                             -- значение может быть пустым
   birthday  DATE      NULL,
-  interests TEXT      NULL
-
-  -- Что-то еще добавить?
+  interests TEXT      NULL,
+  city_cstm TEXT      NULL,
+  posts_num INT       NULL,
+  cmmnt_in  INT       NULL,
+  cmmnt_out INT       NULL,
+  bio       TEXT      NULL
 );
 
 CREATE TABLE RawUserLJ (-- Здесь сохраняем пользователей
@@ -48,15 +70,15 @@ CREATE TABLE RawUserLJ (-- Здесь сохраняем пользовател�
 );
 
 CREATE TABLE Post (
-  id        BIGSERIAL PRIMARY KEY,
-  url      INT    NOT NULL, -- здесь храним номер из ссылки на пост
-                                -- они все вида <user>.lj.com/<number>
-  user_id  BIGINT NOT NULL REFERENCES UserLJ,
-  date      TIMESTAMP NOT NULL,
-  title     TEXT      NOT NULL,
-  text      TEXT      NOT NULL,
-  text_norm TEXT      NULL,
-  comments INT    NULL,
+  id            BIGSERIAL PRIMARY KEY,
+  url           BIGINT    NOT NULL, -- номер из ссылки <user>.lj.com/<number>
+  user_id       BIGINT    NOT NULL REFERENCES UserLJ,
+  date          TIMESTAMP NOT NULL,
+  title         TEXT      NOT NULL,
+  text          TEXT      NOT NULL,
+  normalized    BOOLEAN   NOT NULL DEFAULT FALSE,
+  comments      INT       NULL,
+  normalizer_id INT       NULL REFERENCES Normalizer,
   UNIQUE (user_id, url)
 );
 
@@ -88,6 +110,14 @@ CREATE TABLE Trigram (
 );
 
 
+CREATE TABLE UserToSchool (
+  user_id     BIGINT REFERENCES UserLJ,
+  school_id   BIGINT REFERENCES School,
+  start_date  DATE NULL,
+  finish_date DATE NULL,
+  PRIMARY KEY (user_id, school_id)
+);
+
 CREATE TABLE TagToPost (
   tag_id  BIGINT REFERENCES Tag,
   post_id BIGINT REFERENCES Post,
@@ -102,19 +132,69 @@ CREATE TABLE TagToUserLJ (
 );
 
 CREATE TABLE UnigramToPost (
-  unigram_id BIGINT REFERENCES Unigram,
+  ngram_id   BIGINT REFERENCES Unigram,
   post_id    BIGINT REFERENCES Post,
-  PRIMARY KEY (unigram_id, post_id)
+  uses_str   TEXT NULL, -- здесь и далее, использов в конкр посте
+  uses_cnt   INT  NULL,
+  PRIMARY KEY (ngram_id, post_id)
 );
 
 CREATE TABLE DigramToPost (
-  digram_id BIGINT REFERENCES Digram,
+  ngram_id  BIGINT REFERENCES Digram,
   post_id   BIGINT REFERENCES Post,
-  PRIMARY KEY (digram_id, post_id)
+  uses_str  TEXT NULL,
+  uses_cnt  INT  NULL,
+  PRIMARY KEY (ngram_id, post_id)
 );
 
 CREATE TABLE TrigramToPost (
-  trigram_id BIGINT REFERENCES Trigram,
+  ngram_id   BIGINT REFERENCES Trigram,
   post_id    BIGINT REFERENCES Post,
-  PRIMARY KEY (trigram_id, post_id)
+  uses_str   TEXT NULL,
+  uses_cnt   INT  NULL,
+  PRIMARY KEY (ngram_id, post_id)
+);
+
+CREATE VIEW PostLength AS (
+  SELECT post_id, sum(uses_cnt) length
+  FROM UnigramToPost
+  GROUP BY post_id
+);
+
+CREATE VIEW PostUniqueWordCount AS (
+  SELECT post_id, count(*) count
+  FROM UnigramToPost
+  GROUP BY post_id
+);
+
+CREATE VIEW AllNGramTexts AS (
+  SELECT text FROM Unigram
+  UNION ALL
+  SELECT text FROM Digram
+  UNION ALL
+  SELECT text FROM Trigram
+);
+
+CREATE VIEW AllNGramTextPost AS (
+  SELECT u.text, up.post_id
+  FROM Unigram u JOIN UnigramToPost up ON u.id = up.ngram_id
+  UNION ALL
+  SELECT d.text, dp.post_id
+  FROM Digram d JOIN DigramToPost dp ON d.id = dp.ngram_id
+  UNION ALL
+  SELECT t.text, tp.post_id
+  FROM Trigram t JOIN TrigramToPost tp ON t.id = tp.ngram_id
+);
+
+CREATE VIEW TagNameToPost AS (
+  SELECT t.text, tp.post_id
+  FROM Tag t
+    JOIN TagToPost tp ON t.id = tp.tag_id
+);
+
+CREATE VIEW RawUserLJRanked AS (
+  SELECT r.nick, row_number() OVER(ORDER BY r.nick)
+  FROM RawUserLJ r
+  WHERE r.crawler_id IS NULL
+        AND r.user_id IS NULL
 );

@@ -2,6 +2,7 @@ import data.Post;
 import data.Tag;
 import data.User;
 import db.DBConnector;
+import db.DBConnectorToCrawler;
 
 import java.io.FileNotFoundException;
 import java.sql.SQLException;
@@ -12,18 +13,21 @@ import java.util.*;
  * User: allight
  * Date: 13.10.2015 0:04
  */
-public class DBConnectorTest {
+public class DBConnectorTestCrawling {
 
     public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
 
-        // Создаем коннектор, добавляем идентификатор своей машины в БД
-        DBConnector db = new DBConnector("AllightPC");
+        // TODO Выбрать нужную БД
+        DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
 
         // !!! СБРАСЫВАЕМ БАЗУ. НЕ СТОИТ ЭТОГО ДЕЛАТЬ КАЖДЫЙ РАЗ
-//        db.dropInitDatabase("AllightPC", "Bzw7HPtmHmVVqKvSHe7d");
+//        DBConnector.dropInitDatabase(dbName, "Bzw7HPtmHmVVqKvSHe7d");
+
+        // Создаем коннектор с правами краулера, добавляем идентификатор своей машины в БД
+        DBConnectorToCrawler db = new DBConnectorToCrawler(dbName, "DBConnectorTestCrawling");
 
         // Собираем с LJ имена нескольких стартовых пользователей (имитация)
-        LinkedList<String> rawUsers = new LinkedList<>();
+        List<String> rawUsers = new LinkedList<>();
         for (int i = 0; i < 10; ++i)
             rawUsers.add("username" + new Random().nextInt(100));
 
@@ -32,7 +36,7 @@ public class DBConnectorTest {
 
         // Проверяем, есть ли недообработанные пользователи с прошлых сеансов нашего краулера
         // Если такие есть, добавляем в очередь.
-        LinkedList<String> usersToProceed = db.getUnfinishedRawUsers();
+        List<String> usersToProceed = db.getUnfinishedRawUsers();
 
         // Берем из базы список зарезервированных для нас пользователей
         usersToProceed.addAll(db.getReservedRawUsers());
@@ -54,7 +58,7 @@ public class DBConnectorTest {
         for (String username : usersToProceed) {
 
             // Собираем с LJ список ников друзей пользователя в итерабельныую коллекцию строк (имитация)
-            LinkedList<String> friends = new LinkedList<>();
+            List<String> friends = new LinkedList<>();
             for (int i = 0; i < 5; ++i)
                 friends.add("username" + new Random().nextInt(100));
 
@@ -63,11 +67,13 @@ public class DBConnectorTest {
 
             // Собираем c LJ информацию о пользователе в объект класса User (имитация)
             String[] r = new String[]{"RU", "other", null};
-            User user = new User(username, r[new Random().nextInt(3)],
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")),
-                    Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")), null, null
-            );
+            User user = new User.UserBuilder(username)
+                    .setRegion(r[new Random().nextInt(3)])
+                    .setDateCreated(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setDateUpdated(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setDateFetched(Timestamp.valueOf("2015-09-17T13:09:03".replaceFirst("T", " ")))
+                    .setSchools(new LinkedList<>())
+                    .build();
 
             // Если у пользователя есть регион, отсутсвующий в кэше, добавляем его
             if (user.getRegion() != null && !regions.contains(user.getRegion())) {
@@ -112,7 +118,7 @@ public class DBConnectorTest {
                         "SomeText",
                         username,
                         Timestamp.valueOf("2015-10-19 08:11:41"),
-                        i + new Random().nextInt(10000) * 10,
+                        i + new Random().nextLong() % 10000 * 10,
                         20,
                         postTags
                 ));
@@ -124,8 +130,6 @@ public class DBConnectorTest {
             // Если уверены, что вытащили все выложенные на данный момент посты,
             // ставим пользователю Timestamp на fetched
             db.updateUserFetched(username);
-
-
         }
 
         // Проверяем, что всех успешно обработали
@@ -134,9 +138,9 @@ public class DBConnectorTest {
 
         // Возьмем из базы всех пользователей и выведем
         // (сейчас не отображается fetched - его нет в User)
-        LinkedList<User> allUsers = db.getUsers();
+        List<User> allUsers = db.getUsers();
 
         for (User user : allUsers)
-            System.out.print(user.toString());
+            System.out.println(user.toString() + "\n\n =========== \n\n");
     }
 }
