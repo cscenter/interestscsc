@@ -19,7 +19,7 @@ public class TomitaExecutorTest {
     static final HashMap<String, DBConnector.NGramType> configFileNgrammType = new HashMap();
     private static final Logger logger = Logger.getLogger(java.util.logging.Logger.class);
     static {
-        configFileNgrammType.put("config1.proto", DBConnector.NGramType.UNIGRAM);
+        configFileNgrammType.put("config.proto", DBConnector.NGramType.UNIGRAM);
         //configFileNgrammType.put("config2.proto", DBConnector.NGramType.DIGRAM);
         //configFileNgrammType.put("config3.proto", DBConnector.NGramType.TRIGRAM);
     }
