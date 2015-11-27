@@ -1,5 +1,6 @@
 package crawler.parsers;
 
+import crawler.Crawler;
 import data.Post;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -42,25 +43,27 @@ public class TagPostParser {
             Elements postTags = selectionPost.select(TAG_SELECTOR);
             Elements comments = selectionPost.getElementsByTag(COUNT_COMMENTS_SELECTOR);
 
-            String safeText = Jsoup.clean(text.text(), Whitelist.none());
-            List<String> tagsList = postTags.stream().map(Element::text).collect(Collectors.toList());
+            String safeText = Jsoup.clean(text.text().replaceAll("<", " <"), Whitelist.none());
+            List<String> tagsList = postTags.stream().map(Element::text).map(String::toLowerCase).collect(Collectors.toList());
 
             String regex = "/\\d+";    // the number
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(url.text());
-            Integer urlNumber = null;
+            Long urlNumber = null;
             if (matcher.find()) {
-                urlNumber = Integer.parseInt(matcher.group().replaceAll("/", ""));
+                urlNumber = Long.parseLong(matcher.group().replaceAll("/", ""));
             }
             Integer countComments = !Objects.equals(comments.text(), "") ? Integer.parseInt(comments.text()) : null;
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", new Locale("en_US"));
             Timestamp timePost = new Timestamp(dateFormat.parse(date.text()).getTime());
-            postList.add(new Post(
-                    title.text(), safeText, nick,
-                    timePost, urlNumber,
-                    countComments, tagsList
-            ));
+            if (Crawler.userPostUrls.add(urlNumber)) {
+                postList.add(new Post(
+                        title.text(), safeText, nick,
+                        timePost, urlNumber,
+                        countComments, tagsList
+                ));
+            }
         }
         return postList;
 

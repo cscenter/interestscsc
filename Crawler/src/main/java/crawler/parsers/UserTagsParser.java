@@ -59,7 +59,7 @@ public class UserTagsParser {
             if (!strUses.isEmpty() && strUses.length() < MAX_TAG_USES_POW) {
                 tagUses = Integer.parseInt(strUses);
             }
-            Tag tag = new Tag(tagText, tagUses);
+            Tag tag = new Tag(tagText.toLowerCase(), tagUses);
             if (tagSet.contains(tag) && tagUses != null) {
                 tagSet.remove(tag);
             }
