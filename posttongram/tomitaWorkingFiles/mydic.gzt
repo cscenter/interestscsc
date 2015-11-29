@@ -9,14 +9,3 @@ TAuxDicArticle "N-Grams"
 {
     key = { "tomita:first.cxx" type=CUSTOM }
 }
-
-TAuxDicArticle "плохие_словосочетания"
-{ 
-    key = "в !течение";
-    key = "по !поводу";
-    key = "несмотря на";
-    key = "в !следствие";
-    key = "по !случаю";
-    key = "в !зависимости";
-    key = "с !тем";
-}

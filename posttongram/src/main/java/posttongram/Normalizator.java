@@ -12,14 +12,34 @@ import java.io.*;
 import java.util.*;
 
 
-public class TomitaExecutor {
+public class Normalizator {
 
     private static final String TOMITA_FILENAME = "";
     private static final int WATCHDOG_CONST = 60000;
-    private static final String TOMITA_INPUT_FILE_NAME = "input.txt";
+    private static final String INPUT_FILE_NAME = "input.txt";
     private static final String TOMITA_OUTPUT_FILE_NAME = "PrettyOutput.html";
     private static final String TOMITA_MESSAGE_NAME = "NGrams";
     private static final File TOMITA_WORKING_DIR = new File("posttongram/tomitaWorkingFiles");
+
+    private static final File MYSTEM_WORKING_DIR = new File("posttongram/mystem");
+    private static final String MYSTEM_FILENAME = "";
+
+    /*
+    public static void main(String[] args) throws IOException {
+
+        ///*
+        File mystemExecutiveFile = new File(MYSTEM_WORKING_DIR + File.separator + getMystemFileName());
+        CommandLine cmdLine = new CommandLine(mystemExecutiveFile);
+        cmdLine.addArgument("-l");
+        cmdLine.addArgument("-c");
+        cmdLine.addArgument("-d");
+        cmdLine.addArgument(MYSTEM_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        execute(cmdLine);
+
+        runTomita("config.proto");
+    }
+    */
 
     public static List<NGram> toNGramm(Map<String, String> positionMap) {
         Set<String> keySet = positionMap.keySet();
@@ -33,8 +53,10 @@ public class TomitaExecutor {
     }
 
     // processNGrams
-    public static Map<String, String> runTomitaOnText(String protoFileName) throws IOException {
-        // here tomita processes 'test.txt' and produces 'PrettyOutput.html'
+    public static Map<String, String> normalizeText(String protoFileName) throws IOException {
+        // here mystem processes 'posttongram/mystem/input.txt' and produces 'posttongram/tomitaWorkingFiles/input.txt'
+        runMystem();
+        // here tomita processes 'input.txt' and produces 'PrettyOutput.html'
         runTomita(protoFileName);
         // here we get nGrams (with repeats) from our 'PrettyOutput.html'
         ArrayList<String> nGramms = getNGramms();
@@ -75,8 +97,8 @@ public class TomitaExecutor {
         return nGramms;
     }
 
-    public static void saveFileForTomita(String text) throws FileNotFoundException, UnsupportedEncodingException {
-        File inputFile = new File(TOMITA_WORKING_DIR + File.separator + TOMITA_INPUT_FILE_NAME);
+    public static void saveFileForNormalization(String text) throws FileNotFoundException, UnsupportedEncodingException {
+        File inputFile = new File(MYSTEM_WORKING_DIR + File.separator + INPUT_FILE_NAME);
         PrintWriter writer = new PrintWriter(inputFile, "UTF-8");
         writer.println(text);
         writer.close();
@@ -84,24 +106,37 @@ public class TomitaExecutor {
 
     public static String getTomitFileName() {
         if (TOMITA_FILENAME.isEmpty()) {
-            String oSName = System.getProperty("os.name");
-            if (oSName.indexOf("Linux") >= 0) {
-                // разрядность?
+            String oSName = System.getProperty("os.name").toLowerCase();
+            if (oSName.indexOf("linux") >= 0) {
                 if (System.getProperty("os.arch").indexOf("64") >= 0) {
                     return "tomita-linux64";
                 } else {
                     return "tomita-linux32";
                 }
             }
-            if (oSName.indexOf("Windows") >= 0) {
+            if (oSName.indexOf("win") >= 0) {
                 return "tomitaparser.exe";
             }
-            if (oSName.indexOf("Mac") >= 0) {
+            if (oSName.indexOf("mac") >= 0) {
                 return "tomita-mac";
             }
             return "tomita-freebsd64";
         } else {
             return TOMITA_FILENAME;
+        }
+    }
+
+    public static String getMystemFileName() {
+        if (MYSTEM_FILENAME.isEmpty()) {
+            String oSName = System.getProperty("os.name").toLowerCase();
+
+            if (oSName.indexOf("win") >= 0) {
+                return "mystem.exe";
+            } else {
+                return "mystem";
+            }
+        } else {
+            return MYSTEM_FILENAME;
         }
     }
 
@@ -111,6 +146,22 @@ public class TomitaExecutor {
         File tomitaExecutiveFile = new File(TOMITA_WORKING_DIR + File.separator + getTomitFileName());
         CommandLine cmdLine = new CommandLine(tomitaExecutiveFile);
         cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + protoFileName);
+        execute(cmdLine);
+    }
+
+    // запускает mystem
+    public static void runMystem() throws IOException {
+        File mystemExecutiveFile = new File(MYSTEM_WORKING_DIR + File.separator + getMystemFileName());
+        CommandLine cmdLine = new CommandLine(mystemExecutiveFile);
+        cmdLine.addArgument("-l");
+        cmdLine.addArgument("-c");
+        cmdLine.addArgument("-d");
+        cmdLine.addArgument(MYSTEM_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        execute(cmdLine);
+    }
+
+    public static void execute(CommandLine cmdLine) throws IOException {
         DefaultExecutor executor = new DefaultExecutor();
         executor.setExitValue(0);
         ExecuteWatchdog watchdog = new ExecuteWatchdog(WATCHDOG_CONST);

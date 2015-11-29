@@ -3,7 +3,7 @@ import data.Post;
 import db.DBConnector;
 import db.DBConnectorToNormalizer;
 import org.apache.log4j.Logger;
-import posttongram.TomitaExecutor;
+import posttongram.Normalizator;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class TomitaExecutorTest {
+public class NormalizatorTest {
 
     static final int NUMBER_POST_TO_PROCESS = 5;
     static final HashMap<String, DBConnector.NGramType> configFileNgrammType = new HashMap();
@@ -49,12 +49,12 @@ public class TomitaExecutorTest {
             logger.info("processing post with id: " + post.getId());
             String fullText = new String(post.getTitle() + ". " + post.getText());
             // here we have input file named 'test.txt' for tomita to process it!
-            TomitaExecutor.saveFileForTomita(fullText);
+            Normalizator.saveFileForNormalization(fullText);
 
 
             for (String protoFileName : configFileNgrammType.keySet()) {
-                Map<String, String> wordPosition = TomitaExecutor.runTomitaOnText(protoFileName);
-                List<NGram> nGramms = TomitaExecutor.toNGramm(wordPosition);
+                Map<String, String> wordPosition = Normalizator.normalizeText(protoFileName);
+                List<NGram> nGramms = Normalizator.toNGramm(wordPosition);
 
                 ///*
                 for (NGram nGramm : nGramms) {
@@ -64,7 +64,7 @@ public class TomitaExecutorTest {
                 //*/
                 logger.info("extracted " + configFileNgrammType.get(protoFileName) + ": " + nGramms.size());
                 db.insertNGrams(nGramms, post.getId(), configFileNgrammType.get(protoFileName));
-            }
+            };
             db.updatePostNormalized(post.getId());
         }
     }

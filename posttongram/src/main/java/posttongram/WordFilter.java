@@ -1,6 +1,5 @@
 package posttongram;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,12 +39,14 @@ public class WordFilter {
         stopWords.add("пот");
         stopWords.add("ком");
         stopWords.add("один");
+        stopWords.add("второй");
         stopWords.add("втора");
         stopWords.add("ува");
         stopWords.add("впоследствии");
         stopWords.add("гот");
         stopWords.add("другой");
         stopWords.add("том");
+        stopWords.add("кв");
         return stopWords;
     }
 }
