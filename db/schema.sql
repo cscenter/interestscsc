@@ -156,9 +156,11 @@ CREATE TABLE TrigramToPost (
 );
 
 CREATE VIEW PostLength AS (
-  SELECT post_id, sum(uses_cnt) length
-  FROM UnigramToPost
-  GROUP BY post_id
+  SELECT p.id, coalesce(sum(up.uses_cnt),0) length
+  FROM Post p
+  LEFT JOIN UnigramToPost up ON p.id = up.post_id
+  WHERE p.normalized
+  GROUP BY p.id
 );
 
 CREATE VIEW PostUniqueWordCount AS (
