@@ -6,7 +6,6 @@ import db.DBConnector;
 import db.DBConnectorToCrawler;
 import db.DBConnectorToNormalizer;
 
-import java.io.FileNotFoundException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ import java.util.Random;
 public class DBConnectorTestLearning {
 
     @SuppressWarnings("Duplicates")
-    public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
+    public static void main(String[] args) throws SQLException {
 
         // TODO Выбрать нужную БД
         DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
