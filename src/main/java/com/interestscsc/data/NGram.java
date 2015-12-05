@@ -29,4 +29,20 @@ public class NGram {
         return text;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        NGram nGram = (NGram) o;
+
+        return text.equals(nGram.text);
+
+    }
+
+    @Override
+    public int hashCode() {
+        return text.hashCode();
+    }
+
 }
