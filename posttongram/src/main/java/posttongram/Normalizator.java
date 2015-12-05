@@ -1,5 +1,6 @@
 package posttongram;
 
+import db.DBConnector;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
@@ -53,13 +54,21 @@ public class Normalizator {
     }
 
     // processNGrams
-    public static Map<String, String> normalizeText(String protoFileName) throws IOException {
-        // here mystem processes 'posttongram/mystem/input.txt' and produces 'posttongram/tomitaWorkingFiles/input.txt'
-        runMystem();
-        // here tomita processes 'input.txt' and produces 'PrettyOutput.html'
-        runTomita(protoFileName);
-        // here we get nGrams (with repeats) from our 'PrettyOutput.html'
-        ArrayList<String> nGramms = getNGramms();
+    public static Map<String, String> normalizeText(List<String> protoFileNames, DBConnector.NGramType type) throws IOException {
+        if (type.equals(DBConnector.NGramType.UNIGRAM)) {
+            // here mystem processes 'posttongram/mystem/input.txt' and produces 'posttongram/tomitaWorkingFiles/input.txt'
+            runMystem();
+        } else {
+            rewriteInputWithoutModification();
+        }
+        List<String> nGramms = new ArrayList<>();
+        for (String protoFileName : protoFileNames) {
+            // here tomita processes 'input.txt' and produces 'PrettyOutput.html'
+            runTomita(protoFileName);
+            // here we get nGrams (with repeats) from our 'PrettyOutput.html'
+            List<String> nGrams = getNGramms();
+            nGramms.addAll(nGrams);
+        }
         WordFilter wordFilter = new WordFilter();
         List<String> goodNGrams = wordFilter.normalize(nGramms);
         Map<String, String> nGrammPositions = getPositions(goodNGrams);
@@ -88,10 +97,14 @@ public class Normalizator {
         for (Element table : tables) {
             Element firstTr = table.getElementsByTag("tr").first();
             if (firstTr.text().equals(TOMITA_MESSAGE_NAME)) {
-                Elements links = table.getElementsByTag("a");
-                for (Element link : links) {
-                    nGramms.add(link.text());
+                Elements links = table.getElementsByTag("tr");
+                for (int i = 2; i < links.size(); i++) {
+                    nGramms.add(links.get(i).text());
                 }
+                //links.get()
+                //for (Element link : links) {
+                //    nGramms.add(link.text());
+                //}
             }
         }
         return nGramms;
@@ -159,6 +172,16 @@ public class Normalizator {
         cmdLine.addArgument(MYSTEM_WORKING_DIR + File.separator + INPUT_FILE_NAME);
         cmdLine.addArgument(TOMITA_WORKING_DIR + File.separator + INPUT_FILE_NAME);
         execute(cmdLine);
+    }
+
+    public static void rewriteInputWithoutModification() throws FileNotFoundException, UnsupportedEncodingException {
+        File mystemInputFile = new File(MYSTEM_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        String text = new Scanner(mystemInputFile).useDelimiter("\\Z").next();
+        System.out.println(text);
+        File inputFile = new File(TOMITA_WORKING_DIR + File.separator + INPUT_FILE_NAME);
+        PrintWriter writer = new PrintWriter(inputFile, "UTF-8");
+        writer.println(text);
+        writer.close();
     }
 
     public static void execute(CommandLine cmdLine) throws IOException {
