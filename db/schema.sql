@@ -1,6 +1,6 @@
 DROP VIEW IF EXISTS RawUserLJRanked;
 DROP VIEW IF EXISTS TagNameToPost;
-DROP VIEW IF EXISTS AllNGramTextPost;
+DROP VIEW IF EXISTS AllNGramTextUsesPost;
 DROP VIEW IF EXISTS AllNGramTexts;
 DROP VIEW IF EXISTS PostUniqueWordCount;
 DROP VIEW IF EXISTS PostLength;
@@ -53,7 +53,7 @@ CREATE TABLE UserLJ (
   created   TIMESTAMP NULL, -- хотели NOT NULL
   update    TIMESTAMP NULL, -- хотели NOT NULL
   fetched   TIMESTAMP NULL, -- NULL здесь показывает, что
-                            -- значение может быть пустым
+  -- значение может быть пустым
   birthday  DATE      NULL,
   interests TEXT      NULL,
   city_cstm TEXT      NULL,
@@ -156,9 +156,11 @@ CREATE TABLE TrigramToPost (
 );
 
 CREATE VIEW PostLength AS (
-  SELECT post_id, sum(uses_cnt) length
-  FROM UnigramToPost
-  GROUP BY post_id
+  SELECT p.id, coalesce(sum(up.uses_cnt),0) length
+  FROM Post p
+  LEFT JOIN UnigramToPost up ON p.id = up.post_id
+  WHERE p.normalized
+  GROUP BY p.id
 );
 
 CREATE VIEW PostUniqueWordCount AS (
@@ -175,14 +177,14 @@ CREATE VIEW AllNGramTexts AS (
   SELECT text FROM Trigram
 );
 
-CREATE VIEW AllNGramTextPost AS (
-  SELECT u.text, up.post_id
+CREATE VIEW AllNGramTextUsesPost AS (
+  SELECT u.text, up.uses_cnt, up.post_id
   FROM Unigram u JOIN UnigramToPost up ON u.id = up.ngram_id
   UNION ALL
-  SELECT d.text, dp.post_id
+  SELECT d.text, dp.uses_cnt, dp.post_id
   FROM Digram d JOIN DigramToPost dp ON d.id = dp.ngram_id
   UNION ALL
-  SELECT t.text, tp.post_id
+  SELECT t.text, tp.uses_cnt, tp.post_id
   FROM Trigram t JOIN TrigramToPost tp ON t.id = tp.ngram_id
 );
 
