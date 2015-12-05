@@ -1,12 +1,16 @@
 package db;
 
+import data.NGram;
 import data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -307,6 +311,44 @@ public class DBConnector {
         }
     }
 
+    public List<Long> getAllPostNormalizedIds() throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectPostNormalizedIdsString = "SELECT id FROM Post WHERE normalized;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    public List<Long> getAllPostNormalizedIds(String tag1, String tag2) throws SQLException {
+        if (tag1 == null || tag2 == null)
+            throw new IllegalArgumentException("Expected not null arguments");
+        List<Long> result = new LinkedList<>();
+        //noinspection SqlResolve
+        String selectPostNormalizedIdsString = "WITH with_tags AS " +
+                "(SELECT post_id FROM TagNameToPost WHERE text IN (VALUES (?), (?))) " +
+                "SELECT id FROM Post p JOIN with_tags wt ON wt.post_id = p.id WHERE p.normalized;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
+        ) {
+            int i = 0;
+            selectPostNormalizedIds.setString(++i, tag1);
+            selectPostNormalizedIds.setString(++i, tag2);
+            ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
     // TODO нужна реализация от postUrl+username ?
     // TODO Для неск постов, скажем, всех постов пользователя?
     public int getPostLength(long postId) throws SQLException {
@@ -319,7 +361,7 @@ public class DBConnector {
             selectLength.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectLength, "PostLength");
             if (rs == null || !rs.next())
-                throw new IllegalStateException("Requested post wasn't normalized yet");
+                throw new IllegalStateException("Requested post (id = " + postId + ") wasn't normalized yet");
             else
                 return rs.getInt("length");
         }
@@ -356,9 +398,9 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getAllNGramNames(long postId) throws SQLException {
-        List<String> result = new LinkedList<>();
-        String selectNGramString = "SELECT text FROM AllNGramTextPost " +
+    public List<NGram> getAllNGramNames(long postId) throws SQLException {
+        List<NGram> result = new LinkedList<>();
+        String selectNGramString = "SELECT text, uses_cnt FROM AllNGramTextUsesPost " +
                 "WHERE post_id = ?;";
         try (
                 Connection con = getConnection();
@@ -368,8 +410,33 @@ public class DBConnector {
             selectNGram.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
             if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString(1));
+                while (rs.next()) {
+                    i = 0;
+                    result.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+        }
+        return result;
+    }
+
+    public List<NGram> getAllNGramNames(long postId, NGramType nGramType) throws SQLException {
+        List<NGram> result = new LinkedList<>();
+        @SuppressWarnings("SqlResolve")
+        String selectNGramString = "SELECT n.text, np.uses_cnt " +
+                "FROM " + nGramType.getTableName() + " n " +
+                "JOIN " + nGramType.getTableToPostName() + " np ON n.id = np.ngram_id " +
+                "WHERE np.post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            selectNGram.setLong(++i, postId);
+            ResultSet rs = tryQueryTransaction(selectNGram, nGramType.getTableName());
+            if (rs != null)
+                while (rs.next()) {
+                    i = 0;
+                    result.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
         }
         return result;
     }
@@ -408,7 +475,7 @@ public class DBConnector {
                 --tries;
                 resultSet = statement.executeQuery();
             } catch (PSQLException pse) {
-                retryTransaction = processPSE(pse,tableName,null);
+                retryTransaction = processPSE(pse, tableName, null);
             }
         return resultSet;
     }
@@ -424,7 +491,7 @@ public class DBConnector {
                 --tries;
                 affected += toExecute.executeUpdate();
             } catch (PSQLException pse) {
-                retryTransaction = processPSE(pse,tableName,currEntry);
+                retryTransaction = processPSE(pse, tableName, currEntry);
             }
         return affected;
     }
@@ -446,7 +513,7 @@ public class DBConnector {
                 }
                 con.commit();
             } catch (PSQLException pse) {
-                retryTransaction = processPSE(pse,tableName,null);
+                retryTransaction = processPSE(pse, tableName, null);
             } finally {
                 con.setAutoCommit(true);
             }
@@ -466,7 +533,7 @@ public class DBConnector {
             return true;
         } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
             System.err.println("PSQLException: suspected bad connection. Closing transaction " +
-                    (entry ? "with first unprocessed entry: \"" + currEntry + "\"": "") +
+                    (entry ? "with first unprocessed entry: \"" + currEntry + "\"" : "") +
                     ". \n If you see this exception than we need a code fix");
             //TODO как-то по другому обрабатывать?
             throw pse;

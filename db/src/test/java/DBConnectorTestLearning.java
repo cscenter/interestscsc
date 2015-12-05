@@ -6,7 +6,6 @@ import db.DBConnector;
 import db.DBConnectorToCrawler;
 import db.DBConnectorToNormalizer;
 
-import java.io.FileNotFoundException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ import java.util.Random;
 public class DBConnectorTestLearning {
 
     @SuppressWarnings("Duplicates")
-    public static void main(String[] args) throws SQLException, ClassNotFoundException, FileNotFoundException {
+    public static void main(String[] args) throws SQLException {
 
         // TODO Выбрать нужную БД
         DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
@@ -35,7 +34,7 @@ public class DBConnectorTestLearning {
         DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestLearning");
         for (int i = 0; i < 5; ++i) {
             String username = "username" + i;
-            dbCrawl.insertUser(new User.UserBuilder(username).build());
+            dbCrawl.insertUser(new User.UserBuilder(username).setSchools(new LinkedList<>()).build());
             ArrayList<Tag> userTags = new ArrayList<>();
             for (int j = 0; j < 5; ++j)
                 userTags.add(new Tag("tagname" + new Random().nextInt(100), null));
@@ -65,10 +64,15 @@ public class DBConnectorTestLearning {
         // Создаем коннектор без прав записи в базу
         DBConnector db = new DBConnector(dbName);
 
+        // Возьмем из базы список id всех нормализованных постов
+        List<Long> normalizedIds = db.getAllPostNormalizedIds();
 
-        // Возьмем для примера один из обработанных постов
-        long postId = unprocessedPosts.get(0).getId();
-
+        // Если такие нашлись, возьмем один из них для примера
+        long postId;
+        if(!normalizedIds.isEmpty())
+            postId = normalizedIds.get(0);
+        else throw new IllegalStateException("DB doesn't contain any normalizes post," +
+                " further testing is pointless. Fill DB and retry.");
 
         // Извлекаем из БД количество, например диграм, для конкретного поста
         int nGramNum = db.getNGramCount(postId, DBConnector.NGramType.DIGRAM);
@@ -98,11 +102,19 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех н-грамм для конкретного поста
-        allNGramNames = db.getAllNGramNames(postId);
-        System.out.println("Getting all nGramNames by postId=" +
+        List<NGram> allNGrams = db.getAllNGramNames(postId);
+        System.out.println("Getting all nGrams by postId=" +
                 postId + " from DB:");
-        for (String nGramName : allNGramNames)
-            System.out.println("\t" + nGramName);
+        for (NGram nGram : allNGrams)
+            System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД список всех, например триграм, для конкретного поста
+        List<NGram> nGrams = db.getAllNGramNames(postId, DBConnector.NGramType.TRIGRAM);
+        System.out.println("Getting all triGrams by postId=" +
+                postId + " from DB:");
+        for (NGram nGram : nGrams)
+            System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
         System.out.println("\n============\n");
 
 
