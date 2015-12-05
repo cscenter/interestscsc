@@ -347,7 +347,7 @@ public class Crawler {
         try {
             Thread.sleep(TimeUnit.SECONDS.toMillis(time));
         } catch (InterruptedException e) {
-            logger.error("Interrupt sleeping before reconnect. " + e);
+            logger.error("Interrupt sleeping. " + e);
         }
     }
 

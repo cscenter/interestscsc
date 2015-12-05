@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class ProxyFactory {
 
@@ -53,6 +54,19 @@ public class ProxyFactory {
     }
 
     public HttpHost getNextProxy() {
+        if (workingProxies.isEmpty()) {
+            logger.warn("Working proxies ended! Please, wait for result of new checking!");
+            startCheckingProxy();
+        }
+
+        // if working proxy-list is empty, then we should sleeping until new proxy doesn't find
+        while (workingProxies.isEmpty()) {
+            try {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+            } catch (InterruptedException e) {
+                logger.error("Interrupt sleeping. " + e);
+            }
+        }
         return workingProxies.get(random.nextInt(workingProxies.size()));
     }
 
@@ -141,6 +155,7 @@ public class ProxyFactory {
             response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
         } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
             logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
+            brokenProxies.add(proxy);
             Thread.currentThread().interrupt();
             return;
         }

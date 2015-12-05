@@ -6,6 +6,7 @@ import org.apache.http.HttpHost;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
+import java.util.concurrent.TimeUnit;
 
 public class ProxyLoader {
     public int loadData(HttpHost httpHostProxy, String... argsToEncode) throws IOException, UnirestException, InterruptedException, RuntimeException {
@@ -23,6 +24,8 @@ public class ProxyLoader {
         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
         URLConnection conn = url.openConnection(proxy);
 
+        conn.setConnectTimeout(new Long(TimeUnit.SECONDS.toMillis(6)).intValue());
+        conn.setReadTimeout(new Long(TimeUnit.SECONDS.toMillis(10)).intValue());
         conn.connect();
         InputStream inputStream = conn.getInputStream();
         if (inputStream == null) {
