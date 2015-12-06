@@ -65,7 +65,7 @@ public class Crawler {
             logger.error("Error connection to DB. " + sqle);
             throw sqle;
         }
-        Unirest.setTimeouts(TimeUnit.SECONDS.toMillis(6), TimeUnit.SECONDS.toMillis(10));
+        Unirest.setTimeouts(TimeUnit.SECONDS.toMillis(10), TimeUnit.SECONDS.toMillis(15));
         usersQueue = new LinkedList<>();
         allTags = new HashMap<>();
         proxyFactory = new ProxyFactory();

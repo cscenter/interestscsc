@@ -101,6 +101,7 @@ public class ProxyFactory {
             insertFromFile(RAW_PROXIES_FILE);
         }
         logger.info("Start new session of checking proxies!");
+        brokenProxies.clear();
         Thread proxyThread = new Thread(() -> {
             findWorkingProxy(rawAllUsers);
         });

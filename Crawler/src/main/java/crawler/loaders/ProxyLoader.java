@@ -24,8 +24,8 @@ public class ProxyLoader {
         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
         URLConnection conn = url.openConnection(proxy);
 
-        conn.setConnectTimeout(new Long(TimeUnit.SECONDS.toMillis(6)).intValue());
-        conn.setReadTimeout(new Long(TimeUnit.SECONDS.toMillis(10)).intValue());
+        conn.setConnectTimeout(new Long(TimeUnit.SECONDS.toMillis(10)).intValue());
+        conn.setReadTimeout(new Long(TimeUnit.SECONDS.toMillis(15)).intValue());
         conn.connect();
         InputStream inputStream = conn.getInputStream();
         if (inputStream == null) {
