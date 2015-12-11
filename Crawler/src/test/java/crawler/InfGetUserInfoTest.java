@@ -2,8 +2,10 @@ package crawler;
 
 import com.mashape.unirest.http.exceptions.UnirestException;
 import crawler.loaders.UserInfoLoader;
+import crawler.proxy.ProxyFactory;
 import db.DBConnector;
 import db.DBConnectorToCrawler;
+import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -15,6 +17,7 @@ import java.util.*;
 
 public class InfGetUserInfoTest {
     private DBConnector db;
+    private ProxyFactory proxyFactory;
     private static final Logger logger = Logger.getLogger(InfGetUserInfoTest.class);
 
     @Before
@@ -24,6 +27,7 @@ public class InfGetUserInfoTest {
         } catch (SQLException sqle) {
             logger.error("Error connection to DB. " + sqle);
         }
+        proxyFactory = new ProxyFactory();
     }
 
     @Test
@@ -39,6 +43,7 @@ public class InfGetUserInfoTest {
         Queue<String> workingUsers = new LinkedList<>(rawUsers);
         long iter = 0;
         UserInfoLoader loader = new UserInfoLoader();
+        HttpHost proxy = proxyFactory.getNextProxy();
         while (true) {
             if (workingUsers.isEmpty()) {
                 workingUsers.addAll(rawUsers);
@@ -47,13 +52,21 @@ public class InfGetUserInfoTest {
             String response = null;
             logger.info("Iteration: " + ++iter + " : " + nick);
             try {
-                response = loader.loadData(nick);
+                response = loader.loadData(proxy, nick);
             } catch (UnirestException e) {
-                logger.warn("User: " + nick + " haven't access. Uniress exception.");
+                proxy = proxyFactory.getNextProxy();
+                logger.warn("User: " + nick + " haven't access. Unirest exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
 
             } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
                 logger.error("User: " + nick + " " + e);
+            } catch (RuntimeException e) {
+                logger.error("User: " + nick + " " + e);
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ie) {
+                    logger.error("Interrupted sleeping. " + ie);
+                }
             }
 
             if (response == null) {
