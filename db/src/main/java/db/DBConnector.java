@@ -368,7 +368,7 @@ public class DBConnector {
     }
 
     public int getPostUniqueWordCount(long postId) throws SQLException {
-        String selectUniqueWordCountString = "SELECT count FROM PostUniqueWordCount WHERE post_id = ?;";
+        String selectUniqueWordCountString = "SELECT count FROM PostUniqueWordCount WHERE id = ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectUniqueWordCount = con.prepareStatement(selectUniqueWordCountString)
