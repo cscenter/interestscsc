@@ -290,7 +290,7 @@ public class DBConnector {
                         "FROM TAG t " +
                         "  JOIN tag_list USING(id);";
         String attr = ",(?)";
-        StringBuilder attrs = new StringBuilder("");
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
         selectTagNamesString = String.format(selectTagNamesString,attrs.toString());
@@ -426,7 +426,7 @@ public class DBConnector {
                         "  JOIN post_list USING(id) " +
                         "WHERE p.normalized;";
         String attr = ",(?)";
-        StringBuilder attrs = new StringBuilder("");
+        StringBuilder attrs = new StringBuilder(tags.size() * attr.length());
         for (int i = tags.size() - 1; i > 0; i--)
             attrs.append(attr);
         selectPostNormalizedIdsString =
@@ -532,7 +532,7 @@ public class DBConnector {
                         "  JOIN post_list USING(post_id) " +
                         "GROUP BY text;";
         String attr = ",(?)";
-        StringBuilder attrs = new StringBuilder("");
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
         selectNGramString = String.format(selectNGramString,attrs.toString());
@@ -597,7 +597,7 @@ public class DBConnector {
                         "FROM " + nGramType.getTableName() + " " +
                         "  JOIN ngram_list USING(id);";
         String attr = ",(?)";
-        StringBuilder attrs = new StringBuilder("");
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
         selectNGramString = String.format(selectNGramString,attrs.toString());
