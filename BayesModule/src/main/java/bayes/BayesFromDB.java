@@ -3,8 +3,6 @@ package bayes;
 import data.NGram;
 import data.Post;
 import db.DBConnectorToNormalizer;
-import ru.compscicenter.java2015.collections.MultiSet;
-import ru.compscicenter.java2015.collections.SimpleMultiSet;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;

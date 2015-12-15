@@ -13,12 +13,12 @@ import java.util.Random;
 
 public class BeijingExampleMultinomialNaiveBayes {
 
-    public static Instance getNextInstance(FastVector fvWekaAttributes, int[] occurrencescount, String label) {
-        Instance iExample1 = new Instance(occurrencescount.length + 1);
-        for (int i = 0; i < occurrencescount.length; i++) {
-            iExample1.setValue((Attribute)fvWekaAttributes.elementAt(i), occurrencescount[i]);
+    public static Instance getNextInstance(FastVector fvWekaAttributes, int[] occurrencesCount, String label) {
+        Instance iExample1 = new Instance(occurrencesCount.length + 1);
+        for (int i = 0; i < occurrencesCount.length; i++) {
+            iExample1.setValue((Attribute)fvWekaAttributes.elementAt(i), occurrencesCount[i]);
         }
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(occurrencescount.length), label);
+        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(occurrencesCount.length), label);
         return iExample1;
     }
 
