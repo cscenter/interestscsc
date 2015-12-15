@@ -1,8 +1,6 @@
 package bayes;
 
 import data.NGram;
-import data.Post;
-import db.DBConnectorToNormalizer;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
@@ -16,20 +14,10 @@ import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import db.DBConnector;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.*;
 
 public class BayesFromDB {
-
-
-    public static int getWordCountInPost(int postId) {
-        return 4;
-    }
 
     public static List<String> getAllnGrammsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
         Set<String> ngramsSet = new HashSet<String>();
@@ -47,46 +35,6 @@ public class BayesFromDB {
     public static String[] getAllTagsFromDB() {
         String[] a = {"статистика", "детское"};
         return a;
-    }
-
-    public static int getDocumentCountFromDB() {
-        return 2;
-    }
-
-    public static int getnGrammCountFromDB(String nGramm, int postId) {
-        if (postId == 0) {
-            if (nGramm.equals("зверь")) {
-                return 2;
-            }
-            if (nGramm.equals("машина")) {
-                return 0;
-            }
-            if (nGramm.equals("собака")) {
-                return 2;
-            }
-        }
-        if (postId == 1) {
-            if (nGramm.equals("зверь")) {
-                return 1;
-            }
-            if (nGramm.equals("машина")) {
-                return 3;
-            }
-            if (nGramm.equals("собака")) {
-                return 0;
-            }
-        }
-        return 0;
-    }
-
-    public static String[] getPostTagFromDB(int postId) {
-        if (postId == 0) {
-            String[] a = {"животные"};
-            return a;
-        } else {
-            String[] a = {"авто"};
-            return a;
-        }
     }
 
     public static Instances getDataset(List<Long> normalizedIds, DBConnector db) throws SQLException {
