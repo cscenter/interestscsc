@@ -309,6 +309,34 @@ public class DBConnector {
         return result;
     }
 
+    public List<String> getTopNormalizedTagNames(int minUses, int maxUses) throws SQLException {
+        List<String> result = new LinkedList<>();
+        String selectTopTagNamesString = "" +
+                "WITH norm AS ( " +
+                "    SELECT id AS post_id " +
+                "    FROM Post " +
+                "    WHERE normalized " +
+                ") " +
+                "SELECT text " +
+                "FROM TagNameToPost " +
+                "JOIN norm USING(post_id) " +
+                "GROUP BY text " +
+                "HAVING count(*) > ? AND count(*) < ?";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTopTagNames = con.prepareStatement(selectTopTagNamesString)
+        ) {
+            int i = 0;
+            selectTopTagNames.setInt(++i, minUses);
+            selectTopTagNames.setInt(++i, maxUses);
+            ResultSet rs = tryQueryTransaction(selectTopTagNames, "TagNameToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
     public Set<Long> getAllUserPostUrls(String userLJNick) throws SQLException {
         Set<Long> result = new HashSet<>();
         String selectUserPostUrlsString = "SELECT url FROM Post p " +

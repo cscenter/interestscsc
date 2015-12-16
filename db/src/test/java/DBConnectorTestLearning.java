@@ -64,13 +64,16 @@ public class DBConnectorTestLearning {
         // Создаем коннектор без прав записи в базу
         DBConnector db = new DBConnector(dbName);
 
+        // Возьмем из базы список тегов, встречающихся
+        // в нормализованных постах с определенной частотой
+        List<String> preferredTags = db.getTopNormalizedTagNames(200, 500);
+        System.out.println("Getting most popular in normalized posts tags from DB:");
+        for (String tag : preferredTags)
+            System.out.println("\t" + tag);
+        System.out.println("\n============\n");
+
         // Возьмем из базы список id всех нормализованных постов,
         // имеющих хоть один из нужных нам тегов
-        List<String> preferredTags = new LinkedList<>();
-        //noinspection SpellCheckingInspection
-        preferredTags.add("foto");
-        preferredTags.add("фото");
-        preferredTags.add("photo");
         //noinspection UnusedAssignment
         List<Long> normalizedIds = db.getAllPostNormalizedIds(preferredTags);
 
