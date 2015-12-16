@@ -660,21 +660,21 @@ public class BayesFromDB {
         //System.out.println(isTrainingSet.toSummaryString());
 
         // assume Instances inputData is your dataset which has already been loaded
-        AttributeSelection selecter = new AttributeSelection();
+        AttributeSelection selector = new AttributeSelection();
         LatentSemanticAnalysis lsa = new LatentSemanticAnalysis();
         Ranker rank = new Ranker(); // The default parameters for Ranker and AttributeSelection are
         //appropriate for LSA. You can adjust the LSA options as desired.
 
-        selecter.setEvaluator(lsa);
+        selector.setEvaluator(lsa);
 
-        selecter.setSearch(rank);
+        selector.setSearch(rank);
 
 // the methods in the next two lines can throw exceptions, so you have to
         //deal with those appropriately selecter.SelectAttributes(inputData);
 
-        selecter.SelectAttributes(isTrainingSet);
+        selector.SelectAttributes(isTrainingSet);
 
-        Instances newTrainingSet = selecter.reduceDimensionality(isTrainingSet);
+        Instances newTrainingSet = selector.reduceDimensionality(isTrainingSet);
         //selecter.numberAttributesSelected();
 
         //System.out.print(newTrainingSet.toSummaryString());

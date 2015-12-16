@@ -224,5 +224,51 @@ public class Dataset {
         return this.normalizedIdsTest;
     }
 
+    public static void main(String[] args) throws Exception {
 
+        DBConnector.DataBase dbName = DBConnector.DataBase.MAIN;
+
+        DBConnector db = new DBConnector(dbName);
+
+        // нужно подумать, как набирать датасет
+        List<Long> normalizedIds = getNormalizedIds(db);
+
+        Dataset dataset = new Dataset();
+
+        // 0.1 - количество теста относительно всего сета, т. е. 1/10 test, 9/10 - train
+        dataset.splitToTrainAndTest(normalizedIds, 0.1);
+        List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
+        List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
+
+        List<String> allTags = getAllTagsFromDB(normalizedIds, db);
+        List<String>  allnGrammsFromDB = getAllnGrammsFromDB(normalizedIdsTrain, db);
+
+        dataset.setAttributes(allnGrammsFromDB, allTags);
+
+        Instances isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allnGrammsFromDB);
+        Instances isTestingSet = dataset.getDataset(normalizedIdsTest, db, allnGrammsFromDB);
+
+        System.out.println("Число постов: " + isTrainingSet.numInstances());
+
+        System.out.println("Число аттрибутов в TrainingSet: " + isTrainingSet.numAttributes());
+
+        Classifier classifier = trainClassifier(isTrainingSet);
+        System.out.println("ошибка на исходном множестве:");
+        validateClassifier(classifier, isTrainingSet);
+        System.out.println("ошибка на тестовом множестве:");
+        validateClassifier(classifier, isTestingSet);
+
+
+        dataset.setParametersForLSA(isTrainingSet, 0.9999);
+        Instances newTrainingSet = dataset.getLSAReducedDataset(isTrainingSet);
+        System.out.println("Число аттрибутов в newTrainingSet: " + newTrainingSet.numAttributes());
+        Instances newTestingSet = dataset.getLSAReducedDataset(isTestingSet);
+        System.out.println(newTrainingSet.equalHeaders(newTestingSet));
+
+        Classifier naiveBayes2 = trainClassifier(newTrainingSet);
+        System.out.println("ошибка на исходном множестве:");
+        validateClassifier(naiveBayes2, newTrainingSet);
+        System.out.println("ошибка на тестовом множестве:");
+        validateClassifier(naiveBayes2, newTestingSet);
+    }
 }
