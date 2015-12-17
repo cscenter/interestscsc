@@ -13,9 +13,9 @@ public class NaiveBayesClassifier {
         return cModel;
     }
 
-    public static String validateClassifier(Classifier cModel, Instances isTrainingSet) throws Exception {
-        Evaluation eTest = new Evaluation(isTrainingSet);
-        eTest.evaluateModel(cModel, isTrainingSet);
+    public static String validateClassifier(Classifier cModel, Instances isValidationSet) throws Exception {
+        Evaluation eTest = new Evaluation(isValidationSet);
+        eTest.evaluateModel(cModel, isValidationSet);
 
         return eTest.toSummaryString();
     }

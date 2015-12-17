@@ -2,6 +2,7 @@ package dataset;
 
 import data.NGram;
 import db.DBConnector;
+import org.apache.log4j.Logger;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.Ranker;
 import weka.core.Attribute;
@@ -25,7 +26,7 @@ public class Dataset {
     private Map<String, Integer> totalnGramsListIndexes;
     private List<Long> normalizedIdsTrain;
     private List<Long> normalizedIdsTest;
-
+    private static final Logger logger = Logger.getLogger(Dataset.class);
 
     public Dataset() {
         selector = null;
@@ -71,7 +72,7 @@ public class Dataset {
                     "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
                     "method to provide unique format of dataset.");
         }
-        System.out.print("Getting dataset...");
+        logger.info("Getting dataset...");
         // Create an empty training set
         int documentCount = normalizedIds.size();
         Instances isTrainingSet = new Instances("Rel", attributeVector, documentCount);
@@ -87,18 +88,20 @@ public class Dataset {
             }
 
             for (String tagOfPost : allTagsOfPost) {
-                System.out.print("Post " + postId + ":  ");
+                logger.info("Post " + postId + ":  ");
                 Instance iExample = new Instance(1, new double[attributeVector.size()]);
+                StringBuilder builder = new StringBuilder();
                 for (NGram nGram : allNGram) {
                     if (totalnGramsListIndexes.containsKey(nGram.getText())) {
                         int wordCountInPost = nGram.getUsesCnt();
                         // Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
                         double relWordCountInPost = (double) wordCountInPost; // / (double) totalWordCountInPost;
                         iExample.setValue(totalnGramsListIndexes.get(nGram.getText()), relWordCountInPost);
-                        System.out.print(nGram.getText() + " ");
+                        builder.append(nGram.getText() + " ");
                     }
                 }
-                System.out.println(tagOfPost);
+                logger.info(builder);
+                logger.info("Answer: " + tagOfPost);
                 iExample.setValue((Attribute) attributeVector.elementAt(totalnGramsList.size()), tagOfPost);
                 isTrainingSet.add(iExample);
             }
@@ -162,7 +165,6 @@ public class Dataset {
 
         // рандомно собираю normalizedIdsTest
         int numberOfPostsInTestingSet = (int)(normalizedIds.size() * ratio);
-        //System.out.println(numberOfPostsInTestingSet);
         while (normalizedIdsTest.size() < numberOfPostsInTestingSet) {
             int nextPostNumber = (int) (Math.random() * normalizedIds.size());
             if (!normalizedIdsTest.contains(normalizedIds.get(nextPostNumber))) {

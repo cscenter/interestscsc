@@ -48,8 +48,9 @@ public class NaiveBayesClassifierTest {
             List<String> allnGrammsFromDB = dataset.getAllnGrammsFromDB(normalizedIdsTrain, db);
 
             dataset.setAttributes(allnGrammsFromDB, allTags);
-
+            logger.info("Training set: ");
             isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allnGrammsFromDB);
+            logger.info("Testing set: ");
             isTestingSet = dataset.getDataset(normalizedIdsTest, db, allnGrammsFromDB);
 
         } catch (SQLException e) {
@@ -65,9 +66,9 @@ public class NaiveBayesClassifierTest {
         try {
             Classifier classifier = NaiveBayesClassifier.trainClassifier(isTrainingSet);
             logger.info("Ошибка на исходном множестве:");
-            NaiveBayesClassifier.validateClassifier(classifier, isTrainingSet);
+            logger.info(NaiveBayesClassifier.validateClassifier(classifier, isTrainingSet));
             logger.info("Ошибка на тестовом множестве:");
-            NaiveBayesClassifier.validateClassifier(classifier, isTestingSet);
+            logger.info(NaiveBayesClassifier.validateClassifier(classifier, isTestingSet));
 
         } catch (Exception e) {
             logger.error("Working with classifier failed. " + e);
@@ -84,9 +85,9 @@ public class NaiveBayesClassifierTest {
 
             Classifier naiveBayes2 = NaiveBayesClassifier.trainClassifier(newTrainingSet);
             logger.info("ошибка на исходном множестве:");
-            NaiveBayesClassifier.validateClassifier(naiveBayes2, newTrainingSet);
+            logger.info(NaiveBayesClassifier.validateClassifier(naiveBayes2, newTrainingSet));
             logger.info("ошибка на тестовом множестве:");
-            NaiveBayesClassifier.validateClassifier(naiveBayes2, newTestingSet);
+            logger.info(NaiveBayesClassifier.validateClassifier(naiveBayes2, newTestingSet));
         } catch (Exception e) {
             logger.error("Working with classifier with LSA failed. " + e);
         }
