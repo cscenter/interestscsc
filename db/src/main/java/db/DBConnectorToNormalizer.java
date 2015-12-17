@@ -59,19 +59,24 @@ public class DBConnectorToNormalizer extends DBConnector {
         if (reserveNum <= 0) throw new IllegalArgumentException("Argument reserveNum must be greater than 0.");
         int rowsAffected = 0;
         String reservePostsString =
+                "BEGIN; " +
+                "LOCK Post IN SHARE UPDATE EXCLUSIVE MODE; " +
                 "UPDATE Post p SET normalizer_id = ? " +
-                        "FROM ( " +
-                        "       SELECT id FROM Post p " +
-                        "       WHERE p.normalizer_id IS NULL AND NOT p.normalized " +
-                        "       LIMIT ? FOR UPDATE " +
-                        "     ) free " +
-                        "WHERE p.id = free.id;";
+                "FROM ( " +
+                "       WITH mod AS (SELECT GREATEST(count(*)/?, 1) FROM PostToNormalizeRanked) " +
+                "       SELECT id FROM PostToNormalizeRanked " +
+                "       WHERE row_number % (SELECT * FROM mod) = 0 " +
+                "       LIMIT ?" +
+                "     ) free " +
+                "WHERE p.id = free.id; " +
+                "COMMIT;";
         try (
                 Connection con = getConnection();
                 PreparedStatement reservePosts = con.prepareStatement(reservePostsString)
         ) {
             int i = 0;
             reservePosts.setInt(++i, normalizerId);
+            reservePosts.setInt(++i, reserveNum);
             reservePosts.setInt(++i, reserveNum);
             rowsAffected += tryUpdateTransaction(reservePosts, "normalizerId = " + normalizerId, "Post");
         }

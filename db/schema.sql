@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS PostToNormalizeRanked;
 DROP VIEW IF EXISTS RawUserLJRanked;
 DROP VIEW IF EXISTS TagNameToPost;
 DROP VIEW IF EXISTS AllNGramTextUsesPost;
@@ -158,15 +159,17 @@ CREATE TABLE TrigramToPost (
 CREATE VIEW PostLength AS (
   SELECT p.id, coalesce(sum(up.uses_cnt),0) length
   FROM Post p
-  LEFT JOIN UnigramToPost up ON p.id = up.post_id
+    LEFT JOIN UnigramToPost up ON p.id = up.post_id
   WHERE p.normalized
   GROUP BY p.id
 );
 
 CREATE VIEW PostUniqueWordCount AS (
-  SELECT post_id, count(*) count
-  FROM UnigramToPost
-  GROUP BY post_id
+  SELECT p.id, coalesce(count(up.uses_cnt), 0) count
+  FROM Post p
+    LEFT JOIN UnigramToPost up ON p.id = up.post_id
+  WHERE p.normalized
+  GROUP BY p.id
 );
 
 CREATE VIEW AllNGramTexts AS (
@@ -199,4 +202,11 @@ CREATE VIEW RawUserLJRanked AS (
   FROM RawUserLJ r
   WHERE r.crawler_id IS NULL
         AND r.user_id IS NULL
+);
+
+CREATE VIEW PostToNormalizeRanked AS (
+  SELECT id, row_number() OVER(ORDER BY id)
+  FROM Post
+  WHERE normalizer_id IS NULL
+        AND NOT normalized
 );
