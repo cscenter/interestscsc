@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS PostToNormalizeRanked;
 DROP VIEW IF EXISTS RawUserLJRanked;
 DROP VIEW IF EXISTS TagNameToPost;
 DROP VIEW IF EXISTS AllNGramTextUsesPost;
@@ -201,4 +202,11 @@ CREATE VIEW RawUserLJRanked AS (
   FROM RawUserLJ r
   WHERE r.crawler_id IS NULL
         AND r.user_id IS NULL
+);
+
+CREATE VIEW PostToNormalizeRanked AS (
+  SELECT id, row_number() OVER(ORDER BY id)
+  FROM Post
+  WHERE normalizer_id IS NULL
+        AND NOT normalized
 );
