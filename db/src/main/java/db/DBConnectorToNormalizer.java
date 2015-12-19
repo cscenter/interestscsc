@@ -61,12 +61,20 @@ public class DBConnectorToNormalizer extends DBConnector {
         String reservePostsString =
                 "BEGIN; " +
                 "LOCK Post IN SHARE UPDATE EXCLUSIVE MODE; " +
-                "UPDATE Post p SET normalizer_id = ? " +
+                "UPDATE Post p " +
+                "SET normalizer_id = ? " +
                 "FROM ( " +
-                "       WITH mod AS (SELECT GREATEST(count(*)/?, 1) FROM PostToNormalizeRanked) " +
-                "       SELECT id FROM PostToNormalizeRanked " +
-                "       WHERE row_number % (SELECT * FROM mod) = 0 " +
-                "       LIMIT ?" +
+                "    WITH max_r AS ( " +
+                "      SELECT count(*)-1 FROM PostToNormalizeRanked " +
+                "    ), " +
+                "    rand AS ( " +
+                "      SELECT 1 + (random() * (SELECT * FROM max_r)) :: INTEGER AS row_number " +
+                "      FROM generate_series(1, ?) " +
+                "      GROUP BY row_number " +
+                "    ) " +
+                "    SELECT id " +
+                "    FROM PostToNormalizeRanked " +
+                "    JOIN rand USING(row_number) " +
                 "     ) free " +
                 "WHERE p.id = free.id; " +
                 "COMMIT;";
@@ -76,7 +84,6 @@ public class DBConnectorToNormalizer extends DBConnector {
         ) {
             int i = 0;
             reservePosts.setInt(++i, normalizerId);
-            reservePosts.setInt(++i, reserveNum);
             reservePosts.setInt(++i, reserveNum);
             rowsAffected += tryUpdateTransaction(reservePosts, "normalizerId = " + normalizerId, "Post");
         }

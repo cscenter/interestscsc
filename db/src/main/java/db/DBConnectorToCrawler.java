@@ -130,12 +130,20 @@ public class DBConnectorToCrawler extends DBConnector {
         String reserveUserNicksString =
                 "BEGIN; " +
                 "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
-                "UPDATE RawUserLJ r SET crawler_id = ? " +
+                "UPDATE RawUserLJ r " +
+                "SET crawler_id = ? " +
                 "FROM ( " +
-                "       WITH mod AS (SELECT GREATEST(count(*)/?, 1) FROM RawUserLJRanked) " +
-                "       SELECT nick FROM RawUserLJRanked r " +
-                "       WHERE r.row_number % (SELECT * FROM mod) = 0 " +
-                "       LIMIT ?" +
+                "    WITH max_r AS ( " +
+                "      SELECT count(*)-1 FROM RawUserLJRanked " +
+                "    ), " +
+                "    rand AS ( " +
+                "      SELECT 1 + (random() * (SELECT * FROM max_r)) :: INTEGER AS row_number " +
+                "      FROM generate_series(1, ?) " +
+                "      GROUP BY row_number " +
+                "    ) " +
+                "    SELECT nick  " +
+                "    FROM RawUserLJRanked r " +
+                "    JOIN rand USING(row_number) " +
                 "     ) free " +
                 "WHERE r.nick = free.nick; " +
                 "COMMIT;";
@@ -145,7 +153,6 @@ public class DBConnectorToCrawler extends DBConnector {
         ) {
             int i = 0;
             reserveUserNicks.setInt(++i, crawlerId);
-            reserveUserNicks.setInt(++i, reserveNum);
             reserveUserNicks.setInt(++i, reserveNum);
             rowsAffected += tryUpdateTransaction(reserveUserNicks, "crawlerId = " + crawlerId, "RawUserLJ");
         }
