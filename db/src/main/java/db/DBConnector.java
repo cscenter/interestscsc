@@ -7,11 +7,9 @@ import org.postgresql.util.PSQLException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 /**
  * User: allight
@@ -658,6 +656,81 @@ public class DBConnector {
             if (rs == null || !rs.next())
                 throw new IllegalStateException("If you see this, our code needs a fix");
             return rs.getInt("count");
+        }
+    }
+
+    public int[][] getTagByWeekStatisticsPerYear(ArrayList<Date> weekInvPos,
+                                                 ArrayList<String> tagInvPos, int topLimit) throws SQLException {
+        final int MAX_WEEKS_IN_YEAR = 53;
+        if (weekInvPos == null || tagInvPos == null) throw new IllegalArgumentException("Expecting not null arguments.");
+        if (topLimit <= 0) throw new IllegalArgumentException("Argument topLimit must be greater than 0.");
+        String selectWeekStatString =
+                "SELECT week.week::DATE " +
+                        "FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
+                        "AS week (week);";
+        String selectTagStatString =
+                "WITH top_tags AS ( " +
+                        "    SELECT tag_id, count(*) times " +
+                        "    FROM tagtopost tp " +
+                        "    GROUP BY tp.tag_id " +
+                        "    ORDER BY times DESC " +
+//                "    OFFSET 300" +
+                        "    LIMIT ? " +
+                        "), " +
+                        "week AS ( " +
+                        "    SELECT week.week" +
+                        "    FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
+                        "    AS week (week) " +
+                        ") " +
+                        "SELECT w.week :: DATE, t.text, coalesce(count(*), 0) AS count " +
+                        "FROM week w " +
+                        "  JOIN post p ON p.date BETWEEN w.week AND w.week + '1 week' " +
+                        "  JOIN tagtopost tp ON p.id = tp.post_id " +
+                        "  JOIN top_tags tt ON tp.tag_id = tt.tag_id " +
+                        "  JOIN tag t ON tp.tag_id = t.id " +
+                        "GROUP BY w.week, t.text " +
+                        "ORDER BY t.text, w.week;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectWeekStat = con.prepareStatement(selectWeekStatString);
+                PreparedStatement selectTagStat = con.prepareStatement(selectTagStatString)
+        ) {
+            HashMap<Date, Integer> weekPos = new HashMap<>(MAX_WEEKS_IN_YEAR);
+            weekInvPos.ensureCapacity(MAX_WEEKS_IN_YEAR);
+            {
+                ResultSet rs = tryQueryTransaction(selectWeekStat, "TempTable");
+                if (rs == null) throw new IllegalStateException("If you see this exception, the code need a fix");
+                int weekInc = -1;
+                while (rs.next()) {
+                    Date date = rs.getDate(1);
+                    weekPos.put(date, ++weekInc);
+                    weekInvPos.add(weekInc, date);
+                }
+            }
+
+            //noinspection SuspiciousNameCombination
+            selectTagStat.setInt(1, topLimit);
+            ResultSet rs = tryQueryTransaction(selectTagStat, "Multiple tables");
+
+            int tagInc = 0;
+            HashMap<String, Integer> tagPos = new HashMap<>(topLimit);
+            int[][] weekTagResult = new int[topLimit][MAX_WEEKS_IN_YEAR];
+
+            if (rs != null)
+                while (rs.next()) {
+                    int paramInd = 0;
+                    Integer week = weekPos.get(rs.getDate(++paramInd));
+                    if (week == null) throw new IllegalStateException("If you see this exception, the code need a fix");
+                    String tagName = rs.getString(++paramInd);
+                    Integer tag = tagPos.putIfAbsent(tagName, tagInc);
+                    if (tag == null) {
+                        tag = tagInc;
+                        tagInvPos.add(tagInc++, tagName);
+                    }
+                    //noinspection UnusedAssignment
+                    weekTagResult[tag][week] = rs.getInt(++paramInd);
+                }
+            return weekTagResult;
         }
     }
 
