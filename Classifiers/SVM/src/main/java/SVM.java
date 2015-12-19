@@ -25,8 +25,13 @@ public class SVM {
         // у любого бинарного классификатора.
         // Если в кач-ве второго класса выбрать "личное",
         // SMO сможет 100% распознать все посты, что логично.
-        final String class1 = "history";
-        final String class2 = "детское";
+
+        List<String> classes = new LinkedList<>();
+        classes.add("history");
+        classes.add("детское");
+
+//        final String class1 = "history";
+//        final String class2 = "детское";
 //        final String class2 = "личное";
 
         // Коннектор к базе
@@ -35,50 +40,53 @@ public class SVM {
         // Собираем id всех нормализованных постов
 //        List<Long> normalizedPostIds = db.getAllPostNormalizedIds();
         // Временно: .. id нормализованных постов, принадлежащих к одному из указанных классов
-        List<Long> normalizedPostIds = db.getAllPostNormalizedIds(class1, class2);
+        List<Long> normalizedPostIds = db.getAllPostNormalizedIds(classes);
 
         // Веткор, который будет содержать все наши X+y
         FastVector attributes;
 
         // Мапа для быстрого поиска позиции нграммы в векторе по её тексту
         // М.б. потом можно улучшить
-        Map<String, Integer> nGramToAttributeIndex;
+        Map<String, Integer> nGramNameToAttributeIndex;
+        Map<String, Integer> classNameToAttributeIndex;
 
         {
             // Собираем все связанные с вытащенными постами нграммы в Set
-            Set<NGram> allNGramms = new HashSet<>();
-            // TODO добавить метод выдающий из базы сразу set по списку id
-            for (Long id : normalizedPostIds) {
-                assert (id != null);
-                allNGramms.addAll(db.getAllNGramNames(id));
-            }
-            // Задаем размер вектора атрибутов, исходя из кол-ва н-грам + 1 (для тега)
-            // и заполняем его и мапу данными - текстами н-грамм
-            attributes = new FastVector(allNGramms.size() + 1);
-            nGramToAttributeIndex = new HashMap<>(allNGramms.size());
+            Set<String> allNGramsNames = new HashSet<>();
+            allNGramsNames.addAll(db.getAllNGramNames(normalizedPostIds));
+
+            // Задаем размер вектора атрибутов, исходя из кол-ва н-грам + количество классов + 1 (для тега)
+            // и заполняем его и мапу данными - текстами н-грамм и названиями классов
+            attributes = new FastVector(allNGramsNames.size() + classes.size() + 1);
             int i = 0;
-            for (NGram nGramm : allNGramms) {
-                attributes.addElement(new Attribute(nGramm.getText()));
-                nGramToAttributeIndex.put(nGramm.getText(), i++);
+            nGramNameToAttributeIndex = new HashMap<>(allNGramsNames.size());
+            for (String nGramName : allNGramsNames) {
+                attributes.addElement(new Attribute(nGramName));
+                nGramNameToAttributeIndex.put(nGramName, i++);
             }
+            classNameToAttributeIndex = new HashMap<>(classes.size());
+            for (String className : classes) {
+                attributes.addElement(new Attribute(className));
+                classNameToAttributeIndex.put(className, i++);
+            }
+
             // Дебаг: выводим имеющиеся н-граммы в консоль
             System.out.println("all nGrams:");
-            for (NGram nGram : allNGramms)
-                System.out.print("\t" + nGram.getText());
+            for (String nGramName : allNGramsNames)
+                System.out.print("\t" + nGramName);
         }
 
 
         {
             // Собираем в мапу все теги, проставленные к данным постам
-            Set<String> allTags2 = new HashSet<>();
+            Set<String> allTags = new HashSet<>();
             // Временно: для простейшего классификатора только два заданных класса
 //        for (Long id : normalizedPostIds)
-//            allTags2.addAll(db.getAllTagNames(id));
-            allTags2.add(class1);
-            allTags2.add(class2);
+//            allTags.addAll(db.getAllTagNames(id));
+            allTags.addAll(classes);
             // Добавляем теги ..
-            FastVector classVal = new FastVector(allTags2.size());
-            for (String tag : allTags2)
+            FastVector classVal = new FastVector(allTags.size());
+            for (String tag : allTags)
                 classVal.addElement(tag);
             // .. в общий вектор атрибутов в качестве атрибута возможных класса
             Attribute classAttribute = new Attribute("Tag", classVal);
@@ -90,32 +98,35 @@ public class SVM {
         trainingSet.setClassIndex(attributes.size() - 1);
 
         // Для каждого нормализованного поста:
-        for (Long postId2 : normalizedPostIds) {
+        for (Long postId : normalizedPostIds) {
             // Забираем все н-граммы и теги, связанные с постом
-            List<NGram> allNGramOfPost2 = db.getAllNGramNames(postId2);
-            List<String> allTagsOfPost2 = db.getAllTagNames(postId2);
+            List<NGram> allNGramOfPost = db.getAllNGramNames(postId);
+            List<String> allTagsOfPost = db.getAllTagNames(postId);
 
-            if (allNGramOfPost2.size() < 2) continue;
+            // отсеиваем слишкрм короткие посты
+            if (allNGramOfPost.size() < 2) continue;
 
             // Для каждой пары тег-пост создаем новый элемент датасета
-            for (String tagOfPost : allTagsOfPost2) {
-                // Временно: для простейшего классификатора оставляем только теги нужные два тега
-                if (!class1.equals(tagOfPost) && !class2.equals(tagOfPost))
+            for (String tagOfPost : allTagsOfPost) {
+                // Временно: для простейшего классификатора оставляем только нужные теги
+                if (!classes.contains(tagOfPost))
                     continue;
                 // Узнаем длину поста "в юниграммах"
                 // TODO может вызвать проблемы, если использовать не только юниграммы,
                 // TODO т.к. является общим делителем (ниже)
-                int totalWordCountInPost = db.getPostLength(postId2);
+                int totalWordCountInPost = db.getPostLength(postId);
                 // Создаем новый элемент датасета на основе вектора атрибутов, заполняем нулями
                 Instance example = new Instance(1, new double[attributes.size()]);
                 // Для каждой нграммы в посте
-                for (NGram nGram : allNGramOfPost2) {
+                for (NGram nGram : allNGramOfPost) {
                     // Узнаем количество использований в посте
                     int wordCountInPost = nGram.getUsesCnt();
                     // Добавляем в элемент датасета на соответствующее место относительную частоту
                     double relWordCountInPost = (double) wordCountInPost / (double) totalWordCountInPost;
-                    example.setValue(nGramToAttributeIndex.get(nGram.getText()), relWordCountInPost);
+                    example.setValue(nGramNameToAttributeIndex.get(nGram.getText()), relWordCountInPost);
                 }
+                // Устанавливаем нужный класс в атрибут
+                example.setValue(classNameToAttributeIndex.get(tagOfPost),1);
                 // Устанавливаем элементу датасета нужный класс
                 example.setValue((Attribute) attributes.elementAt(trainingSet.classIndex()), tagOfPost);
                 // Добавляем в тренировочный датасет
