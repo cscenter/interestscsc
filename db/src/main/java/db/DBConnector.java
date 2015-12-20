@@ -307,6 +307,61 @@ public class DBConnector {
         return result;
     }
 
+    public Map<Long, List<String>> getAllTags(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<String>> result = new HashMap<>();
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        //noinspection SqlResolve,SqlCheckUsingColumns
+        String selectTagNamesString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id FROM ( " +
+                "        VALUES (?) %s " +
+                "    ) AS post_list(post_id) " +
+                "), tag_list AS ( " +
+                "SELECT tp.post_id, tp.tag_id id " +
+                "FROM TagToPost tp " +
+                "JOIN post_list USING (post_id) " +
+                "GROUP BY tp.post_id, tp.tag_id " +
+                ") " +
+                "SELECT tl.post_id, t.text " +
+                "FROM TAG t " +
+                "JOIN tag_list tl USING(id) " +
+                "ORDER BY tl.post_id;";
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        selectTagNamesString = String.format(selectTagNamesString,attrs.toString());
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectTagNames.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectTagNames, "TagNameToPost");
+            if (rs != null) {
+                List<String> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(rs.getString(++i));
+                }
+            }
+        }
+        return result;
+    }
+
     //TODO
     public List<String> getTopNormalizedTagNames(long minScore, long maxScore) throws SQLException {
         List<String> result = new LinkedList<>();

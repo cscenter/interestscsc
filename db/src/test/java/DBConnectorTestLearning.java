@@ -61,11 +61,11 @@ public class DBConnectorTestLearning {
         // Создаем коннектор без прав записи в базу
         DBConnector db = new DBConnector(dbName);
 
-        // Возьмем из базы список тегов, находящихся в некотором диапазане
-        // "очков" популярности
-        // по произведению количесва содержащих их постов
-        // на .
-        final long min_score = 2000L;
+        // Возьмем из базы список тегов,
+        // находящихся в некотором диапазане очков популярности по произведению
+        // количесва содержащих их постов
+        // на количество использующих в этих постах пользователей.
+        final long min_score = 40000L;
         final long max_score = 50000L;
         List<String> preferredTags = db.getTopNormalizedTagNames(min_score, max_score);
         System.out.println("Getting most popular in normalized posts tags from DB " +
@@ -74,8 +74,9 @@ public class DBConnectorTestLearning {
             System.out.println("\t" + tag);
         System.out.println("\n============\n");
 
-        // Возьмем из базы список тегов, встречающихся
-        // в нормализованных постах с определенной частотой
+        // Возьмем из базы список тегов
+        // из топа популярных тегов среди нормализованных постов
+        // с заданным offset и limit
         final int offset_top_positions = 300;
         final int limit_top_positions = 2;
         preferredTags = db.getTopNormalizedTagNames(offset_top_positions, limit_top_positions);
@@ -85,20 +86,22 @@ public class DBConnectorTestLearning {
             System.out.println("\t" + tag);
         System.out.println("\n============\n");
 
-        // Возьмем из базы список id всех нормализованных постов,
+        // Возьмем из базы список id всех нормализованных постов
+        List<Long> normalizedIds = db.getAllPostNormalizedIds();
+
+        // .. или возьмем из базы список id всех нормализованных постов,
         // имеющих хоть один из нужных нам тегов
         //noinspection UnusedAssignment
-        List<Long> normalizedIds = db.getAllPostNormalizedIds(preferredTags);
-
-        // .. или возьмем из базы список id всех нормализованных постов
-        normalizedIds = db.getAllPostNormalizedIds();
+        normalizedIds = db.getAllPostNormalizedIds(preferredTags);
 
         // Если такие нашлись, возьмем один из них для примера
-        long postId;
-        if(!normalizedIds.isEmpty())
-            postId = normalizedIds.get(0);
-        else throw new IllegalStateException("DB doesn't contain any normalizes post," +
+        if(normalizedIds.isEmpty())
+            throw new IllegalStateException("DB doesn't contain any normalizes post," +
                 " further testing is pointless. Fill DB and retry.");
+        long postId = normalizedIds.get(0);
+        List<Long> selectedPosts =
+                normalizedIds.subList(0, Math.min(5,normalizedIds.size()));
+
 
         // Извлекаем из БД количество, например диграм, для конкретного поста
         int nGramNum = db.getNGramCount(postId, DBConnector.NGramType.DIGRAM);
@@ -128,9 +131,7 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех н-грамм для списка постов
-        List<Long> prefferedPosts =
-                normalizedIds.subList(0, Math.min(3,normalizedIds.size()));
-        List<String> allNGramNamesForPosts = db.getAllNGramNames(prefferedPosts);
+        List<String> allNGramNamesForPosts = db.getAllNGramNames(selectedPosts);
         System.out.println("Getting all nGrams for multiple posts from DB:");
         for (String nGram : allNGramNamesForPosts)
             System.out.println("\t" + nGram);
@@ -146,7 +147,7 @@ public class DBConnectorTestLearning {
 
         // Извлекаем из БД список всех всех, например биграм, для списка постов
         allNGramNamesForPosts =
-                db.getAllNGramNames(prefferedPosts, DBConnector.NGramType.DIGRAM);
+                db.getAllNGramNames(selectedPosts, DBConnector.NGramType.DIGRAM);
         System.out.println("Getting all diGrams for multiple posts from DB:");
         for (String nGram : allNGramNamesForPosts)
             System.out.println("\t" + nGram);
@@ -161,10 +162,10 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех н-грамм для списка постов
-        Map<Long,List<NGram>> allNGramsForPosts = db.getAllNGrams(prefferedPosts);
+        Map<Long,List<NGram>> allNGramsForPosts = db.getAllNGrams(selectedPosts);
         System.out.println("Getting all nGrams for every post in a list with size = " +
-                prefferedPosts.size() + "from DB:");
-        for (Long postID : prefferedPosts) {
+                selectedPosts.size() + "from DB:");
+        for (Long postID : selectedPosts) {
             System.out.println("\tnGrams for postID = " + postID);
             for (NGram nGram : allNGramsForPosts.get(postID))
                 System.out.println("\t\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
@@ -196,12 +197,20 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех тегов для набора постов
-        List<Long> listOfPostIDs = normalizedIds
-                .subList(0,Math.min(4,normalizedIds.size()));
-        allTagNames = db.getAllTagNames(listOfPostIDs);
+        allTagNames = db.getAllTagNames(selectedPosts);
         System.out.println("Getting all tagNames by list of postIDs from DB:");
         for (String tagName : allTagNames)
             System.out.println("\t" + tagName);
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД все наборы тегов для каждого поста из списка
+        Map<Long, List<String>> allTagsForPosts = db.getAllTags(selectedPosts);
+        System.out.println("Getting all tagNames by list of postIDs from DB:");
+        for (Long postID : selectedPosts) {
+            System.out.println("\ttags for postID = " + postID);
+            for (String tag : allTagsForPosts.get(postID))
+                System.out.println("\t\t" + tag);
+        }
         System.out.println("\n============\n");
 
 
