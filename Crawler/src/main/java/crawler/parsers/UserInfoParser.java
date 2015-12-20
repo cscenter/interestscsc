@@ -1,7 +1,7 @@
 package crawler.parsers;
 
 
-import data.User;
+import com.interestscsc.data.User;
 import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

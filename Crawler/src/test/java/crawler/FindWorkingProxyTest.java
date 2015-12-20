@@ -1,8 +1,8 @@
 package crawler;
 
 import crawler.proxy.ProxyFactory;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;

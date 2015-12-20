@@ -1,9 +1,11 @@
-import data.NGram;
-import data.Post;
-import data.User;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
-import db.DBConnectorToNormalizer;
+package com.interestscsc.db.test;
+
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.Post;
+import com.interestscsc.data.User;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
+import com.interestscsc.db.DBConnectorToNormalizer;
 
 import java.io.FileNotFoundException;
 import java.sql.SQLException;
@@ -33,7 +35,7 @@ public class DBConnectorTestNormalization {
         DBConnectorToCrawler dbCrawl = new DBConnectorToCrawler(dbName, "DBConnectorTestNormalization");
         for (int i = 0; i < 5; ++i) {
             String username = "username" + i;
-            dbCrawl.insertUser(new User.UserBuilder(username).build());
+            dbCrawl.insertUser(new User.UserBuilder(username).setSchools(new LinkedList<>()).build());
             ArrayList<Post> userPosts = new ArrayList<>();
             for (int j = 0; j < 5; ++j)
                 userPosts.add(new Post("SomeTitle", "SomeText", username, Timestamp.valueOf("2015-10-19 08:11:41"),

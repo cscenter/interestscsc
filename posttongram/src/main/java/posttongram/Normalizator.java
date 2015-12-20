@@ -1,6 +1,6 @@
 package posttongram;
 
-import db.DBConnector;
+import com.interestscsc.db.DBConnector;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
@@ -8,7 +8,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import data.NGram;
+import com.interestscsc.data.NGram;
 import java.io.*;
 import java.util.*;
 

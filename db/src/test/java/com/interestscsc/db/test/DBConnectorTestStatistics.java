@@ -1,4 +1,6 @@
-import db.DBConnector;
+package com.interestscsc.db.test;
+
+import com.interestscsc.db.DBConnector;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;

@@ -1,6 +1,6 @@
 package crawler.parsers;
 
-import data.Tag;
+import com.interestscsc.data.Tag;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;

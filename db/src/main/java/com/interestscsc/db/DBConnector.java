@@ -1,7 +1,7 @@
-package db;
+package com.interestscsc.db;
 
-import data.NGram;
-import data.User;
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
 
@@ -272,26 +272,25 @@ public class DBConnector {
         List<String> result = new LinkedList<>();
         if (postIDs.isEmpty())
             return result;
-        //noinspection SqlResolve,SqlCheckUsingColumns
-        String selectTagNamesString =
-                "WITH post_list AS ( " +
-                        "    SELECT post_id FROM ( " +
-                        "        VALUES (?) %s " +
-                        "    ) AS post_list(post_id) " +
-                        "), tag_list AS ( " +
-                        "    SELECT tp.tag_id id " +
-                        "    FROM TagToPost tp " +
-                        "      JOIN post_list USING (post_id) " +
-                        "    GROUP BY tp.tag_id " +
-                        ")" +
-                        "SELECT t.text " +
-                        "FROM TAG t " +
-                        "  JOIN tag_list USING(id);";
         String attr = ",(?)";
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        selectTagNamesString = String.format(selectTagNamesString,attrs.toString());
+        //noinspection SqlResolve,SqlCheckUsingColumns
+        String selectTagNamesString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                "), tag_list AS ( " +
+                "    SELECT tp.tag_id id " +
+                "    FROM TagToPost tp " +
+                "      JOIN post_list USING (post_id) " +
+                "    GROUP BY tp.tag_id " +
+                ")" +
+                "SELECT t.text " +
+                "FROM TAG t " +
+                "  JOIN tag_list USING(id);";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
@@ -307,26 +306,140 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getTopNormalizedTagNames(int minUses, int maxUses) throws SQLException {
+    public Map<Long, List<String>> getAllTags(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<String>> result = new HashMap<>();
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        //noinspection SqlResolve,SqlCheckUsingColumns
+        String selectTagNamesString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                "), tag_list AS ( " +
+                "SELECT tp.post_id, tp.tag_id id " +
+                "FROM TagToPost tp " +
+                "JOIN post_list USING (post_id) " +
+                "GROUP BY tp.post_id, tp.tag_id " +
+                ") " +
+                "SELECT tl.post_id, t.text " +
+                "FROM TAG t " +
+                "JOIN tag_list tl USING(id) " +
+                "ORDER BY tl.post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectTagNames.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectTagNames, "TagNameToPost");
+            if (rs != null) {
+                List<String> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(rs.getString(++i));
+                }
+            }
+        }
+        return result;
+    }
+
+    //TODO
+    public List<String> getTopNormalizedTagNames(long minScore, long maxScore) throws SQLException {
         List<String> result = new LinkedList<>();
-        String selectTopTagNamesString = "" +
-                "WITH norm AS ( " +
-                "    SELECT id AS post_id " +
-                "    FROM Post " +
+        String selectTopTagNamesString =
+                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
+                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
+                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
                 "    WHERE normalized " +
+                "    GROUP BY user_id " +
+                "), " +
+                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
+                "    FROM norm_users nu " +
+                "      JOIN tagtouserlj tu USING(user_id) " +
+                "    GROUP BY tag_id " +
+                "), " +
+                "tags_post_uses AS ( " +
+                "    SELECT tp.tag_id, count(post_id) post_uses " +
+                "    FROM Post p " +
+                "      JOIN TagToPost tp ON p.id = tp.post_id " +
+                "    WHERE normalized " +
+                "    GROUP BY tag_id " +
                 ") " +
                 "SELECT text " +
-                "FROM TagNameToPost " +
-                "JOIN norm USING(post_id) " +
-                "GROUP BY text " +
-                "HAVING count(*) > ? AND count(*) < ?";
+                "FROM Tag t " +
+                "  JOIN tags_post_uses tpu ON t.id = tpu.tag_id " +
+                "  JOIN tags_user_uses tuu ON t.id = tuu.tag_id " +
+                "WHERE user_uses::BIGINT * post_uses::BIGINT BETWEEN ? AND ?" +
+                "ORDER BY user_uses::BIGINT * post_uses::BIGINT DESC;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTopTagNames = con.prepareStatement(selectTopTagNamesString)
         ) {
             int i = 0;
-            selectTopTagNames.setInt(++i, minUses);
-            selectTopTagNames.setInt(++i, maxUses);
+            selectTopTagNames.setLong(++i, minScore);
+            selectTopTagNames.setLong(++i, maxScore);
+            ResultSet rs = tryQueryTransaction(selectTopTagNames, "TagNameToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
+    public List<String> getTopNormalizedTagNames(int offset, int limit) throws SQLException {
+        if (offset < 0 || limit < 0) throw new IllegalArgumentException("Arguments must be greater or equal to 0.");
+        List<String> result = new LinkedList<>();
+        String selectTopTagNamesString =
+                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
+                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
+                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
+                "    WHERE normalized " +
+                "    GROUP BY user_id " +
+                "), " +
+                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
+                "    FROM norm_users nu " +
+                "      JOIN tagtouserlj tu USING(user_id) " +
+                "    GROUP BY tag_id " +
+                "), " +
+                "tags_post_uses AS ( " +
+                "    SELECT tp.tag_id, count(post_id) post_uses " +
+                "    FROM Post p " +
+                "      JOIN TagToPost tp ON p.id = tp.post_id " +
+                "    WHERE normalized " +
+                "    GROUP BY tag_id " +
+                ") " +
+                "SELECT text " +
+                "FROM Tag t " +
+                "  JOIN tags_post_uses tpu ON t.id = tpu.tag_id " +
+                "  JOIN tags_user_uses tuu ON t.id = tuu.tag_id " +
+                "ORDER BY user_uses::BIGINT * post_uses::BIGINT DESC " +
+                "OFFSET ? LIMIT ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTopTagNames = con.prepareStatement(selectTopTagNamesString)
+        ) {
+            int i = 0;
+            selectTopTagNames.setInt(++i, offset);
+            selectTopTagNames.setInt(++i, limit);
             ResultSet rs = tryQueryTransaction(selectTopTagNames, "TagNameToPost");
             if (rs != null)
                 while (rs.next())
@@ -402,15 +515,15 @@ public class DBConnector {
         //noinspection SqlResolve
         String selectPostNormalizedIdsString =
                 "WITH with_tags AS (" +
-                        "    SELECT post_id " +
-                        "    FROM TagNameToPost " +
-                        "    WHERE text IN (VALUES (?), (?)) " +
-                        ") " +
-                        "SELECT id " +
-                        "FROM Post p " +
-                        "  JOIN with_tags wt ON wt.post_id = p.id " +
-                        "  JOIN unigramtopost USING(post_id)" +            //TODO не особо эффективный JOIN
-                        "WHERE p.normalized;";
+                "    SELECT post_id " +
+                "    FROM TagNameToPost " +
+                "    WHERE text IN (VALUES (?), (?)) " +
+                ") " +
+                "SELECT id " +
+                "FROM Post p " +
+                "  JOIN with_tags wt ON wt.post_id = p.id " +
+                "  JOIN unigramtopost USING(post_id)" +            //TODO не особо эффективный JOIN
+                "WHERE p.normalized;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
@@ -432,31 +545,29 @@ public class DBConnector {
         List<Long> result = new LinkedList<>();
         if (tags.isEmpty())
             return result;
-        //noinspection SqlResolve
-        String selectPostNormalizedIdsString =
-                "WITH tag_text_list AS ( " +
-                        "    SELECT text " +
-                        "    FROM ( " +
-                        "           VALUES (?) %s " +
-                        "    ) AS tag_text_list(text) " +
-                        "), post_list AS ( " +
-                        "    SELECT tp.post_id id " +
-                        "    FROM Tag t " +
-                        "      JOIN tag_text_list ttl ON t.text = ttl.text " +
-                        "      JOIN tagtopost tp ON t.id = tp.tag_id " +
-                        "      JOIN unigramtopost USING(post_id) " +            //TODO не особо эффективный JOIN
-                        "    GROUP BY tp.post_id " +
-                        ") " +
-                        "SELECT id " +
-                        "FROM Post p " +
-                        "  JOIN post_list USING(id) " +
-                        "WHERE p.normalized;";
         String attr = ",(?)";
         StringBuilder attrs = new StringBuilder(tags.size() * attr.length());
         for (int i = tags.size() - 1; i > 0; i--)
             attrs.append(attr);
-        selectPostNormalizedIdsString =
-                String.format(selectPostNormalizedIdsString,attrs.toString());
+        //noinspection SqlResolve
+        String selectPostNormalizedIdsString =
+                "WITH tag_text_list AS ( " +
+                "    SELECT text " +
+                "    FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS tag_text_list(text) " +
+                "), post_list AS ( " +
+                "    SELECT tp.post_id id " +
+                "    FROM Tag t " +
+                "      JOIN tag_text_list ttl ON t.text = ttl.text " +
+                "      JOIN tagtopost tp ON t.id = tp.tag_id " +
+                "      JOIN unigramtopost USING(post_id) " +            //TODO не особо эффективный JOIN
+                "    GROUP BY tp.post_id " +
+                ") " +
+                "SELECT id " +
+                "FROM Post p " +
+                "  JOIN post_list USING(id) " +
+                "WHERE p.normalized;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
@@ -473,7 +584,7 @@ public class DBConnector {
     }
 
     public int getPostLength(long postId) throws SQLException {
-        String selectLengthString = "SELECT length FROM PostLength WHERE post_id = ?;";
+        String selectLengthString = "SELECT length FROM PostLength WHERE id = ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectLength = con.prepareStatement(selectLengthString)
@@ -504,22 +615,7 @@ public class DBConnector {
         }
     }
 
-    public List<String> getAllNGramNames() throws SQLException {
-        List<String> result = new LinkedList<>();
-        String selectNGramString = "SELECT text FROM AllNGramTexts;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
-        ) {
-            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
-            if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString(1));
-        }
-        return result;
-    }
-
-    public List<NGram> getAllNGramNames(long postId) throws SQLException {
+    public List<NGram> getAllNGrams(long postId) throws SQLException {
         List<NGram> result = new LinkedList<>();
         String selectNGramString = "SELECT text, uses_cnt FROM AllNGramTextUsesPost " +
                 "WHERE post_id = ?;";
@@ -539,29 +635,145 @@ public class DBConnector {
         return result;
     }
 
+    public Map<Long, List<NGram>> getAllNGrams(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<NGram>> result = new HashMap<>(postIDs.size());
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+//        noinspection SqlResolve
+        String selectNGramString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id  " +
+                "    FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT post_id, text, uses_cnt  " +
+                "FROM AllNGramTextUsesPost " +
+                "  JOIN post_list USING(post_id) " +
+                "ORDER BY post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectNGram.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
+            if (rs != null) {
+                List<NGram> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+            }
+        }
+        return result;
+    }
+
+    public Map<Long, List<NGram>> getAllNGrams(List<Long> postIDs, NGramType nGramType) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<NGram>> result = new HashMap<>(postIDs.size());
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        //        noinspection SqlResolve
+        String selectNGramString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id  " +
+                "    FROM ( " +
+                "      VALUES (?) " + attrs.toString() +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT np.post_id, n.text, np.uses_cnt " +
+                "FROM " + nGramType.getTableToPostName() + " np " +
+                "  JOIN " + nGramType.getTableName() + " n " +
+                "    ON np.ngram_id = n.id " +
+                "  JOIN post_list USING(post_id) " +
+                "ORDER BY np.post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectNGram.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectNGram, nGramType.getTableName());
+            if (rs != null) {
+                List<NGram> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+            }
+        }
+        return result;
+    }
+
+    public List<String> getAllNGramNames() throws SQLException {
+        List<String> result = new LinkedList<>();
+        String selectNGramString = "SELECT text FROM AllNGramTexts;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
     public List<String> getAllNGramNames(List<Long> postIDs) throws SQLException {
         if (postIDs == null)
             throw new IllegalArgumentException("Expected not null argument");
         List<String> result = new LinkedList<>();
         if (postIDs.isEmpty())
             return result;
-        //noinspection SqlResolve
-        String selectNGramString =
-                "WITH post_list AS ( " +
-                        "    SELECT post_id  " +
-                        "    FROM ( " +
-                        "      VALUES (?) %s " +
-                        "    ) AS post_list(post_id) " +
-                        ") " +
-                        "SELECT text  " +
-                        "FROM AllNGramTextUsesPost " +
-                        "  JOIN post_list USING(post_id) " +
-                        "GROUP BY text;";
         String attr = ",(?)";
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        selectNGramString = String.format(selectNGramString,attrs.toString());
+        //noinspection SqlResolve
+        String selectNGramString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id  " +
+                "    FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT text  " +
+                "FROM AllNGramTextUsesPost " +
+                "  JOIN post_list USING(post_id) " +
+                "GROUP BY text;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
@@ -609,19 +821,19 @@ public class DBConnector {
         //noinspection SqlResolve
         String selectNGramString =
                 "WITH post_list AS ( " +
-                        "    SELECT post_id " +
-                        "    FROM ( " +
-                        "      VALUES (?) %s " +
-                        "    ) AS post_list(post_id) " +
-                        "), ngram_list AS ( " +
-                        "    SELECT ngram_id id " +
-                        "    FROM " + nGramType.getTableToPostName() + " " +
-                        "      JOIN post_list USING(post_id) " +
-                        "    GROUP BY ngram_id " +
-                        ") " +
-                        "SELECT text " +
-                        "FROM " + nGramType.getTableName() + " " +
-                        "  JOIN ngram_list USING(id);";
+                "    SELECT post_id " +
+                "    FROM ( " +
+                "      VALUES (?) %s " +
+                "    ) AS post_list(post_id) " +
+                "), ngram_list AS ( " +
+                "    SELECT ngram_id id " +
+                "    FROM " + nGramType.getTableToPostName() + " " +
+                "      JOIN post_list USING(post_id) " +
+                "    GROUP BY ngram_id " +
+                ") " +
+                "SELECT text " +
+                "FROM " + nGramType.getTableName() + " " +
+                "  JOIN ngram_list USING(id);";
         String attr = ",(?)";
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
@@ -666,30 +878,29 @@ public class DBConnector {
         if (topLimit <= 0) throw new IllegalArgumentException("Argument topLimit must be greater than 0.");
         String selectWeekStatString =
                 "SELECT week.week::DATE " +
-                        "FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
-                        "AS week (week);";
+                "FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
+                "AS week (week);";
         String selectTagStatString =
                 "WITH top_tags AS ( " +
-                        "    SELECT tag_id, count(*) times " +
-                        "    FROM tagtopost tp " +
-                        "    GROUP BY tp.tag_id " +
-                        "    ORDER BY times DESC " +
-//                "    OFFSET 300" +
-                        "    LIMIT ? " +
-                        "), " +
-                        "week AS ( " +
-                        "    SELECT week.week" +
-                        "    FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
-                        "    AS week (week) " +
-                        ") " +
-                        "SELECT w.week :: DATE, t.text, coalesce(count(*), 0) AS count " +
-                        "FROM week w " +
-                        "  JOIN post p ON p.date BETWEEN w.week AND w.week + '1 week' " +
-                        "  JOIN tagtopost tp ON p.id = tp.post_id " +
-                        "  JOIN top_tags tt ON tp.tag_id = tt.tag_id " +
-                        "  JOIN tag t ON tp.tag_id = t.id " +
-                        "GROUP BY w.week, t.text " +
-                        "ORDER BY t.text, w.week;";
+                "    SELECT tag_id, count(*) times " +
+                "    FROM tagtopost tp " +
+                "    GROUP BY tp.tag_id " +
+                "    ORDER BY times DESC " +
+                "    LIMIT ? " +
+                "), " +
+                "week AS ( " +
+                "    SELECT week.week" +
+                "    FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
+                "    AS week (week) " +
+                ") " +
+                "SELECT w.week :: DATE, t.text, coalesce(count(*), 0) AS count " +
+                "FROM week w " +
+                "  JOIN post p ON p.date BETWEEN w.week AND w.week + '1 week' " +
+                "  JOIN tagtopost tp ON p.id = tp.post_id " +
+                "  JOIN top_tags tt ON tp.tag_id = tt.tag_id " +
+                "  JOIN tag t ON tp.tag_id = t.id " +
+                "GROUP BY w.week, t.text " +
+                "ORDER BY t.text, w.week;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectWeekStat = con.prepareStatement(selectWeekStatString);
@@ -796,24 +1007,32 @@ public class DBConnector {
     }
 
     protected boolean processPSE(PSQLException pse, String tableName, String currEntry) throws PSQLException {
+        final String uniqueViolation = "23505";
+        final String deadlockDetected = "40P01";
+        final String serializationFailure = "40001";
+        final String undefinedTable = "42P01";
+        final String connectionExceptionClass = "08";
+        final String insufficientResourcesClass = "53";
+
         final String ss = pse.getSQLState();
         boolean entry = currEntry != null;
-        if ("23505".equals(ss)) { // unique_violation
+        if (uniqueViolation.equals(ss)) {
             System.err.println("PSQLException: unique_violation" +
                     (entry ? ". We already have entry \"" + currEntry + "\"" : "") +
                     " in table \"" + tableName + "\". Continue.");
             return false;
-        } else if ("40001".equals(ss) || "40P01".equals(ss)) { // serialization_failure, deadlock_detected
+        } else if (serializationFailure.equals(ss) || deadlockDetected.equals(ss)) {
             System.err.println("PSQLException: serialization_failure or deadlock_detected. " +
                     "Retrying transaction.");
             return true;
-        } else if (ss.startsWith("08") || ss.startsWith("53")) { //connection_exception, insufficient_resources
+        } else if (ss.startsWith(connectionExceptionClass) ||
+                ss.startsWith(insufficientResourcesClass)) {
             System.err.println("PSQLException: suspected bad connection. Closing transaction " +
                     (entry ? "with first unprocessed entry: \"" + currEntry + "\"" : "") +
                     ". \n If you see this exception than we need a code fix");
             //TODO как-то по другому обрабатывать?
             throw pse;
-        } else if ("42P01".equals(ss)) { // undefined_table
+        } else if (undefinedTable.equals(ss)) {
             System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
                     "try DBConnector method dropInitDatabase().");
             throw pse;

@@ -1,7 +1,7 @@
-package db;
+package com.interestscsc.db;
 
-import data.NGram;
-import data.Post;
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.Post;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

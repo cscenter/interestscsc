@@ -2,15 +2,14 @@ package crawler;
 
 import com.mashape.unirest.http.exceptions.UnirestException;
 import crawler.loaders.TagPostLoader;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;

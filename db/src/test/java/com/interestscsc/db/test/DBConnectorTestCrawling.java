@@ -1,8 +1,10 @@
-import data.Post;
-import data.Tag;
-import data.User;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
+package com.interestscsc.db.test;
+
+import com.interestscsc.data.Post;
+import com.interestscsc.data.Tag;
+import com.interestscsc.data.User;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
 
 import java.io.FileNotFoundException;
 import java.sql.SQLException;
