@@ -564,22 +564,7 @@ public class DBConnector {
         }
     }
 
-    public List<String> getAllNGramNames() throws SQLException {
-        List<String> result = new LinkedList<>();
-        String selectNGramString = "SELECT text FROM AllNGramTexts;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
-        ) {
-            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
-            if (rs != null)
-                while (rs.next())
-                    result.add(rs.getString(1));
-        }
-        return result;
-    }
-
-    public List<NGram> getAllNGramNames(long postId) throws SQLException {
+    public List<NGram> getAllNGrams(long postId) throws SQLException {
         List<NGram> result = new LinkedList<>();
         String selectNGramString = "SELECT text, uses_cnt FROM AllNGramTextUsesPost " +
                 "WHERE post_id = ?;";
@@ -595,6 +580,72 @@ public class DBConnector {
                     i = 0;
                     result.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
                 }
+        }
+        return result;
+    }
+
+    public Map<Long, List<NGram>> getAllNGrams(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<NGram>> result = new HashMap<>(postIDs.size());
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+//        noinspection SqlResolve
+        String selectNGramString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id  " +
+                "    FROM ( " +
+                "      VALUES (?) %s " +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT post_id, text, uses_cnt  " +
+                "FROM AllNGramTextUsesPost " +
+                "  JOIN post_list USING(post_id) " +
+                "ORDER BY text;";
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        selectNGramString = String.format(selectNGramString,attrs.toString());
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectNGram.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
+            if (rs != null) {
+                List<NGram> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+            }
+        }
+        return result;
+    }
+
+    public List<String> getAllNGramNames() throws SQLException {
+        List<String> result = new LinkedList<>();
+        String selectNGramString = "SELECT text FROM AllNGramTexts;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTexts");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
         }
         return result;
     }

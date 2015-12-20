@@ -8,10 +8,7 @@ import db.DBConnectorToNormalizer;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * User: allight
@@ -130,20 +127,12 @@ public class DBConnectorTestLearning {
             System.out.println("\t" + nGramName);
         System.out.println("\n============\n");
 
-        // Извлекаем из БД список всех н-грамм для конкретного поста
-        List<NGram> allNGrams = db.getAllNGramNames(postId);
-        System.out.println("Getting all nGrams by postId=" +
-                postId + " from DB:");
-        for (NGram nGram : allNGrams)
-            System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
-        System.out.println("\n============\n");
-
         // Извлекаем из БД список всех н-грамм для списка постов
         List<Long> prefferedPosts =
                 normalizedIds.subList(0, Math.min(3,normalizedIds.size()));
-        List<String> allNGramsForPosts = db.getAllNGramNames(prefferedPosts);
+        List<String> allNGramNamesForPosts = db.getAllNGramNames(prefferedPosts);
         System.out.println("Getting all nGrams for multiple posts from DB:");
-        for (String nGram : allNGramsForPosts)
+        for (String nGram : allNGramNamesForPosts)
             System.out.println("\t" + nGram);
         System.out.println("\n============\n");
 
@@ -156,11 +145,30 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех всех, например биграм, для списка постов
-        allNGramsForPosts =
+        allNGramNamesForPosts =
                 db.getAllNGramNames(prefferedPosts, DBConnector.NGramType.DIGRAM);
         System.out.println("Getting all diGrams for multiple posts from DB:");
-        for (String nGram : allNGramsForPosts)
+        for (String nGram : allNGramNamesForPosts)
             System.out.println("\t" + nGram);
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД список всех н-грамм для конкретного поста
+        List<NGram> allNGrams = db.getAllNGrams(postId);
+        System.out.println("Getting all nGrams by postId=" +
+                postId + " from DB:");
+        for (NGram nGram : allNGrams)
+            System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД список всех н-грамм для списка постов
+        Map<Long,List<NGram>> allNGramsForPosts = db.getAllNGrams(prefferedPosts);
+        System.out.println("Getting all nGrams for every post in a list with size = " +
+                prefferedPosts.size() + "from DB:");
+        for (Long postID : prefferedPosts) {
+            System.out.println("\tnGrams for postID = " + postID);
+            for (NGram nGram : allNGramsForPosts.get(postID))
+                System.out.println("\t\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
+        }
         System.out.println("\n============\n");
 
         // Извлекаем из БД список всех тегов
