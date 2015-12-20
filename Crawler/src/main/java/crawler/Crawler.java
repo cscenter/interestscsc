@@ -5,11 +5,11 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 import crawler.loaders.*;
 import crawler.parsers.*;
 import crawler.proxy.ProxyFactory;
-import data.Post;
-import data.Tag;
-import data.User;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
+import com.interestscsc.data.Post;
+import com.interestscsc.data.Tag;
+import com.interestscsc.data.User;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 

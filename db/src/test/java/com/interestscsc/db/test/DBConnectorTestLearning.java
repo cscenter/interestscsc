@@ -1,10 +1,12 @@
-import data.NGram;
-import data.Post;
-import data.Tag;
-import data.User;
-import db.DBConnector;
-import db.DBConnectorToCrawler;
-import db.DBConnectorToNormalizer;
+package com.interestscsc.db.test;
+
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.Post;
+import com.interestscsc.data.Tag;
+import com.interestscsc.data.User;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToCrawler;
+import com.interestscsc.db.DBConnectorToNormalizer;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -87,6 +89,7 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         // Возьмем из базы список id всех нормализованных постов
+        //noinspection UnusedAssignment
         List<Long> normalizedIds = db.getAllPostNormalizedIds();
 
         // .. или возьмем из базы список id всех нормализованных постов,

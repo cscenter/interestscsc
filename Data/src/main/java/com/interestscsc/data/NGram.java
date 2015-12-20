@@ -1,4 +1,4 @@
-package data;
+package com.interestscsc.data;
 
 public class NGram {
 

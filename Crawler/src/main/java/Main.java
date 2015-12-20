@@ -1,5 +1,5 @@
 import crawler.Crawler;
-import db.DBConnector;
+import com.interestscsc.db.DBConnector;
 import org.apache.log4j.Logger;
 
 import java.sql.SQLException;

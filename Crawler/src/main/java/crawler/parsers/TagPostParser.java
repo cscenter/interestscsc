@@ -1,7 +1,7 @@
 package crawler.parsers;
 
 import crawler.Crawler;
-import data.Post;
+import com.interestscsc.data.Post;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;

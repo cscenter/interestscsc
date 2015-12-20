@@ -1,8 +1,8 @@
-package db;
+package com.interestscsc.db;
 
-import data.Post;
-import data.Tag;
-import data.User;
+import com.interestscsc.data.Post;
+import com.interestscsc.data.Tag;
+import com.interestscsc.data.User;
 import org.postgresql.util.PSQLException;
 
 import java.sql.*;
@@ -81,8 +81,10 @@ public class DBConnectorToCrawler extends DBConnector {
     public void insertRawUsers(Iterable<String> rawUsersLJ) throws SQLException {
         String createTempTableString =
                 "CREATE TEMPORARY TABLE RawUserLJTemp (nick TEXT) ON COMMIT DROP";
+        //noinspection SqlResolve
         String insertUserString =
                 "INSERT INTO RawUserLJTemp (nick) VALUES (?);";
+        //noinspection SqlResolve
         String updateMainTableString =
                 "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
                 "DELETE FROM RawUserLJTemp rt USING RawUserLJ r WHERE rt.nick = r.nick; " +

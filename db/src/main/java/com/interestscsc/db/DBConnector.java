@@ -1,7 +1,7 @@
-package db;
+package com.interestscsc.db;
 
-import data.NGram;
-import data.User;
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.User;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.postgresql.util.PSQLException;
 
@@ -886,7 +886,6 @@ public class DBConnector {
                 "    FROM tagtopost tp " +
                 "    GROUP BY tp.tag_id " +
                 "    ORDER BY times DESC " +
-//                "    OFFSET 0" +
                 "    LIMIT ? " +
                 "), " +
                 "week AS ( " +

@@ -1,11 +1,10 @@
-import data.NGram;
-import data.Post;
-import db.DBConnector;
-import db.DBConnectorToNormalizer;
+import com.interestscsc.data.NGram;
+import com.interestscsc.data.Post;
+import com.interestscsc.db.DBConnector;
+import com.interestscsc.db.DBConnectorToNormalizer;
 import org.apache.log4j.Logger;
 import posttongram.Normalizator;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
