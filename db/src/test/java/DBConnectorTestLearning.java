@@ -164,7 +164,19 @@ public class DBConnectorTestLearning {
         // Извлекаем из БД список всех н-грамм для списка постов
         Map<Long,List<NGram>> allNGramsForPosts = db.getAllNGrams(selectedPosts);
         System.out.println("Getting all nGrams for every post in a list with size = " +
-                selectedPosts.size() + "from DB:");
+                selectedPosts.size() + " from DB:");
+        for (Long postID : selectedPosts) {
+            System.out.println("\tnGrams for postID = " + postID);
+            for (NGram nGram : allNGramsForPosts.get(postID))
+                System.out.println("\t\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
+        }
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД список всех н-грамм заланного типа,
+        // например униграмм, для списка постов
+        allNGramsForPosts = db.getAllNGrams(selectedPosts, DBConnector.NGramType.UNIGRAM);
+        System.out.println("Getting all nGrams for every post in a list with size = " +
+                selectedPosts.size() + " from DB:");
         for (Long postID : selectedPosts) {
             System.out.println("\tnGrams for postID = " + postID);
             for (NGram nGram : allNGramsForPosts.get(postID))

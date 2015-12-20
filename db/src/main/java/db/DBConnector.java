@@ -658,7 +658,7 @@ public class DBConnector {
                 "SELECT post_id, text, uses_cnt  " +
                 "FROM AllNGramTextUsesPost " +
                 "  JOIN post_list USING(post_id) " +
-                "ORDER BY text;";
+                "ORDER BY post_id;";
         String attr = ",(?)";
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
@@ -672,6 +672,58 @@ public class DBConnector {
             for (long postID : postIDs)
                 selectNGram.setLong(++i, postID);
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
+            if (rs != null) {
+                List<NGram> currentList = null;
+                Long currentId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextId = rs.getLong(++i);
+                    if (!nextId.equals(currentId)) {
+                        currentId = nextId;
+                        currentList = result.get(nextId);
+                    }
+                    //noinspection ConstantConditions
+                    currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
+                }
+            }
+        }
+        return result;
+    }
+
+    public Map<Long, List<NGram>> getAllNGrams(List<Long> postIDs, NGramType nGramType) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<NGram>> result = new HashMap<>(postIDs.size());
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        //        noinspection SqlResolve
+        String selectNGramString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id  " +
+                "    FROM ( " +
+                "      VALUES (?) " + attrs.toString() +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT np.post_id, n.text, np.uses_cnt " +
+                "FROM " + nGramType.getTableToPostName() + " np " +
+                "  JOIN " + nGramType.getTableName() + " n " +
+                "    ON np.ngram_id = n.id " +
+                "  JOIN post_list USING(post_id) " +
+                "ORDER BY np.post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectNGram.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectNGram, nGramType.getTableName());
             if (rs != null) {
                 List<NGram> currentList = null;
                 Long currentId = null;
