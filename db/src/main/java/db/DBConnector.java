@@ -307,26 +307,86 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getTopNormalizedTagNames(int minUses, int maxUses) throws SQLException {
+    //TODO
+    public List<String> getTopNormalizedTagNames(long minScore, long maxScore) throws SQLException {
         List<String> result = new LinkedList<>();
-        String selectTopTagNamesString = "" +
-                "WITH norm AS ( " +
-                "    SELECT id AS post_id " +
-                "    FROM Post " +
+        String selectTopTagNamesString =
+                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
+                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
+                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
                 "    WHERE normalized " +
+                "    GROUP BY user_id " +
+                "), " +
+                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
+                "    FROM norm_users nu " +
+                "      JOIN tagtouserlj tu USING(user_id) " +
+                "    GROUP BY tag_id " +
+                "), " +
+                "tags_post_uses AS ( " +
+                "    SELECT tp.tag_id, count(post_id) post_uses " +
+                "    FROM Post p " +
+                "      JOIN TagToPost tp ON p.id = tp.post_id " +
+                "    WHERE normalized " +
+                "    GROUP BY tag_id " +
                 ") " +
                 "SELECT text " +
-                "FROM TagNameToPost " +
-                "JOIN norm USING(post_id) " +
-                "GROUP BY text " +
-                "HAVING count(*) > ? AND count(*) < ?";
+                "FROM Tag t " +
+                "  JOIN tags_post_uses tpu ON t.id = tpu.tag_id " +
+                "  JOIN tags_user_uses tuu ON t.id = tuu.tag_id " +
+                "WHERE user_uses::BIGINT * post_uses::BIGINT BETWEEN ? AND ?" +
+                "ORDER BY user_uses::BIGINT * post_uses::BIGINT DESC;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTopTagNames = con.prepareStatement(selectTopTagNamesString)
         ) {
             int i = 0;
-            selectTopTagNames.setInt(++i, minUses);
-            selectTopTagNames.setInt(++i, maxUses);
+            selectTopTagNames.setLong(++i, minScore);
+            selectTopTagNames.setLong(++i, maxScore);
+            ResultSet rs = tryQueryTransaction(selectTopTagNames, "TagNameToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
+    public List<String> getTopNormalizedTagNames(int offset, int limit) throws SQLException {
+        if (offset < 0 || limit < 0) throw new IllegalArgumentException("Arguments must be greater or equal to 0.");
+        List<String> result = new LinkedList<>();
+        String selectTopTagNamesString =
+                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
+                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
+                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
+                "    WHERE normalized " +
+                "    GROUP BY user_id " +
+                "), " +
+                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
+                "    FROM norm_users nu " +
+                "      JOIN tagtouserlj tu USING(user_id) " +
+                "    GROUP BY tag_id " +
+                "), " +
+                "tags_post_uses AS ( " +
+                "    SELECT tp.tag_id, count(post_id) post_uses " +
+                "    FROM Post p " +
+                "      JOIN TagToPost tp ON p.id = tp.post_id " +
+                "    WHERE normalized " +
+                "    GROUP BY tag_id " +
+                ") " +
+                "SELECT text " +
+                "FROM Tag t " +
+                "  JOIN tags_post_uses tpu ON t.id = tpu.tag_id " +
+                "  JOIN tags_user_uses tuu ON t.id = tuu.tag_id " +
+                "ORDER BY user_uses::BIGINT * post_uses::BIGINT DESC " +
+                "OFFSET ? LIMIT ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTopTagNames = con.prepareStatement(selectTopTagNamesString)
+        ) {
+            int i = 0;
+            selectTopTagNames.setInt(++i, offset);
+            selectTopTagNames.setInt(++i, limit);
             ResultSet rs = tryQueryTransaction(selectTopTagNames, "TagNameToPost");
             if (rs != null)
                 while (rs.next())
@@ -473,7 +533,7 @@ public class DBConnector {
     }
 
     public int getPostLength(long postId) throws SQLException {
-        String selectLengthString = "SELECT length FROM PostLength WHERE post_id = ?;";
+        String selectLengthString = "SELECT length FROM PostLength WHERE id = ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectLength = con.prepareStatement(selectLengthString)

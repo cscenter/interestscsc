@@ -64,10 +64,26 @@ public class DBConnectorTestLearning {
         // Создаем коннектор без прав записи в базу
         DBConnector db = new DBConnector(dbName);
 
+        // Возьмем из базы список тегов, находящихся в некотором диапазане
+        // "очков" популярности
+        // по произведению количесва содержащих их постов
+        // на .
+        final long min_score = 2000L;
+        final long max_score = 50000L;
+        List<String> preferredTags = db.getTopNormalizedTagNames(min_score, max_score);
+        System.out.println("Getting most popular in normalized posts tags from DB " +
+                "with score between " + min_score + " and " + max_score + ":");
+        for (String tag : preferredTags)
+            System.out.println("\t" + tag);
+        System.out.println("\n============\n");
+
         // Возьмем из базы список тегов, встречающихся
         // в нормализованных постах с определенной частотой
-        List<String> preferredTags = db.getTopNormalizedTagNames(200, 500);
-        System.out.println("Getting most popular in normalized posts tags from DB:");
+        final int offset_top_positions = 300;
+        final int limit_top_positions = 2;
+        preferredTags = db.getTopNormalizedTagNames(offset_top_positions, limit_top_positions);
+        System.out.println("Getting most popular in normalized posts tags from DB " +
+                "with offset on top positions " + offset_top_positions + " and limit" + limit_top_positions + ":");
         for (String tag : preferredTags)
             System.out.println("\t" + tag);
         System.out.println("\n============\n");
