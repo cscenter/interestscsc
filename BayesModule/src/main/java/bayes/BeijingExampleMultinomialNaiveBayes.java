@@ -4,7 +4,10 @@ import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.bayes.NaiveBayesMultinomial;
-import weka.core.*;
+import weka.core.Attribute;
+import weka.core.FastVector;
+import weka.core.Instance;
+import weka.core.Instances;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +16,7 @@ import java.util.Random;
 public class BeijingExampleMultinomialNaiveBayes {
 
     public static final Map<String, Integer> vocabulary = new HashMap();
+
     static {
         vocabulary.put("Beijing", 0);
         vocabulary.put("Chinese", 1);
@@ -25,27 +29,27 @@ public class BeijingExampleMultinomialNaiveBayes {
     public static Instance getNextInstance(FastVector fvWekaAttributes, int[] occurrencesCount, String label) {
         Instance iExample1 = new Instance(occurrencesCount.length + 1);
         for (int i = 0; i < occurrencesCount.length; i++) {
-            iExample1.setValue((Attribute)fvWekaAttributes.elementAt(i), occurrencesCount[i]);
+            iExample1.setValue((Attribute) fvWekaAttributes.elementAt(i), occurrencesCount[i]);
         }
         //System.out.println(((Attribute) fvWekaAttributes.elementAt(occurrencesCount.length)).isString());
-        iExample1.setValue((Attribute)fvWekaAttributes.elementAt(occurrencesCount.length), label);
+        iExample1.setValue((Attribute) fvWekaAttributes.elementAt(occurrencesCount.length), label);
         return iExample1;
     }
 
-    public static  Instance getInstanceForSentence(FastVector fvWekaAttributes, String[] words, String label) {
-        int[] occurrencescount = getOccurrencesCount(words);
-        return getNextInstance(fvWekaAttributes, occurrencescount, label);
+    public static Instance getInstanceForSentence(FastVector fvWekaAttributes, String[] words, String label) {
+        int[] occurrencesCount = getOccurrencesCount(words);
+        return getNextInstance(fvWekaAttributes, occurrencesCount, label);
     }
 
-    public static int[] getOccurrencesCount(String[] words){
+    public static int[] getOccurrencesCount(String[] words) {
         int[] result = new int[vocabulary.size()];
-        for (String word: words){
+        for (String word : words) {
             result[vocabulary.get(word)] += 1;
         }
         return result;
     }
 
-    public static FastVector getBeijingVector(){
+    public static FastVector getBeijingVector() {
         FastVector fvNominalVal = new FastVector(2);
         fvNominalVal.addElement("c"); // about China
         fvNominalVal.addElement("j"); // about Japan
@@ -63,7 +67,7 @@ public class BeijingExampleMultinomialNaiveBayes {
         return fvWekaAttributes;
     }
 
-    public static FastVector getBeijingVectorNoClass(){
+    public static FastVector getBeijingVectorNoClass() {
         FastVector fvWekaAttributes = new FastVector(6);
         String[] attributeNames = new String[vocabulary.size()];
         for (String word : vocabulary.keySet()) {
@@ -76,7 +80,7 @@ public class BeijingExampleMultinomialNaiveBayes {
         return fvWekaAttributes;
     }
 
-    public static Instances getBeijingDataset(){
+    public static Instances getBeijingDataset() {
         FastVector attributes = getBeijingVector();
         Instances isTrSet = new Instances("Rel", attributes, 2);
         isTrSet.setClassIndex(6);
@@ -95,92 +99,12 @@ public class BeijingExampleMultinomialNaiveBayes {
     }
 
     public static void testOnBeijing() throws Exception {
-        /*
-        Attribute Attribute1 = new Attribute("Beijing"); // Beijing
-        Attribute Attribute2 = new Attribute("Chinese"); // Chinese
-        Attribute Attribute3 = new Attribute("Japan"); // Japan
-        Attribute Attribute4 = new Attribute("Macao"); // Macao
-        Attribute Attribute5 = new Attribute("Shanghai"); // Shanghai
-        Attribute Attribute6 = new Attribute("Tokyo"); // Tokyo
-        FastVector fvNominalVal = new FastVector(2);
-        fvNominalVal.addElement("c"); // about China
-        fvNominalVal.addElement("j"); // about Japan
-        Attribute ClassAttribute = new Attribute("country", fvNominalVal);
-        FastVector fvWekaAttributes = new FastVector(7);
-        fvWekaAttributes.addElement(Attribute1);
-        fvWekaAttributes.addElement(Attribute2);
-        fvWekaAttributes.addElement(Attribute3);
-        fvWekaAttributes.addElement(Attribute4);
-        fvWekaAttributes.addElement(Attribute5);
-        fvWekaAttributes.addElement(Attribute6);
-        fvWekaAttributes.addElement(ClassAttribute);
-        //System.out.println(((Attribute)fvWekaAttributes.elementAt(6)).isNominal());
-
-        Instances isTrSet = new Instances("Rel", fvWekaAttributes, 2);
-        isTrSet.setClassIndex(6);
-        Instances trSet = new Instances("Rel", fvWekaAttributes, 2);
-
-        {
-            // Chinese Beijing Chinese
-            int[] occurrencescount = {1, 2, 0, 0, 0, 0};
-            String label = "c";
-            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
-            isTrSet.add(iExample);
-        }
-
-        String[] words = {"Chinese", "Beijing", "Chinese"};
-        Instance a = getInstanceForSentence(fvWekaAttributes, words, "c");
-        trSet.add(a);
-
-        {
-
-            // Chinese Chinese Shanghai
-            int[] occurrencescount = {0, 2, 0, 0, 1, 0};
-            String label = "c";
-            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
-            isTrSet.add(iExample);
-
-        }
-
-        String[] words2 = {"Chinese", "Shanghai", "Chinese"};
-        a = getInstanceForSentence(fvWekaAttributes, words2, "c");
-        trSet.add(a);
-
-        {
-            // Chinese Macao
-            int[] occurrencescount = {0, 1, 0, 1, 0, 0};
-            String label = "c";
-            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
-            isTrSet.add(iExample);
-        }
-
-        String[] words3 = {"Chinese", "Macao"};
-        a = getInstanceForSentence(fvWekaAttributes, words3, "c");
-        trSet.add(a);
-
-
-        {
-            // Tokyo Japan Chinese
-            int[] occurrencescount = {0, 1, 1, 0, 0, 1};
-            String label = "j";
-            Instance iExample = getNextInstance(fvWekaAttributes, occurrencescount, label);
-            isTrSet.add(iExample);
-        }
-
-        String[] words4 = {"Chinese", "Japan", "Tokyo"};
-        a = getInstanceForSentence(fvWekaAttributes, words4, "j");
-        trSet.add(a);
-
-        System.out.println(isTrSet.toString());
-
-        System.out.println(trSet.toString());
-        */
 
         Instances beijingDataset = getBeijingDataset();
         System.out.println(beijingDataset.toString());
 
 
-        Classifier cModel = (Classifier)new NaiveBayesMultinomial();
+        Classifier cModel = new NaiveBayesMultinomial();
         cModel.buildClassifier(beijingDataset);
 
         // Test the model
@@ -195,29 +119,30 @@ public class BeijingExampleMultinomialNaiveBayes {
 
         FastVector beijingVector = getBeijingVectorNoClass();
 
-        Instances isTrSet = new Instances("Rel", beijingVector, 2);
-
         // Chinese Chinese Chinese Tokyo Japan
-        iExample5.setValue((Attribute)beijingVector.elementAt(0), 0);
-        iExample5.setValue((Attribute)beijingVector.elementAt(1), 3);
-        iExample5.setValue((Attribute)beijingVector.elementAt(2), 1);
-        iExample5.setValue((Attribute)beijingVector.elementAt(3), 0);
-        iExample5.setValue((Attribute)beijingVector.elementAt(4), 0);
-        iExample5.setValue((Attribute)beijingVector.elementAt(5), 1);
+        iExample5.setValue((Attribute) beijingVector.elementAt(0), 0);
+        iExample5.setValue((Attribute) beijingVector.elementAt(1), 3);
+        iExample5.setValue((Attribute) beijingVector.elementAt(2), 1);
+        iExample5.setValue((Attribute) beijingVector.elementAt(3), 0);
+        iExample5.setValue((Attribute) beijingVector.elementAt(4), 0);
+        iExample5.setValue((Attribute) beijingVector.elementAt(5), 1);
 
         iExample5.setDataset(beijingDataset);
 
         System.out.println("Chinese Chinese Chinese Tokyo Japan");
+        printDistribution(cModel, iExample5);
+        System.out.println(cModel.toString());
+
+    }
+
+    private static void printDistribution(final Classifier cModel, final Instance iExample) {
         try {
-            double[] fDistribution = cModel.distributionForInstance(iExample5);
+            double[] fDistribution = cModel.distributionForInstance(iExample);
             System.out.println(fDistribution[0]);
             System.out.println(fDistribution[1]);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        System.out.println(cModel.toString());
-
     }
 
 
@@ -257,24 +182,22 @@ public class BeijingExampleMultinomialNaiveBayes {
         isTrainingSet.setClassIndex(3);
 
         Random rn = new Random();
-        double a = 0;
-        int b = 0;
         // Create the instance
         for (int i = 0; i < 10; i++) {
             Instance iExample = new Instance(4);
+            double a = Math.random();
+            System.out.print(a + " ");
+            iExample.setValue((Attribute) fvWekaAttributes.elementAt(0), a);
             a = Math.random();
             System.out.print(a + " ");
-            iExample.setValue((Attribute)fvWekaAttributes.elementAt(0), a);
-            a = Math.random();
-            System.out.print(a + " ");
-            iExample.setValue((Attribute)fvWekaAttributes.elementAt(1), a);
+            iExample.setValue((Attribute) fvWekaAttributes.elementAt(1), a);
             //int answer = rn.nextInt(10) + 1;
-            b = rn.nextInt(3);
+            int b = rn.nextInt(3);
             System.out.print(values[b] + " ");
-            iExample.setValue((Attribute)fvWekaAttributes.elementAt(2), values[b]);
+            iExample.setValue((Attribute) fvWekaAttributes.elementAt(2), values[b]);
             b = rn.nextInt(2);
             System.out.print(answers[b] + " ");
-            iExample.setValue((Attribute)fvWekaAttributes.elementAt(3), answers[b]);
+            iExample.setValue((Attribute) fvWekaAttributes.elementAt(3), answers[b]);
 
             System.out.println("");
             // add the instance
@@ -283,20 +206,25 @@ public class BeijingExampleMultinomialNaiveBayes {
 
 
         // Create a naïve bayes classifier
-        Classifier cModel = (Classifier)new NaiveBayes();
+        Classifier cModel = new NaiveBayes();
         try {
             cModel.buildClassifier(isTrainingSet);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-// Test the model
+        // Test the model
         Evaluation eTest = null;
         try {
             eTest = new Evaluation(isTrainingSet);
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        if (eTest == null) {
+            return;
+        }
+
         try {
             eTest.evaluateModel(cModel, isTrainingSet);
         } catch (Exception e) {
@@ -307,41 +235,17 @@ public class BeijingExampleMultinomialNaiveBayes {
         String strSummary = eTest.toSummaryString();
         System.out.println(strSummary);
 
-        // Get the confusion matrix
-        double[][] cmMatrix = eTest.confusionMatrix();
-
-
-        //FastVector fvWekaAttributes2 = new FastVector(3);
-        //fvWekaAttributes2.addElement(Attribute1);
-        //fvWekaAttributes2.addElement(Attribute2);
-       // fvWekaAttributes2.addElement(Attribute3);
-
-        //Instances isTestingSet = new Instances("Rel", fvWekaAttributes2, 1);
-
         Instance iExample = new Instance(3);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(0), 1.0);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(1), 0.5);
-        iExample.setValue((Attribute)fvWekaAttributes.elementAt(2), "gray");
-
-        // add the instance
-        //isTrainingSet.add(iExample);
-
+        iExample.setValue((Attribute) fvWekaAttributes.elementAt(0), 1.0);
+        iExample.setValue((Attribute) fvWekaAttributes.elementAt(1), 0.5);
+        iExample.setValue((Attribute) fvWekaAttributes.elementAt(2), "gray");
 
         // Get the likelihood of each classes
         // fDistribution[0] is the probability of being “positive”
         // fDistribution[1] is the probability of being “negative”
         iExample.setDataset(isTrainingSet);
-        try {
-            double[] fDistribution = cModel.distributionForInstance(iExample);
-            System.out.println(fDistribution[0]);
-            System.out.println(fDistribution[1]);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        printDistribution(cModel, iExample);
 
         testOnBeijing();
-
-        //testNaiveBayesMultinomial();
-
     }
 }

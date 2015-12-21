@@ -3,20 +3,12 @@ package dataset;
 /**
  * Created by jamsic on 09.12.15.
  */
+
 import weka.attributeSelection.AttributeTransformer;
 import weka.attributeSelection.UnsupervisedAttributeEvaluator;
-import weka.core.Attribute;
-import weka.core.Capabilities;
-import weka.core.FastVector;
-import weka.core.Instance;
-import weka.core.Instances;
-import weka.core.matrix.Matrix;
-import weka.core.Option;
-import weka.core.OptionHandler;
-import weka.core.RevisionUtils;
-import weka.core.SparseInstance;
-import weka.core.Utils;
+import weka.core.*;
 import weka.core.Capabilities.Capability;
+import weka.core.matrix.Matrix;
 import weka.core.matrix.SingularValueDecomposition;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
@@ -28,7 +20,7 @@ import java.util.Enumeration;
 import java.util.Vector;
 
 /**
- <!-- globalinfo-start -->
+ * <!-- globalinfo-start -->
  * Performs latent semantic analysis and transformation of the data.
  * Use in conjunction with a Ranker search. A low-rank approximation
  * of the full data is found by specifying the number of singular values
@@ -36,26 +28,26 @@ import java.util.Vector;
  * the attributes or the instances (default) to the concept space created
  * by the transformation.
  * <p/>
- <!-- globalinfo-end -->
- *
- <!-- options-start -->
+ * <!-- globalinfo-end -->
+ * <p/>
+ * <!-- options-start -->
  * Valid options are: <p/>
- *
+ * <p/>
  * <pre> -N
  *  Normalize input data.</pre>
- *
+ * <p/>
  * <pre> -R
  *  Rank approximation used in LSA. May be actual number of
  *  LSA attributes to include (if greater than 1) or a proportion
  *  of total singular values to account for (if between 0 and 1).
  *  A value less than or equal to zero means use all latent variables.
  *  (default = 0.95)</pre>
- *
+ * <p/>
  * <pre> -A
  *  Maximum number of attributes to include in
  *  transformed attribute names. (-1 = include all)</pre>
- *
- <!-- options-end -->
+ * <p/>
+ * <!-- options-end -->
  *
  * @author Amri Napolitano
  * @version $Revision: 11821 $
@@ -65,10 +57,14 @@ public class LSA
         extends UnsupervisedAttributeEvaluator
         implements AttributeTransformer, OptionHandler {
 
-    /** For serialization */
+    /**
+     * For serialization
+     */
     static final long serialVersionUID = -8712112988018106198L;
 
-    /** The data to transform analyse/transform */
+    /**
+     * The data to transform analyse/transform
+     */
     private Instances m_trainInstances;
 
     /**
@@ -77,62 +73,97 @@ public class LSA
      */
     private Instances m_trainHeader;
 
-    /** The header for the transformed data format */
+    /**
+     * The header for the transformed data format
+     */
     private Instances m_transformedFormat;
 
-    /** Data has a class set */
+    /**
+     * Data has a class set
+     */
     private boolean m_hasClass;
 
-    /** Class index */
+    /**
+     * Class index
+     */
     private int m_classIndex;
 
-    /** Number of attributes */
+    /**
+     * Number of attributes
+     */
     private int m_numAttributes;
 
-    /** Number of instances */
+    /**
+     * Number of instances
+     */
     private int m_numInstances;
 
-    /** Is transpose necessary because numAttributes < numInstances? */
+    /**
+     * Is transpose necessary because numAttributes < numInstances?
+     */
     private boolean m_transpose = false;
 
-    /** Will hold the left singular vectors */
+    /**
+     * Will hold the left singular vectors
+     */
     private Matrix m_u = null;
 
-    /** Will hold the singular values */
+    /**
+     * Will hold the singular values
+     */
     private Matrix m_s = null;
 
-    /** Will hold the right singular values */
+    /**
+     * Will hold the right singular values
+     */
     private Matrix m_v = null;
 
-    /** Will hold the matrix used to transform instances to the new feature space */
+    /**
+     * Will hold the matrix used to transform instances to the new feature space
+     */
     private Matrix m_transformationMatrix = null;
 
-    /** Filters for original data */
+    /**
+     * Filters for original data
+     */
     private ReplaceMissingValues m_replaceMissingFilter;
     private Normalize m_normalizeFilter;
     private NominalToBinary m_nominalToBinaryFilter;
     private Remove m_attributeFilter;
 
-    /** The number of attributes in the LSA transformed data */
+    /**
+     * The number of attributes in the LSA transformed data
+     */
     private int m_outputNumAttributes = -1;
 
-    /** Normalize the input data? */
+    /**
+     * Normalize the input data?
+     */
     private boolean m_normalize = false;
 
-    /** The approximation rank to use (between 0 and 1 means coverage proportion) */
+    /**
+     * The approximation rank to use (between 0 and 1 means coverage proportion)
+     */
     private double m_rank = 0.95;
 
-    /** The sum of the squares of the singular values */
+    /**
+     * The sum of the squares of the singular values
+     */
     private double m_sumSquaredSingularValues = 0.0;
 
-    /** The actual rank number to use for computation */
+    /**
+     * The actual rank number to use for computation
+     */
     private int m_actualRank = -1;
 
-    /** Maximum number of attributes in the transformed attribute name */
+    /**
+     * Maximum number of attributes in the transformed attribute name
+     */
     private int m_maxAttributesInName = Integer.MAX_VALUE;
 
     /**
      * Returns a string describing this attribute transformer
+     *
      * @return a description of the evaluator suitable for
      * displaying in the explorer/experimenter gui
      */
@@ -148,7 +179,7 @@ public class LSA
      *
      * @return an enumeration of all the available options.
      **/
-    public Enumeration listOptions () {
+    public Enumeration listOptions() {
         Vector options = new Vector(4);
         options.addElement(new Option("\tNormalize input data.", "N", 0, "-N"));
 
@@ -159,41 +190,41 @@ public class LSA
                 "\taccount for (if between 0 and 1). \n" +
                 "\tA value less than or equal to zero means \n" +
                 "\tuse all latent variables.(default = 0.95)",
-                "R",1,"-R"));
+                "R", 1, "-R"));
 
         options.addElement(new Option("\tMaximum number of attributes to include\n" +
                 "\tin transformed attribute names.\n" +
                 "\t(-1 = include all)"
                 , "A", 1, "-A"));
-        return  options.elements();
+        return options.elements();
     }
 
     /**
      * Parses a given list of options. <p/>
-     *
-     <!-- options-start -->
+     * <p/>
+     * <!-- options-start -->
      * Valid options are: <p/>
-     *
+     * <p/>
      * <pre> -N
      *  Normalize input data.</pre>
-     *
+     * <p/>
      * <pre> -R
      *  Rank approximation used in LSA. May be actual number of
      *  LSA attributes to include (if greater than 1) or a proportion
      *  of total singular values to account for (if between 0 and 1).
      *  A value less than or equal to zero means use all latent variables.
      *  (default = 0.95)</pre>
-     *
+     * <p/>
      * <pre> -A
      *  Maximum number of attributes to include in
      *  transformed attribute names. (-1 = include all)</pre>
-     *
-     <!-- options-end -->
+     * <p/>
+     * <!-- options-end -->
      *
      * @param options the list of options as an array of strings
      * @throws Exception if an option is not supported
      */
-    public void setOptions (String[] options)
+    public void setOptions(String[] options)
             throws Exception {
         resetOptions();
         String optionString;
@@ -227,6 +258,7 @@ public class LSA
 
     /**
      * Returns the tip text for this property
+     *
      * @return tip text for this property suitable for
      * displaying in the explorer/experimenter gui
      */
@@ -236,6 +268,7 @@ public class LSA
 
     /**
      * Set whether input data will be normalized.
+     *
      * @param newNormalize true if input data is to be normalized
      */
     public void setNormalize(boolean newNormalize) {
@@ -244,6 +277,7 @@ public class LSA
 
     /**
      * Gets whether or not input data is to be normalized
+     *
      * @return true if input data is to be normalized
      */
     public boolean getNormalize() {
@@ -252,6 +286,7 @@ public class LSA
 
     /**
      * Returns the tip text for this property
+     *
      * @return tip text for this property suitable for
      * displaying in the explorer/experimenter gui
      */
@@ -262,6 +297,7 @@ public class LSA
 
     /**
      * Sets the desired matrix rank (or coverage proportion) for feature-space reduction
+     *
      * @param newRank the desired rank (or coverage) for feature-space reduction
      */
     public void setRank(double newRank) {
@@ -270,6 +306,7 @@ public class LSA
 
     /**
      * Gets the desired matrix rank (or coverage proportion) for feature-space reduction
+     *
      * @return the rank (or coverage) for feature-space reduction
      */
     public double getRank() {
@@ -278,6 +315,7 @@ public class LSA
 
     /**
      * Returns the tip text for this property
+     *
      * @return tip text for this property suitable for
      * displaying in the explorer/experimenter gui
      */
@@ -288,6 +326,7 @@ public class LSA
     /**
      * Sets maximum number of attributes to include in
      * transformed attribute names.
+     *
      * @param newMaxAttributes the maximum number of attributes
      */
     public void setMaximumAttributeNames(int newMaxAttributes) {
@@ -297,6 +336,7 @@ public class LSA
     /**
      * Gets maximum number of attributes to include in
      * transformed attribute names.
+     *
      * @return the maximum number of attributes
      */
     public int getMaximumAttributeNames() {
@@ -308,7 +348,7 @@ public class LSA
      *
      * @return an array of strings suitable for passing to setOptions()
      */
-    public String[] getOptions () {
+    public String[] getOptions() {
 
         String[] options = new String[5];
         int current = 0;
@@ -327,14 +367,14 @@ public class LSA
             options[current++] = "";
         }
 
-        return  options;
+        return options;
     }
 
     /**
      * Returns the capabilities of this evaluator.
      *
-     * @return            the capabilities of this evaluator
-     * @see               Capabilities
+     * @return the capabilities of this evaluator
+     * @see Capabilities
      */
     public Capabilities getCapabilities() {
         Capabilities result = super.getCapabilities();
@@ -358,6 +398,7 @@ public class LSA
 
     /**
      * Initializes the singular values/vectors and performs the analysis
+     *
      * @param data the instances to analyse/transform
      * @throws Exception if analysis fails
      */
@@ -370,10 +411,11 @@ public class LSA
 
     /**
      * Initializes the singular values/vectors and performs the analysis
+     *
      * @param data the instances to analyse/transform
      * @throws Exception if analysis fails
      */
-    private void buildAttributeConstructor (Instances data) throws Exception {
+    private void buildAttributeConstructor(Instances data) throws Exception {
         // initialize attributes for performing analysis
         m_transpose = false;
         m_s = null;
@@ -432,9 +474,9 @@ public class LSA
         // remove columns from the data if necessary
         if (attributesToRemove.size() > 0) {
             m_attributeFilter = new Remove();
-            int [] todelete = new int[attributesToRemove.size()];
+            int[] todelete = new int[attributesToRemove.size()];
             for (int i = 0; i < attributesToRemove.size(); i++) {
-                todelete[i] = ((Integer)(attributesToRemove.elementAt(i))).intValue();
+                todelete[i] = ((Integer) (attributesToRemove.elementAt(i))).intValue();
             }
             m_attributeFilter.setAttributeIndicesArray(todelete);
             m_attributeFilter.setInvertSelection(false);
@@ -450,7 +492,7 @@ public class LSA
         m_numAttributes = m_trainInstances.numAttributes();
 
         // create matrix of attribute values and compute singular value decomposition
-        double [][] trainValues = new double[m_numAttributes][m_numInstances];
+        double[][] trainValues = new double[m_numAttributes][m_numInstances];
         for (int i = 0; i < m_numAttributes; i++) {
             trainValues[i] = m_trainInstances.attributeToDoubleArray(i);
         }
@@ -516,6 +558,7 @@ public class LSA
 
     /**
      * Set the format for the transformed data
+     *
      * @return a set of empty Instances (header only) in the new format
      */
     private Instances setOutputFormat() {
@@ -539,7 +582,7 @@ public class LSA
         for (int i = 0; i < m_actualRank; i++) {
             // create attribute name
             String attributeName = "";
-            double [] attributeCoefficients =
+            double[] attributeCoefficients =
                     m_transformationMatrix.getMatrix(0, m_numAttributes - 1, i, i).getColumnPackedCopy();
             for (int j = 0; j < numAttributesInName; j++) {
                 if (j > 0) {
@@ -554,8 +597,8 @@ public class LSA
             }
             // add attribute
             //if (!uniqueAttributeNames.contains(attributeName)) {
-                attributes.addElement(new Attribute(attributeName));
-                //uniqueAttributeNames.add(attributeName)
+            attributes.addElement(new Attribute(attributeName));
+            //uniqueAttributeNames.add(attributeName)
             //}
         }
         // add original class attribute if present
@@ -579,9 +622,10 @@ public class LSA
      * set of instances. This is so that AttributeSelection can
      * determine the structure of the transformed data without actually
      * having to get all the transformed data through getTransformedData().
+     *
      * @return the header of the transformed data.
      * @throws Exception if the header of the transformed data can't
-     * be determined.
+     *                   be determined.
      */
     public Instances transformedHeader() throws Exception {
         if (m_s == null) {
@@ -593,6 +637,7 @@ public class LSA
     /**
      * Transform the supplied data set (assumed to be the same format
      * as the training data)
+     *
      * @return the transformed training data
      * @throws Exception if transformed data can't be returned
      */
@@ -608,7 +653,7 @@ public class LSA
         for (int i = 0; i < data.numInstances(); i++) {
             Instance currentInstance = data.instance(i);
             // record attribute values for converted instance
-            double [] newValues = new double[m_outputNumAttributes];
+            double[] newValues = new double[m_outputNumAttributes];
             for (int j = 0; j < m_actualRank; j++) { // fill in values from v
                 newValues[j] = m_v.get(i, j);
             }
@@ -632,6 +677,7 @@ public class LSA
      * Evaluates the merit of a transformed attribute. This is defined
      * to be the square of the singular value for the latent variable
      * corresponding to the transformed attribute.
+     *
      * @param att the attribute to be evaluated
      * @return the merit of a transformed attribute
      * @throws Exception if attribute can't be evaluated
@@ -648,6 +694,7 @@ public class LSA
 
     /**
      * Transform an instance in original (unnormalized) format
+     *
      * @param instance an instance in the original (unnormalized) format
      * @return a transformed instance
      * @throws Exception if instance can't be transformed
@@ -659,10 +706,10 @@ public class LSA
         }
 
         // array to hold new attribute values
-        double [] newValues = new double[m_outputNumAttributes];
+        double[] newValues = new double[m_outputNumAttributes];
 
         // apply filters so new instance is in same format as training instances
-        Instance tempInstance = (Instance)instance.copy();
+        Instance tempInstance = (Instance) instance.copy();
         if (!instance.dataset().equalHeaders(m_trainHeader)) {
             throw new Exception("Can't convert instance: headers don't match: " +
                     "LatentSemanticAnalysis");
@@ -692,7 +739,7 @@ public class LSA
         if (m_hasClass) { // copy class value
             newValues[m_outputNumAttributes - 1] = instance.classValue();
         }
-        double [][] oldInstanceValues = new double[1][m_numAttributes];
+        double[][] oldInstanceValues = new double[1][m_numAttributes];
         oldInstanceValues[0] = tempInstance.toDoubleArray();
         Matrix instanceVector = new Matrix(oldInstanceValues); // old attribute values
         instanceVector = instanceVector.times(m_transformationMatrix); // new attribute values
@@ -710,6 +757,7 @@ public class LSA
 
     /**
      * Returns a description of this attribute transformer
+     *
      * @return a String describing this attribute transformer
      */
     public String toString() {
@@ -723,6 +771,7 @@ public class LSA
 
     /**
      * Return a summary of the analysis
+     *
      * @return a summary of the analysis.
      */
     private String lsaSummary() {
@@ -776,7 +825,7 @@ public class LSA
     /**
      * Returns the revision string.
      *
-     * @return		the revision
+     * @return the revision
      */
     public String getRevision() {
         return RevisionUtils.extract("$Revision: 11821 $");
@@ -784,10 +833,11 @@ public class LSA
 
     /**
      * Main method for testing this class
+     *
      * @param argv should contain the command line arguments to the
-     * evaluator/transformer (see AttributeSelection)
+     *             evaluator/transformer (see AttributeSelection)
      */
-    public static void main(String [] argv) {
+    public static void main(String[] argv) {
         runEvaluator(new LSA(), argv);
     }
 }

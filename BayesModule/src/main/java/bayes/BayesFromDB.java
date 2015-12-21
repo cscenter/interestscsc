@@ -1,6 +1,7 @@
 package bayes;
 
 import data.NGram;
+import db.DBConnector;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
@@ -13,7 +14,7 @@ import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
-import db.DBConnector;
+
 import java.sql.SQLException;
 import java.util.*;
 
@@ -22,19 +23,16 @@ public class BayesFromDB {
     public static List<String> getAllnGrammsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
         Set<String> ngramsSet = new HashSet<String>();
         for (Long id : normalizedIds) {
-            List<NGram> allNGram = new ArrayList<NGram>();
-            allNGram = db.getAllNGramNames(id);
+            List<NGram> allNGram = db.getAllNGramNames(id);
             for (NGram a : allNGram) {
                 ngramsSet.add(a.getText());
             }
         }
-        List<String> ngramsList = new ArrayList<String>(ngramsSet);
-        return ngramsList;
+        return new ArrayList<String>(ngramsSet);
     }
 
     public static String[] getAllTagsFromDB() {
-        String[] a = {"статистика", "детское"};
-        return a;
+        return new String[]{"статистика", "детское"};
     }
 
     public static Instances getDataset(List<Long> normalizedIds, DBConnector db) throws SQLException {
@@ -74,10 +72,9 @@ public class BayesFromDB {
                 System.out.println("детское");
             }
 
-            List<NGram> allNGram = new ArrayList<NGram>();
-            allNGram = db.getAllNGramNames(postId);
+            List<NGram> allNGram = db.getAllNGramNames(postId);
             Map<String, Integer> ngramMap = new HashMap<String, Integer>();
-            for (NGram ngram: allNGram) {
+            for (NGram ngram : allNGram) {
                 ngramMap.put(ngram.getText(), ngram.getUsesCnt());
             }
 
@@ -91,12 +88,7 @@ public class BayesFromDB {
                         wordCountInPost = ngramMap.get(nGramms.get(i));
                         System.out.print(nGramms.get(i) + " " + wordCountInPost + "   ");
                     }
-                    //int wordCountInPost = getnGrammCountFromDB(nGramms[i], postId);
-                    //System.out.println(wordCountInPost);
-                    // Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
-                    double relWordCountInPost = (double) wordCountInPost; // / (double) totalWordCountInPost;
-                    iExample.setValue((Attribute) fvWekaAttributes.elementAt(i), relWordCountInPost);
-                    //System.out.print(relWordCountInPost + "   ");
+                    iExample.setValue((Attribute) fvWekaAttributes.elementAt(i), wordCountInPost);
                 }
                 System.out.println(tagOfPost);
                 iExample.setValue((Attribute) fvWekaAttributes.elementAt(nGramms.size()), tagOfPost);
@@ -104,13 +96,15 @@ public class BayesFromDB {
             }
         }
         return isTrainingSet;
-    };
+    }
+
+    ;
 
 
     public static void testNaiveBayesMultinomial(Instances isTrainingSet) throws SQLException {
 
 
-        Classifier cModel = (Classifier)new NaiveBayesMultinomial();
+        Classifier cModel = new NaiveBayesMultinomial();
         try {
             cModel.buildClassifier(isTrainingSet);
         } catch (Exception e) {
@@ -118,25 +112,25 @@ public class BayesFromDB {
         }
 
         // Test the model
-        Evaluation eTest = null;
         try {
-            eTest = new Evaluation(isTrainingSet);
+            Evaluation eTest = new Evaluation(isTrainingSet);
             eTest.evaluateModel(cModel, isTrainingSet);
+            // Print the result à la Weka explorer:
+            String strSummary = eTest.toSummaryString();
+            System.out.println(strSummary);
+
+            System.out.println(cModel.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Print the result à la Weka explorer:
-        String strSummary = eTest.toSummaryString();
-        System.out.println(strSummary);
 
-        System.out.println(cModel.toString());
 
     }
 
     public static void testNaiveBayes(Instances isTrainingSet) throws SQLException {
 
-        Classifier cModel = (Classifier)new NaiveBayes();
+        Classifier cModel = new NaiveBayes();
         try {
             cModel.buildClassifier(isTrainingSet);
         } catch (Exception e) {
@@ -144,19 +138,19 @@ public class BayesFromDB {
         }
 
         // Test the model
-        Evaluation eTest = null;
         try {
-            eTest = new Evaluation(isTrainingSet);
+            Evaluation eTest = new Evaluation(isTrainingSet);
             eTest.evaluateModel(cModel, isTrainingSet);
+            // Print the result à la Weka explorer:
+            String strSummary = eTest.toSummaryString();
+            System.out.println(strSummary);
+
+            System.out.println(cModel.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Print the result à la Weka explorer:
-        String strSummary = eTest.toSummaryString();
-        System.out.println(strSummary);
 
-        System.out.println(cModel.toString());
 
     }
 
@@ -164,7 +158,6 @@ public class BayesFromDB {
     public static Instance getInstance(Long normalizedId, DBConnector db, FastVector fvWekaAttributes) throws SQLException {
         List<Long> normalizedIds = new ArrayList<Long>();
         normalizedIds.add(normalizedId);
-        //int totalWordCountInPost = getWordCountInPost(postId);
         List<String> nGramms = getAllnGrammsFromDB(normalizedIds, db);
         Instance iExample = new Instance(nGramms.size() + 1);
         List<String> allTagsOfPost = db.getAllTagNames(normalizedId);
@@ -177,10 +170,9 @@ public class BayesFromDB {
             tagOfPost = "детское";
         }
 
-        List<NGram> allNGram = new ArrayList<NGram>();
-        allNGram = db.getAllNGramNames(normalizedId);
+        List<NGram> allNGram = db.getAllNGramNames(normalizedId);
         Map<String, Integer> ngramMap = new HashMap<String, Integer>();
-        for (NGram ngram: allNGram) {
+        for (NGram ngram : allNGram) {
             ngramMap.put(ngram.getText(), ngram.getUsesCnt());
         }
         for (int i = 0; i < nGramms.size(); i++) {
@@ -189,12 +181,7 @@ public class BayesFromDB {
                 wordCountInPost = ngramMap.get(nGramms.get(i));
                 System.out.print(nGramms.get(i) + " " + wordCountInPost + "   ");
             }
-            //int wordCountInPost = getnGrammCountFromDB(nGramms[i], postId);
-            //System.out.println(wordCountInPost);
-            // Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
-            double relWordCountInPost = (double) wordCountInPost; // / (double) totalWordCountInPost;
-            iExample.setValue((Attribute) fvWekaAttributes.elementAt(i), relWordCountInPost);
-            //System.out.print(relWordCountInPost + "   ");
+            iExample.setValue((Attribute) fvWekaAttributes.elementAt(i), wordCountInPost);
         }
         System.out.println(tagOfPost);
         iExample.setValue((Attribute) fvWekaAttributes.elementAt(nGramms.size()), tagOfPost);
@@ -202,19 +189,19 @@ public class BayesFromDB {
     }
 
     public static FastVector getFastVector(List<Long> normalizedIds, DBConnector db) throws SQLException {
-            List<String> nGramms = getAllnGrammsFromDB(normalizedIds, db);
-            FastVector fvWekaAttributes = new FastVector(nGramms.size() + 1);
-            for (String nGramm : nGramms) {
-                fvWekaAttributes.addElement(new Attribute(nGramm));
-            }
+        List<String> nGramms = getAllnGrammsFromDB(normalizedIds, db);
+        FastVector fvWekaAttributes = new FastVector(nGramms.size() + 1);
+        for (String nGramm : nGramms) {
+            fvWekaAttributes.addElement(new Attribute(nGramm));
+        }
 
-            String[] allTags = getAllTagsFromDB();
-            FastVector fvClassVal = new FastVector(allTags.length);
-            for (String tag : allTags) {
-                fvClassVal.addElement(tag);
-            }
-            Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
-            fvWekaAttributes.addElement(ClassAttribute);
+        String[] allTags = getAllTagsFromDB();
+        FastVector fvClassVal = new FastVector(allTags.length);
+        for (String tag : allTags) {
+            fvClassVal.addElement(tag);
+        }
+        Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
+        fvWekaAttributes.addElement(ClassAttribute);
         return fvWekaAttributes;
     }
 
@@ -240,19 +227,19 @@ public class BayesFromDB {
         }
 
         // Test the model
-        Evaluation eTest = null;
         try {
-            eTest = new Evaluation(isTrainingSet);
+            Evaluation eTest = new Evaluation(isTrainingSet);
             eTest.evaluateModel(cModel, isTrainingSet);
+            // Print the result à la Weka explorer:
+            String strSummary = eTest.toSummaryString();
+            System.out.println(strSummary);
+
+            System.out.println(cModel.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Print the result à la Weka explorer:
-        String strSummary = eTest.toSummaryString();
-        System.out.println(strSummary);
 
-        System.out.println(cModel.toString());
 
     }
 
@@ -279,64 +266,14 @@ public class BayesFromDB {
         System.out.println("\t" + postNormalizedNum);
         System.out.println("\n============\n");
 
-        /*
-        Set<Long> PostIdWithTagStatistics = new HashSet<Long>();
-        Set<Long> PostIdWithTagChildren = new HashSet<Long>();
-        Set<Long> PostIdWithTagHistory = new HashSet<Long>();
-
-        for (Long processedPostId : normalizedIds) {
-            List<String> a = db.getAllTagNames(processedPostId);
-            //if (a.contains("history")) {
-            //    PostIdWithTagHistory.add(processedPostId);
-            //}
-            if (a.contains("детское")) {
-                PostIdWithTagChildren.add(processedPostId);
-            }
-            if (a.contains("статистика")) {
-                PostIdWithTagStatistics.add(processedPostId);
-            }
-        }
-
-        /*
-        List<NGram> allNGram = new ArrayList<NGram>();
-
-        List<String> allTagNames = db.getAllTagNames(2);
-
-        allNGram = db.getAllNGramNames(2);
-
-        for (String a : allTagNames) {
-            System.out.print(a);
-        }
-        */
-
-        // Посты с 1 по 50 про статистику и детское.
-
+        // Посты с 1 по 50 про статистику и детское
         List<Long> normalizedIds = new ArrayList<Long>();
 
         normalizedIds.clear();
-        ///*
         for (int i = 1; i < 51; i++) {
-            normalizedIds.add(new Long(i));
+            normalizedIds.add((long) i);
         }
-        //*/
-
-        /*
-        for (int i = 1; i < 6; i++) {
-            normalizedIds.add(new Long(i));
-        }
-        for (int i = 45; i < 51; i++) {
-            normalizedIds.add(new Long(i));
-        }
-        //*/
-
-
-        //List<String> nGrammsAll = getAllnGrammsFromDB(normalizedIds, db);
-
-
         Instances isTrainingSet = getDataset(normalizedIds, db);
-        //System.out.print(isTrainingSet.toString());
-        //System.out.println(isTrainingSet.toSummaryString());
-
         // assume Instances inputData is your dataset which has already been loaded
         AttributeSelection selector = new AttributeSelection();
         LatentSemanticAnalysis lsa = new LatentSemanticAnalysis();
@@ -375,81 +312,6 @@ public class BayesFromDB {
         testNaiveBayes(isTrainingSet);
         System.out.println("Тестируем NaiveBayes на newTrainingSet):");
         testNaiveBayes(newTrainingSet);
-
-
-
-
-// the transformed data is now in the outputData object
-
-
-
-        //LatentSemanticAnalysis a = new LatentSemanticAnalysis();
-        //a.buildEvaluator(isTrainingSet);
-        //Instances newTrainingSet = a.transformedData(isTrainingSet);
-
-        //System.out.println(newTrainingSet.toString());
-
-        //testNaiveBayesMultinomial(newTrainingSet);
-
-        //testNaiveBayesMultinomialUpdeatable(normalizedIds, db);
-
-
-        /*
-        normalizedIds.clear();
-        for (int i = 1; i < 26; i++) {
-            normalizedIds.add(new Long(i));
-        }
-
-        List<String> nGrammsChil = getAllnGrammsFromDB(normalizedIds, db);
-
-        normalizedIds.clear();
-        for (int i = 26; i < 51; i++) {
-            normalizedIds.add(new Long(i));
-        }
-
-        List<String> nGrammsStat = getAllnGrammsFromDB(normalizedIds, db);
-
-        System.out.println(nGrammsAll.size());
-        System.out.println(nGrammsChil.size());
-        System.out.println(nGrammsStat.size());
-        System.out.println(nGrammsStat.size() + nGrammsChil.size() - nGrammsAll.size());
-
-        /*
-        System.out.println("\nСтатистика\n");
-
-        Iterator it = PostIdWithTagStatistics.iterator();
-        while (it.hasNext()) {
-            System.out.print(it.next() + "   ");
-        }
-
-        System.out.println("\nдетское\n");
-
-        it = PostIdWithTagChildren.iterator();
-        while (it.hasNext()) {
-            System.out.print(it.next() + "   ");
-        }
-
-        System.out.println("\nhistory\n");
-
-        it = PostIdWithTagHistory.iterator();
-        while (it.hasNext()) {
-            System.out.print(it.next() + "   ");
-        }
-        */
-
-        /*
-        it = AllProcessedTagsUnique.iterator();
-        while (it.hasNext()) {
-            Object ngrams = it.next();
-            System.out.println(ngrams + "   " + AllProcessedTags.count(ngrams));
-            writer.println(ngrams + "," + AllProcessedTags.count(ngrams));
-        }
-        writer.close();
-        //*/
-
-        //testNaiveBayesMultinomial();
-
-
 
     }
 }
