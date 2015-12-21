@@ -236,6 +236,16 @@ public class DBConnectorTestLearning {
         System.out.println("\t" + postLength);
         System.out.println("\n============\n");
 
+        // Извлекаем из БД количество слов в конкретном посте
+        Map<Long, Integer> postLengthForList = db.getPostLength(selectedPosts);
+        System.out.println("Getting number of words in post by list of postIDs" +
+                " from DB:");
+        for (Long postID : selectedPosts) {
+            System.out.println("\tlength of post with postID = " + postID
+            + " is " + postLengthForList.get(postID));
+        }
+        System.out.println("\n============\n");
+
         // Извлекаем из БД количество уникальных слов в конкретном посте
         int postUniqueWordCount = db.getPostUniqueWordCount(postId);
         System.out.println("Getting number of unique words in post with " +

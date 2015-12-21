@@ -156,6 +156,8 @@ CREATE TABLE TrigramToPost (
   PRIMARY KEY (ngram_id, post_id)
 );
 
+CREATE INDEX UnigramToPost_post_index ON UnigramToPost(post_id);
+
 CREATE VIEW PostLength AS (
   SELECT p.id, coalesce(sum(up.uses_cnt),0) length
   FROM Post p
