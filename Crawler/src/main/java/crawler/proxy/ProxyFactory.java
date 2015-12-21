@@ -47,7 +47,7 @@ public class ProxyFactory {
         logger.info("Proxy: " + proxy + " is not working! It goes to broken list.");
         workingProxies.remove(proxy);
         brokenProxies.add(proxy);
-        if (1.f * brokenProxies.size() / rawProxies.size() > PERCENT_BROKEN_PROXY_TO_RECHECKING ) {
+        if (1.f * brokenProxies.size() / rawProxies.size() > PERCENT_BROKEN_PROXY_TO_RECHECKING) {
             logger.info("Broken proxies are too much. Maybe, need to change proxy list?!");
             startCheckingProxy();
         }
@@ -141,7 +141,7 @@ public class ProxyFactory {
         }
 
         try (BufferedWriter bufferedWriterProxy = new BufferedWriter(new FileWriter(file.getAbsoluteFile()))) {
-            for (HttpHost proxy: workingProxies) {
+            for (HttpHost proxy : workingProxies) {
                 bufferedWriterProxy.write(proxy.getHostName() + ":" + proxy.getPort() + "\n");
             }
         } catch (IOException e) {
@@ -166,8 +166,7 @@ public class ProxyFactory {
             if (!workingProxies.contains(proxy)) {
                 workingProxies.add(proxy);
             }
-        }
-        else {
+        } else {
             logger.info("No access to LJ for proxy: " + proxy.toString());
             brokenProxies.add(proxy);
         }

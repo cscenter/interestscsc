@@ -13,7 +13,7 @@ public class WordFilter {
         return words;
     }
 
-    public static List<String> normalize(List<String> words){
+    public static List<String> normalize(List<String> words) {
         List<String> normalizedWords = words.stream().map(p -> normalizeWord(p)).collect(Collectors.toList());
         normalizedWords = filter(normalizedWords);
         return normalizedWords;

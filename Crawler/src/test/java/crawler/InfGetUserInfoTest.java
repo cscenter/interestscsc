@@ -13,7 +13,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class InfGetUserInfoTest {
     private DBConnector db;

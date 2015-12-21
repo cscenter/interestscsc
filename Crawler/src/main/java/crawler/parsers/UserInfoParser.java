@@ -187,7 +187,7 @@ public class UserInfoParser {
 
         Elements interests = person.getElementsByTag(INTEREST_SELECTOR);
         String interestsStr = !interests.isEmpty() ? "" : null;
-        for (Element interest: interests) {
+        for (Element interest : interests) {
             interestsStr += interest.attr(ATTR_TITLE_SELECTOR) + ",";
         }
         if (interestsStr == null) {

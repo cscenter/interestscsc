@@ -16,7 +16,7 @@ public abstract class BaseLoader {
         String[] encodedArgs = new String[argsToEncode.length];
 
         for (int i = 0; i < argsToEncode.length; i++) {
-            encodedArgs[i] =  URLEncoder.encode(argsToEncode[i], "UTF-8");
+            encodedArgs[i] = URLEncoder.encode(argsToEncode[i], "UTF-8");
         }
 
         Thread.sleep(200);

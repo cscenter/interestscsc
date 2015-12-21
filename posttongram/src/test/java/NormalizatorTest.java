@@ -18,6 +18,7 @@ public class NormalizatorTest {
     static final int NUMBER_POST_TO_PROCESS = 5;
     static final HashMap<List<String>, DBConnector.NGramType> configFileNgrammType = new HashMap();
     private static final Logger logger = Logger.getLogger(java.util.logging.Logger.class);
+
     static {
         List<String> unigramProtos = new ArrayList<>();
         unigramProtos.add("config.proto");
@@ -74,7 +75,8 @@ public class NormalizatorTest {
                 //*/
                 logger.info("extracted " + configFileNgrammType.get(protoFileName) + ": " + nGramms.size());
                 db.insertNGrams(nGramms, post.getId(), configFileNgrammType.get(protoFileName));
-            };
+            }
+            ;
             db.updatePostNormalized(post.getId());
         }
     }
