@@ -66,7 +66,7 @@ public class NaiveBayesTest {
         // getting features = allNGrams
         Set<String> allnGrammsFromDB = null;
         try {
-            allnGrammsFromDB = dataset.getAllnGrammsNamesFromDB(normalizedPostIds, db);
+            allnGrammsFromDB = dataset.getAllnGramsNamesFromDB(normalizedPostIds, db);
             logger.info("Finish getting of nGram. Number of nGramms: " + allnGrammsFromDB.size());
             dataset.setAttributes(allnGrammsFromDB);
 

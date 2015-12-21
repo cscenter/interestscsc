@@ -52,8 +52,9 @@ public class Dataset {
         logger.info("Number of tags: " + tags.size());
     }
 
-    public Set<String> getAllnGrammsNamesFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
-        postsNGrams = db.getAllNGrams(normalizedIds);
+    public Set<String> getAllnGramsNamesFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
+        postsNGrams = db.getAllNGrams(normalizedIds, DBConnector.NGramType.UNIGRAM);
+        //postsNGrams = db.getAllNGrams(normalizedIds);
 
         Set<String> nGramsSet = new HashSet<>();
         postsNGrams.values().forEach(nGramsList ->
@@ -73,6 +74,7 @@ public class Dataset {
         Instances instances = new Instances("Rel", attributeVector, normalizedIds.size());
         // Set class index
         instances.setClassIndex(attributeVector.size() - 1); // нумерация с 0 же, последний элемент - Tag.
+        Map<Long, Integer> postsLength = db.getPostLength(normalizedIds);
 
         int numberPost = 0;
         for (Long postId : normalizedIds) {
@@ -87,7 +89,7 @@ public class Dataset {
                 logger.info("Post" + numberPost++ + " : " + postId);
                 Instance iExample = new Instance(1, new double[attributeVector.size()]);
                 allNGram.forEach(nGram ->
-                        iExample.setValue(totalnGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt())// / (double) allNGram.size())
+                        iExample.setValue(totalnGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt() / (double) postsLength.get(postId))
                 );
                 logger.info("Answer: " + tagOfPost);
                 iExample.setValue((Attribute) attributeVector.elementAt(instances.classIndex()), tagOfPost);
