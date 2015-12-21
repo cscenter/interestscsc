@@ -6,7 +6,7 @@
 3. Назначить SetupSDK (оно само попросится)
 4. Скачать соответствующий операционной системе файл mystem (Версия 3.0) https://tech.yandex.ru/mystem/ и распаковать в posttongram/mystem
 5. Скачать соответствующий операционной системе файл tomita https://tech.yandex.ru/tomita/ и распаковать в posttongram/tomitaWorkingFiles
-6. Попробовать запустить posttongram/src/test/java/NormalizatorTest.java
+6. Попробовать запустить posttongram/src/test/java/com/interestscsc/posttongram/test/NormalizatorTest.java
 
 Возможные трудности:
 Может неправильно определить имена исполняемых файлов mystem и tomita, потому что они зависят от операционной системы, а у меня, к сожалению, нет возможности протестить их все, поэтому в этом случае их можно указать явно в параметрах (только названия, без директорий)

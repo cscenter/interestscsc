@@ -1,4 +1,4 @@
-import crawler.Crawler;
+import com.interestscsc.crawler.Crawler;
 import com.interestscsc.db.DBConnector;
 import org.apache.log4j.Logger;
 
