@@ -19,133 +19,138 @@ import java.util.Set;
 
 public class NaiveBayesTest {
 
-    private static final int NUMBER_ITERATION_OF_CV = 100;
-    private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
+    // Parameters to playing
+    // number iteration of cv
+    private final static int NUMBER_ITERATION_OF_CV = 30;
+    // test set ration: 0.2 means that train = 80%, test = 20%
+    private final static double CV_RATIO_TEST = 0.2;
+
+    // getting tags from db: minScore and maxScore
+    private final static long MIN_NUMBER_POSTS_OF_TAG = 80;
+    private final static long MAX_NUMBER_POSTS_OF_TAG = 100;
+    // getting tags from db: start popular tag index and limit of popular tags
+    private final static int START_POSITION_OF_POPULAR_TAGS = 2;
+    private final static int LIMIT_NUMBER_OF_POPULAR_TAGS = 5;
+
     private DBConnector db;
     private Dataset dataset;
+
+    private Instances trainingSet;
+    private Instances testingSet;
+
+    private static final Logger logger = Logger.getLogger(NaiveBayesClassifierTest.class);
 
     @Before
     public void setUp() throws SQLException {
         DBConnector.DataBase dbName = DBConnector.DataBase.MAIN;
         db = new DBConnector(dbName);
-        dataset = new Dataset(db);
+        dataset = new Dataset();
+        // 3 methods to set tags
+        dataset.setTagList(db, START_POSITION_OF_POPULAR_TAGS, LIMIT_NUMBER_OF_POPULAR_TAGS);
     }
 
     @Test
     public void testNaiveBayesClassifier() {
 
-        List<Long> normalizedIds = null;
+        // getting normalizes posts id for tags
+        List<Long> normalizedPostIds = null;
         try {
-            normalizedIds = dataset.getNormalizedIds(db);
+            normalizedPostIds = dataset.getNormalizedPostIds(db);
         } catch (SQLException e) {
             logger.error("Getting normalized posts from DB failed. " + e);
         }
-        Assert.assertNotNull(normalizedIds);
+        Assert.assertNotNull(normalizedPostIds);
         logger.info("Finish getting posts.");
-        logger.info("Number of normalized posts: " + normalizedIds.size());
+        logger.info("Number of normalized posts: " + normalizedPostIds.size());
 
-        Set<String> allNGramsFromDB = null;
+        // getting features = allNGrams
+        Set<String> allnGrammsFromDB = null;
         try {
-            allNGramsFromDB = dataset.getAllNGramsFromDB(normalizedIds, db);
-            logger.info("Finish getting of nGram.");
-            dataset.setAttributes(allNGramsFromDB);
+            allnGrammsFromDB = dataset.getAllnGrammsNamesFromDB(normalizedPostIds, db);
+            logger.info("Finish getting of nGram. Number of nGramms: " + allnGrammsFromDB.size());
+            dataset.setAttributes(allnGrammsFromDB);
 
         } catch (SQLException e) {
             logger.error("Working with DB failed. " + e);
         }
 
-        Assert.assertNotNull(allNGramsFromDB);
+        Assert.assertNotNull(allnGrammsFromDB);
 
+        // getting dataset
+        Instances instances = null;
+        try {
+            instances = dataset.getDataset(normalizedPostIds, db);
+        } catch (SQLException | IllegalArgumentException e) {
+            logger.error("Getting dataset failed. " + e);
+        }
+
+        Assert.assertNotNull(instances);
+
+        // CV and classification
         for (int i = 0; i < NUMBER_ITERATION_OF_CV; ++i) {
-            /**
-             * 0.1 - количество теста относительно всего сета, т. е. 1/10 test, 9/10 - train
-             */
-            dataset.splitToTrainAndTest(normalizedIds, 0.1);
-            List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
-            List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
-
-            Instances isTrainingSet = null;
-            Instances isTestingSet = null;
-            //noinspection Duplicates
-            try {
-                logger.info("Training set: ");
-                isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allNGramsFromDB);
-                logger.info("Testing set: ");
-                isTestingSet = dataset.getDataset(normalizedIdsTest, db, allNGramsFromDB);
-
-            } catch (SQLException | IllegalArgumentException e) {
-                logger.error("Getting dataset failed. " + e);
-            }
-
-            Assert.assertNotNull(isTrainingSet);
-            Assert.assertNotNull(isTestingSet);
-
-            logger.info("Число постов: " + isTrainingSet.numInstances());
-            logger.info("Число аттрибутов в TrainingSet: " + isTrainingSet.numAttributes());
+            logger.info("Cross-Validation " + (i + 1));
+            getDataset(instances);
 
             try {
-                Classifier classifier = NaiveBayes.trainClassifier(isTrainingSet);
+                Classifier classifier = NaiveBayesClassifier.trainClassifier(trainingSet);
 
-                Evaluation eTrain = NaiveBayes.validateClassifier(classifier, isTrainingSet);
-                logger.info("Ошибка на исходном множестве:");
+                Evaluation eTrain = NaiveBayesClassifier.validateClassifier(classifier, trainingSet);
+                logger.info("Result onto Training Set:");
                 logger.info(eTrain.toSummaryString());
 
-                Evaluation eTest = NaiveBayes.validateClassifier(classifier, isTestingSet);
-                logger.info("Ошибка на тестовом множестве:");
+                Evaluation eTest = NaiveBayesClassifier.validateClassifier(classifier, testingSet);
+                logger.info("Result onto Testing Set: " + eTest.pctCorrect());
                 logger.info(eTest.toSummaryString());
+
             } catch (Exception e) {
                 logger.error("Working with classifier failed. " + e);
             }
         }
 
 
-        dataset.splitToTrainAndTest(normalizedIds, 0.1);
-        List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
-        List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
-
-        Instances isTrainingSet = null;
-        Instances isTestingSet = null;
-        //noinspection Duplicates
+        // With LSA
         try {
-            logger.info("Training set: ");
-            isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allNGramsFromDB);
-            logger.info("Testing set: ");
-            isTestingSet = dataset.getDataset(normalizedIdsTest, db, allNGramsFromDB);
-
-        } catch (SQLException | IllegalArgumentException e) {
-            logger.error("Getting dataset failed. " + e);
-        }
-
-        Assert.assertNotNull(isTrainingSet);
-        Assert.assertNotNull(isTestingSet);
-
-        logger.info("Число постов: " + isTrainingSet.numInstances());
-        logger.info("Число аттрибутов в TrainingSet: " + isTrainingSet.numAttributes());
-
-        /**
-         * With LSA
-         */
-        try {
-            dataset.setParametersForLSA(isTrainingSet, 0.9);
-            Instances newTrainingSet = dataset.getLSAReducedDataset(isTrainingSet);
+            dataset.setParametersForLSA(trainingSet, 0.9999);
+            Instances newTrainingSet = dataset.getLSAReducedDataset(trainingSet);
             logger.info("Число аттрибутов в newTrainingSet: " + newTrainingSet.numAttributes());
-            Instances newTestingSet = dataset.getLSAReducedDataset(isTestingSet);
+            Instances newTestingSet = dataset.getLSAReducedDataset(testingSet);
+            logger.info("Число аттрибутов в newTestingSet: " + newTestingSet.numAttributes());
             logger.info(newTrainingSet.equalHeaders(newTestingSet));
 
 
-            Classifier naiveBayes2 = NaiveBayes.trainClassifier(newTrainingSet);
+            Classifier naiveBayes = NaiveBayesClassifier.trainClassifier(newTrainingSet);
             logger.info("ошибка на исходном множестве:");
-            logger.info(NaiveBayes.validateClassifier(naiveBayes2, newTrainingSet));
-            logger.info("ошибка на тестовом множестве:");
-            logger.info(NaiveBayes.validateClassifier(naiveBayes2, newTestingSet));
+            Evaluation eTrain = NaiveBayesClassifier.validateClassifier(naiveBayes, newTrainingSet);
+            logger.info("Result onto Training Set:");
+            logger.info(eTrain.toSummaryString());
+
+            Evaluation eTest = NaiveBayesClassifier.validateClassifier(naiveBayes, newTestingSet);
+            logger.info("Result onto Testing Set: " + eTest.pctCorrect());
+            logger.info(eTest.toSummaryString());
         } catch (Exception e) {
             logger.error("Working with classifier with LSA failed. " + e);
         }
     }
 
+    private void getDataset(final Instances instances) {
+        dataset.splitToTrainAndTest(instances, CV_RATIO_TEST);
+
+        logger.info("Training set: ");
+        trainingSet = dataset.getInstancesTrain();
+        Assert.assertNotNull(trainingSet);
+        logger.info("Число постов: " + trainingSet.numInstances());
+        logger.info("Число аттрибутов в TrainingSet: " + trainingSet.numAttributes());
+
+        logger.info("Testing set: ");
+        testingSet = dataset.getInstancesTest();
+        Assert.assertNotNull(testingSet);
+        logger.info("Число постов: " + testingSet.numInstances());
+        logger.info("Число аттрибутов в TestingSet: " + testingSet.numAttributes());
+    }
+
     @After
     public void setOut() {
-        logger.info("End of test: " + NaiveBayesTest.class);
+        logger.info("End of test: " + NaiveBayesClassifierTest.class);
     }
 
 }

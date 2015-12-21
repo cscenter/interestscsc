@@ -20,85 +20,81 @@ import java.util.stream.Collectors;
  */
 public class Dataset {
 
-    private final static int MIN_NUMBER_POSTS_OF_TAG = 150;
-    private final static int MAX_NUMBER_POSTS_OF_TAG = 1000000000;
-    private static final Logger logger = Logger.getLogger(Dataset.class);
+    // if number of posts will be larger, we get OutOfMemoryException: Heap size
+    private final static int MAX_POST_NUMBER = 2300;
 
     private static List<String> tags;
 
     private AttributeSelection selector;
     private FastVector attributeVector;
     private Map<Long, List<NGram>> postsNGrams;
-    private Map<String, Integer> totalNGramsListIndexes;
-    private List<Long> normalizedIdsTrain;
-    private List<Long> normalizedIdsTest;
+    private Map<String, Integer> totalnGramsListIndexes;
+    private Instances instancesTrain;
+    private Instances instancesTest;
+    private static final Logger logger = Logger.getLogger(Dataset.class);
 
-    public Dataset(DBConnector db) throws SQLException {
+    public Dataset() throws SQLException {
         selector = null;
-        postsNGrams = new HashMap<>();
-        tags = db.getTopNormalizedTagNamesByOffset(MIN_NUMBER_POSTS_OF_TAG, MAX_NUMBER_POSTS_OF_TAG);
-        logger.info("Number of popular tags: " + tags.size());
     }
 
-    public Set<String> getAllNGramsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
-        Set<String> ngramsSet = new HashSet<>();
-        for (Long id : normalizedIds) {
-            List<NGram> allNGram = db.getAllNGramNames(id, DBConnector.NGramType.UNIGRAM);
-            logger.info("Number of nGram by post_id " + id + " : " + allNGram.size());
-            ngramsSet.addAll(allNGram.stream().map(NGram::getText).collect(Collectors.toSet()));
-            postsNGrams.put(id, allNGram.stream().distinct().collect(Collectors.toList()));
-        }
-        logger.info("Finish getting set of nGram");
-        return ngramsSet;
+    public void setTagList(DBConnector db, int minScore, int maxScore) throws SQLException {
+        tags = db.getTopNormalizedTagNames(minScore, maxScore);
+        logger.info("Number of tags: " + tags.size());
     }
 
-    private void setNGramAttributeIndex(Set<String> ngramsList) {
-        int i = 0;
-        totalNGramsListIndexes = new HashMap<>();
-        for (String nGram : ngramsList) {
-            totalNGramsListIndexes.put(nGram, i++);
-        }
+    public void setTagList(DBConnector db, long offset, long limit) throws SQLException {
+        tags = db.getTopNormalizedTagNames(offset, limit);
+        logger.info("Number of tags: " + tags.size());
     }
 
-    public Instances getDataset(List<Long> normalizedIds, DBConnector db, Set<String> totalNGramsList) throws SQLException, IllegalArgumentException {
+    public void setTagList(List<String> inputTags) throws SQLException {
+        tags = inputTags;
+        logger.info("Number of tags: " + tags.size());
+    }
+
+    public Set<String> getAllnGrammsNamesFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
+        postsNGrams = db.getAllNGrams(normalizedIds);
+
+        Set<String> nGramsSet = new HashSet<>();
+        postsNGrams.values().forEach(nGramsList ->
+                nGramsSet.addAll(nGramsList.stream().map(NGram::getText).collect(Collectors.toSet()))
+        );
+        return nGramsSet;
+    }
+
+    public Instances getDataset(List<Long> normalizedIds, DBConnector db) throws SQLException, IllegalArgumentException {
         if (attributeVector == null) {
             throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
                     "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
                     "method to provide unique format of dataset.");
         }
         logger.info("Getting dataset...");
-        /**
-         * Create an empty training set
-         */
-        Instances isTrainingSet = new Instances("Rel", attributeVector, normalizedIds.size());
-        /**
-         * Set class index
-         * нумерация с 0, так что последний элемент - Tag.
-         */
-        isTrainingSet.setClassIndex(totalNGramsList.size());
+        // Create an empty training set
+        Instances instances = new Instances("Rel", attributeVector, normalizedIds.size());
+        // Set class index
+        instances.setClassIndex(attributeVector.size() - 1); // нумерация с 0 же, последний элемент - Tag.
 
+        int numberPost = 0;
         for (Long postId : normalizedIds) {
             List<String> allTagsOfPost = getProperTagName(db, postId);
 
             List<NGram> allNGram = postsNGrams.get(postId);
-            if (allNGram.size() < 2) {
+            if (allNGram == null || allNGram.size() < 2) {
                 continue;
             }
 
             for (String tagOfPost : allTagsOfPost) {
-                logger.info("Post " + postId + ":  ");
+                logger.info("Post" + numberPost++ + " : " + postId);
                 Instance iExample = new Instance(1, new double[attributeVector.size()]);
-                allNGram.stream().filter(nGram -> totalNGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
-                    /**
-                     * Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
-                     */
-                    iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
-                });
-                iExample.setValue((Attribute) attributeVector.elementAt(totalNGramsList.size()), tagOfPost);
-                isTrainingSet.add(iExample);
+                allNGram.forEach(nGram ->
+                        iExample.setValue(totalnGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt())// / (double) allNGram.size())
+                );
+                logger.info("Answer: " + tagOfPost);
+                iExample.setValue((Attribute) attributeVector.elementAt(instances.classIndex()), tagOfPost);
+                instances.add(iExample);
             }
         }
-        return isTrainingSet;
+        return instances;
     }
 
     private List<String> getProperTagName(DBConnector db, Long postId) throws SQLException {
@@ -127,44 +123,54 @@ public class Dataset {
         return selector.reduceDimensionality(set);
     }
 
-    public List<Long> getNormalizedIds(DBConnector db) throws SQLException {
-        return db.getAllPostNormalizedIds(tags);
+    public List<Long> getNormalizedPostIds(DBConnector db) throws SQLException {
+        List<Long> posts = db.getAllPostNormalizedIds(tags);
+        while (posts.size() > MAX_POST_NUMBER) {
+            posts.remove(new Random().nextInt(posts.size()));
+        }
+        return posts;
     }
 
-    public void setAttributes(Set<String> attributes) {
+    public void setAttributes(final Set<String> attributes) {
         attributeVector = new FastVector(attributes.size() + 1);
-        for (String nGram : attributes) {
-            attributeVector.addElement(new Attribute(nGram));
+        totalnGramsListIndexes = new HashMap<>(attributes.size());
+        int i = 0;
+        for (String nGramm : attributes) {
+            attributeVector.addElement(new Attribute(nGramm));
+            totalnGramsListIndexes.put(nGramm, i++);
         }
-        setNGramAttributeIndex(attributes);
+
         FastVector fvClassVal = new FastVector(tags.size());
         tags.forEach(fvClassVal::addElement);
         Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
         attributeVector.addElement(ClassAttribute);
     }
 
-    public void splitToTrainAndTest(List<Long> normalizedIds, double ratio) {
-        normalizedIdsTrain = normalizedIds;
-        normalizedIdsTest = new ArrayList<>();
+    public void splitToTrainAndTest(final Instances instances, double ratioTest) {
+        Instances tmpInstances = instances.resample(new Random());
 
-        /**
-         * рандомно собираю normalizedIdsTest
-         */
-        int numberOfPostsInTestingSet = (int) (normalizedIds.size() * ratio);
-        while (normalizedIdsTest.size() < numberOfPostsInTestingSet) {
-            int nextPostNumber = (int) (Math.random() * normalizedIds.size());
-            if (!normalizedIdsTest.contains(normalizedIds.get(nextPostNumber))) {
-                normalizedIdsTest.add(normalizedIds.get(nextPostNumber));
+        int numberOfPostsInTestingSet = (int) (instances.numInstances() * ratioTest);
+        int numberOfPostsInTrainingSet = tmpInstances.numInstances() - numberOfPostsInTestingSet;
+
+        instancesTrain = new Instances("Rel", attributeVector, numberOfPostsInTrainingSet);
+        instancesTrain.setClassIndex(attributeVector.size() - 1);
+
+        instancesTest = new Instances("Rel", attributeVector, numberOfPostsInTestingSet);
+        instancesTest.setClassIndex(attributeVector.size() - 1);
+        for (int i = 0; i < tmpInstances.numInstances(); ++i) {
+            if (i < numberOfPostsInTrainingSet) {
+                instancesTrain.add(tmpInstances.instance(i));
+            } else {
+                instancesTest.add(tmpInstances.instance(i));
             }
         }
-        normalizedIdsTrain.removeAll(normalizedIdsTest);
     }
 
-    public List<Long> getNormalizedIdsTrain() {
-        return normalizedIdsTrain;
+    public Instances getInstancesTrain() {
+        return instancesTrain;
     }
 
-    public List<Long> getNormalizedIdsTest() {
-        return normalizedIdsTest;
+    public Instances getInstancesTest() {
+        return instancesTest;
     }
 }
