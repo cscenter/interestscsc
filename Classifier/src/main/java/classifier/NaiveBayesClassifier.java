@@ -13,11 +13,11 @@ public class NaiveBayesClassifier {
         return cModel;
     }
 
-    public static String validateClassifier(Classifier cModel, Instances isValidationSet) throws Exception {
+    public static Evaluation validateClassifier(Classifier cModel, Instances isValidationSet) throws Exception {
         Evaluation eTest = new Evaluation(isValidationSet);
         eTest.evaluateModel(cModel, isValidationSet);
 
-        return eTest.toSummaryString();
+        return eTest;
     }
 
     public static String testClassifier(Instances isTrainingSet) throws Exception {
