@@ -599,6 +599,51 @@ public class DBConnector {
         }
     }
 
+    //TODO лля единообразия кидает исключение, если один из постов не был нормализован
+    public Map<Long, Integer> getPostLength(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, Integer> result = new HashMap<>();
+        if (postIDs.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        //noinspection SqlResolve,SqlCheckUsingColumns
+        String selectLengthString =
+                "WITH post_list AS ( " +
+                "    SELECT id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(id) " +
+                ")" +
+                "SELECT pl.id, coalesce(sum(up.uses_cnt),0) length " +
+                "FROM post_list pl " +
+                "  JOIN Post p USING(id) " +
+                "  LEFT JOIN UnigramToPost up ON p.id = up.post_id " +
+                "WHERE p.normalized " +
+                "GROUP BY pl.id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectLength = con.prepareStatement(selectLengthString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectLength.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectLength, "PostLength");
+            if (rs != null) {
+                while (rs.next()) {
+                    i = 0;
+                    result.put(rs.getLong(++i), rs.getInt(++i));
+                }
+            }
+            if (postIDs.size() != result.size())
+                throw new IllegalStateException("One of Requested posts wasn't normalized yet");
+            else
+                return result;
+        }
+    }
+
     public int getPostUniqueWordCount(long postId) throws SQLException {
         String selectUniqueWordCountString = "SELECT count FROM PostUniqueWordCount WHERE id = ?;";
         try (
@@ -881,17 +926,24 @@ public class DBConnector {
                 "FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
                 "AS week (week);";
         String selectTagStatString =
-                "WITH top_tags AS ( " +
-                "    SELECT tag_id, count(*) times " +
-                "    FROM tagtopost tp " +
-                "    GROUP BY tp.tag_id " +
-                "    ORDER BY times DESC " +
-                "    LIMIT ? " +
-                "), " +
-                "week AS ( " +
-                "    SELECT week.week" +
-                "    FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
-                "    AS week (week) " +
+                "WITH tags_user_uses AS ( " +
+                "  SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
+                "  FROM tagtouserlj tu " +
+                "  GROUP BY tag_id " +
+                "), tags_post_uses AS ( " +
+                "  SELECT tag_id, count(post_id) post_uses " +
+                "  FROM TagToPost " +
+                "  GROUP BY tag_id " +
+                "), top_tags AS ( " +
+                "  SELECT tag_id, user_uses :: BIGINT * post_uses :: BIGINT AS score " +
+                "  FROM tags_post_uses tpu " +
+                "    JOIN tags_user_uses tuu USING (tag_id) " +
+                "  ORDER BY score DESC " +
+                "  LIMIT ? " +
+                "), week AS ( " +
+                "  SELECT week.week" +
+                "  FROM generate_series('now' :: DATE - 365, 'now', '1 week') " +
+                "  AS week (week) " +
                 ") " +
                 "SELECT w.week :: DATE, t.text, coalesce(count(*), 0) AS count " +
                 "FROM week w " +
