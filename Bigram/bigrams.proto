@@ -1,0 +1,8 @@
+import "base.proto";           // описание protobuf-типов
+import "facttypes_base.proto"; // описание protobuf-типа NFactType.TFact
+
+message NGrams: NFactType.TFact 
+{
+    required string Bigram_1 = 1;
+    required string Bigram_2 = 2;   
+}
