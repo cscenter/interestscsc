@@ -64,8 +64,21 @@ public class DBConnectorTestLearning {
         // Создаем коннектор без прав записи в базу
         DBConnector db = new DBConnector(dbName);
 
-        // Возьмем из базы список id всех нормализованных постов
-        List<Long> normalizedIds = db.getAllPostNormalizedIds();
+        // Возьмем из базы список тегов, встречающихся
+        // в нормализованных постах с определенной частотой
+        List<String> preferredTags = db.getTopNormalizedTagNames(200, 500);
+        System.out.println("Getting most popular in normalized posts tags from DB:");
+        for (String tag : preferredTags)
+            System.out.println("\t" + tag);
+        System.out.println("\n============\n");
+
+        // Возьмем из базы список id всех нормализованных постов,
+        // имеющих хоть один из нужных нам тегов
+        //noinspection UnusedAssignment
+        List<Long> normalizedIds = db.getAllPostNormalizedIds(preferredTags);
+
+        // .. или возьмем из базы список id всех нормализованных постов
+        normalizedIds = db.getAllPostNormalizedIds();
 
         // Если такие нашлись, возьмем один из них для примера
         long postId;
@@ -109,6 +122,15 @@ public class DBConnectorTestLearning {
             System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
         System.out.println("\n============\n");
 
+        // Извлекаем из БД список всех н-грамм для списка постов
+        List<Long> prefferedPosts =
+                normalizedIds.subList(0, Math.min(3,normalizedIds.size()));
+        List<String> allNGramsForPosts = db.getAllNGramNames(prefferedPosts);
+        System.out.println("Getting all nGrams for multiple posts from DB:");
+        for (String nGram : allNGramsForPosts)
+            System.out.println("\t" + nGram);
+        System.out.println("\n============\n");
+
         // Извлекаем из БД список всех, например триграм, для конкретного поста
         List<NGram> nGrams = db.getAllNGramNames(postId, DBConnector.NGramType.TRIGRAM);
         System.out.println("Getting all triGrams by postId=" +
@@ -117,6 +139,13 @@ public class DBConnectorTestLearning {
             System.out.println("\t" + nGram.getText() + "\t" + nGram.getUsesCnt());
         System.out.println("\n============\n");
 
+        // Извлекаем из БД список всех всех, например биграм, для списка постов
+        allNGramsForPosts =
+                db.getAllNGramNames(prefferedPosts, DBConnector.NGramType.DIGRAM);
+        System.out.println("Getting all diGrams for multiple posts from DB:");
+        for (String nGram : allNGramsForPosts)
+            System.out.println("\t" + nGram);
+        System.out.println("\n============\n");
 
         // Извлекаем из БД список всех тегов
         List<String> allTagNames = db.getAllTagNames();
@@ -138,6 +167,15 @@ public class DBConnectorTestLearning {
         allTagNames = db.getAllTagNames(postId);
         System.out.println("Getting all tagNames by postId=" +
                 postId + " from DB:");
+        for (String tagName : allTagNames)
+            System.out.println("\t" + tagName);
+        System.out.println("\n============\n");
+
+        // Извлекаем из БД список всех тегов для набора постов
+        List<Long> listOfPostIDs = normalizedIds
+                .subList(0,Math.min(4,normalizedIds.size()));
+        allTagNames = db.getAllTagNames(listOfPostIDs);
+        System.out.println("Getting all tagNames by list of postIDs from DB:");
         for (String tagName : allTagNames)
             System.out.println("\t" + tagName);
         System.out.println("\n============\n");
