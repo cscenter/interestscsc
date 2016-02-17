@@ -5,6 +5,7 @@ import db.DBConnector;
 import meka.classifiers.multilabel.BCC;
 import meka.core.Result;
 import weka.attributeSelection.AttributeSelection;
+import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.SMO;
@@ -132,6 +133,7 @@ public class Dataset {
                     "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
                     "method to provide unique format of dataset.");
         }
+        // сколько постов с более чем 1 классом
         int multiLabelNum = 0;
         //System.out.println("Getting dataset...");
         // Create an empty training set
@@ -250,7 +252,8 @@ public class Dataset {
     public void setParametersForLSA(Instances isTrainingSet, double R) throws Exception {
         this.selecter = new AttributeSelection();
         Ranker rank = new Ranker();
-        LSA asEvaluation = new LSA();
+        LatentSemanticAnalysis asEvaluation = new LatentSemanticAnalysis();
+        asEvaluation.setMaximumAttributeNames(Integer.MAX_VALUE);
         asEvaluation.setRank(R);
         this.selecter.setEvaluator(asEvaluation);
         this.selecter.setSearch(rank);
@@ -385,9 +388,9 @@ public class Dataset {
         //List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
 
         List<String> allTags = new ArrayList<String>();
-        allTags.add("психология");
-        allTags.add("памятники");
-        allTags.add("стихи");
+        //allTags.add("психология");
+        //allTags.add("памятники");
+        //allTags.add("стихи");
         allTags.add("зарубежная архитектура");
         allTags.add("музеи");
 
@@ -409,7 +412,7 @@ public class Dataset {
         System.out.println("ошибка на исходном множестве:");
         validateClassifier(classifier, isTrainingSet);
         System.out.println("ошибка на тестовом множестве:");
-        validateClassifier(classifier, isTestingSet);
+        validatemultiLabelNumClassifier(classifier, isTestingSet);
 
 
         dataset.setParametersForLSA(isTrainingSet, 0.9999);
@@ -439,6 +442,7 @@ public class Dataset {
         CVpercents.add(0.2);
         //CVpercents.add(0.1);
         //CVpercents.add(0.05);
+        Estimator estimator = new Estimator();
 
         List<Double> measureOnTrainingSet = new ArrayList<Double>();
         List<Double> measureOnTestingSet = new ArrayList<Double>();
@@ -466,6 +470,12 @@ public class Dataset {
 
                 measureOnTrainingSetCV.add(estimateClassification(trainResult, isTrainingSet, allTags));
                 measureOnTestingSetCV.add(estimateClassification(testResult, isTestingSet, allTags));
+                estimator.estimate(trainResult, isTrainingSet, 0, allTags.size());
+                //double a = ((double)estimator.getTruePositive()) / isTrainingSet.size();
+                //System.out.println("~~~~~on training set  " + a);
+                //estimator.estimate(testResult, isTestingSet, 0, allTags.size());
+                //a = ((double)estimator.getTruePositive()) / isTestingSet.size();
+                //System.out.println("~~~~~on testing set  " + a);
             }
             System.out.println("");
             System.out.println(percent + ":");
@@ -499,6 +509,15 @@ public class Dataset {
             System.out.print(measure + "   ");
         }
         System.out.println("");
+
+        System.out.println("TN " + estimator.getTrueNegative());
+        System.out.println("TP " + estimator.getTruePositive());
+        System.out.println("FN " + estimator.getFalseNegative());
+        System.out.println("FP " + estimator.getFalsePositive());
+        System.out.println(estimator.getAccuracy());
+        System.out.println(estimator.getPrecision());
+        System.out.println(estimator.getRecall());
+        System.out.println(estimator.getFMeasure());
 
         /*
         data.splitToTrainAndTest(normalizedIds, 0.2);
