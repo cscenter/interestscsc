@@ -7,9 +7,11 @@ import org.postgresql.util.PSQLException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
-import java.util.Date;
 
 /**
  * User: allight
@@ -47,6 +49,7 @@ public class DBConnector {
     }
 
     public enum DataBase {
+        PROD("185.72.144.129", 5432, "veiloneru_prod", "veiloneru_prod", "veiloneru_prod", 20, 5),
         MAIN("185.72.144.129", 5432, "veiloneru", "veiloneru", "wasddsaw", 20, 5),
         TEST("185.72.144.129", 5432, "veiloneru_test", "veiloneru_test", "wasddsaw", 20, 5),
         LOCAL("localhost", 5432, "interests", "interests", "12345", 20, 5);
