@@ -20,7 +20,7 @@ public class Post {
             final Timestamp date, final Long url, final Integer countComment,
             final List<String> tags
     ) {
-        if(tags == null)
+        if (tags == null)
             throw new IllegalArgumentException("List of tags can't be null");
         this.title = title;
         this.text = text;

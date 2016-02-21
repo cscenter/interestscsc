@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class UserInfoParser {
-    // User's selectors
+    /**
+     * User's selectors
+     */
     private static final String PERSON_SELECTOR = "foaf:Person";
     private static final String REGION_SELECTOR = "ya:country";
     private static final String CITY_SELECTOR = "ya:city";
@@ -210,7 +212,9 @@ public class UserInfoParser {
                 .build();
     }
 
-    // logging information about the number of users without any data(region, date of creation, etc)
+    /**
+     * logging information about the number of users without any data (region, date of creation, etc)
+     */
     public static void logStatistics() {
         logger.info("Count user with null region: " + countNullRegion);
         logger.info("Count user with null city: " + countNullCity);

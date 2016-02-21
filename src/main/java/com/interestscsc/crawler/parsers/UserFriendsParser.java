@@ -8,8 +8,8 @@ public class UserFriendsParser {
     public static List<String> getFriends(String response) {
         String friends = response
                 .replaceAll("^[^\n]*\n", "")            // delete first line
-                .replaceAll("[<>] ", "")                // delete separators < >
-                .replaceAll("_", "-");                  // change _ to - for Unirest response
+                .replaceAll("[<>] ", "")                // delete separators '<' '>'
+                .replaceAll("_", "-");                  // change '_' to '-' for Unirest response
 
         String[] friendsArray = friends.split("\n");
 

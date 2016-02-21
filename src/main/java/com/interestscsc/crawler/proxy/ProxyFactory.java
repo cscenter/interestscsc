@@ -1,7 +1,7 @@
 package com.interestscsc.crawler.proxy;
 
-import com.mashape.unirest.http.exceptions.UnirestException;
 import com.interestscsc.crawler.loaders.ProxyLoader;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
@@ -13,23 +13,20 @@ import java.util.concurrent.TimeUnit;
 
 public class ProxyFactory {
 
-    final static double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.85;
-
+    private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.85;
+    private static final Logger logger = Logger.getLogger(ProxyFactory.class);
+    private static final HttpHost defaultWorkingProxy = new HttpHost("24.246.127.180", 8080);
+    private static final String defaultUser = "mi3ch";
+    private static final String RAW_PROXIES_FILE = "proxies.txt";
+    private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
+    private final Random random = new Random();
+    private final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
+            "main" + File.separator + "resources" + File.separator +
+            "crawler" + File.separator + "proxy" + File.separator;
     private Set<HttpHost> rawProxies;
     private List<HttpHost> workingProxies;
     private List<HttpHost> brokenProxies;
     private Set<String> rawAllUsers;
-    private final Random random = new Random();
-    private static final Logger logger = Logger.getLogger(ProxyFactory.class);
-
-    private static final HttpHost defaultWorkingProxy = new HttpHost("24.246.127.180", 8080);
-    private static final String defaultUser = "mi3ch";
-
-    private static final String RAW_PROXIES_FILE = "proxies.txt";
-    private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
-    private final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
-            "main" + File.separator + "resources" + File.separator +
-            "crawler" + File.separator + "proxy" + File.separator;
 
     public ProxyFactory() {
         rawProxies = new HashSet<>();
@@ -60,7 +57,9 @@ public class ProxyFactory {
             startCheckingProxy();
         }
 
-        // if working proxy-list is empty, then we should sleeping until new proxy doesn't find
+        /**
+         *  if working proxy-list is empty, then we should sleeping until new proxy doesn't find
+         */
         while (workingProxies.isEmpty()) {
             try {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(10));

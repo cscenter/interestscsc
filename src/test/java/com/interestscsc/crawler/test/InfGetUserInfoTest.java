@@ -45,6 +45,7 @@ public class InfGetUserInfoTest {
         long iter = 0;
         UserInfoLoader loader = new UserInfoLoader();
         HttpHost proxy = proxyFactory.getNextProxy();
+        //noinspection InfiniteLoopStatement
         while (true) {
             if (workingUsers.isEmpty()) {
                 workingUsers.addAll(rawUsers);
@@ -70,10 +71,8 @@ public class InfGetUserInfoTest {
                 }
             }
 
-            if (response == null) {
+            if (response == null)
                 logger.warn("No access to user: " + nick);
-                continue;
-            }
         }
     }
 }

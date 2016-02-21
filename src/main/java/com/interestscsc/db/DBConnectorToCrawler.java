@@ -16,7 +16,6 @@ import java.util.List;
  * Date: 06.10.2015 14:47
  */
 
-@SuppressWarnings("Duplicates")
 public class DBConnectorToCrawler extends DBConnector {
     private Integer crawlerId;
 
@@ -81,10 +80,10 @@ public class DBConnectorToCrawler extends DBConnector {
     public void insertRawUsers(Iterable<String> rawUsersLJ) throws SQLException {
         String createTempTableString =
                 "CREATE TEMPORARY TABLE RawUserLJTemp (nick TEXT) ON COMMIT DROP";
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String insertUserString =
                 "INSERT INTO RawUserLJTemp (nick) VALUES (?);";
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String updateMainTableString =
                 "LOCK RawUserLJ IN SHARE UPDATE EXCLUSIVE MODE; " +
                 "DELETE FROM RawUserLJTemp rt USING RawUserLJ r WHERE rt.nick = r.nick; " +
@@ -116,7 +115,7 @@ public class DBConnectorToCrawler extends DBConnector {
                     con.setAutoCommit(true);
                 }
             } catch (PSQLException pse) {
-                retryTransaction = processPSE(pse,"RawUserLJ",null);
+                retryTransaction = processPSE(pse, "RawUserLJ", null);
             }
     }
 
@@ -179,9 +178,11 @@ public class DBConnectorToCrawler extends DBConnector {
         return result;
     }
 
+    /**
+     * TODO Для сложных запросов нужно по максимуму сделать VIEW
+     */
     public List<String> getUnfinishedRawUsers() throws SQLException {
         List<String> result = new LinkedList<>();
-        //TODO По максимуму сделать вьюшки для сложных запросов
         String selectUnfinishedString = "SELECT r.nick " +
                 "FROM RawUserLJ r JOIN UserLJ u ON r.user_id = u.id " +
                 "WHERE r.crawler_id = ? AND u.fetched IS NULL;";
@@ -206,7 +207,7 @@ public class DBConnectorToCrawler extends DBConnector {
      *
      * @return кол-во добавленных записей
      */
-    public int insertUser(User userLJ) throws SQLException { //TODO возможно, здесь нужна транзакция?
+    public int insertUser(User userLJ) throws SQLException {
         int rowsAffected = 0;
         String insertUserString =
                 "INSERT INTO UserLJ (nick, region_id, created, update, birthday, interests, " +
@@ -360,7 +361,7 @@ public class DBConnectorToCrawler extends DBConnector {
         ) {
             for (Post post : posts) {
                 int i = 0;
-                insertPost.setLong(++i, post.getUrl());        //never null
+                insertPost.setLong(++i, post.getUrl());
                 insertPost.setString(++i, post.getAuthor());
                 insertPost.setTimestamp(++i, post.getDate());
                 insertPost.setString(++i, post.getTitle());
@@ -376,7 +377,7 @@ public class DBConnectorToCrawler extends DBConnector {
                     i = 0;
                     insertTagToPost.setString(++i, tag);
                     insertTagToPost.setString(++i, post.getAuthor());
-                    insertTagToPost.setLong(++i, post.getUrl());      //never null
+                    insertTagToPost.setLong(++i, post.getUrl());
                     rowsAffected += tryUpdateTransaction(insertTagToPost,
                             post.getAuthor() + ">" + post.getUrl() + "<->" + tag, "TagTOPost");
                 }

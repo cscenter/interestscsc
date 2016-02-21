@@ -22,25 +22,25 @@ public class Dataset {
 
     private final static int MIN_NUMBER_POSTS_OF_TAG = 150;
     private final static int MAX_NUMBER_POSTS_OF_TAG = 1000000000;
+    private static final Logger logger = Logger.getLogger(Dataset.class);
 
     private static List<String> tags;
 
     private AttributeSelection selector;
     private FastVector attributeVector;
     private Map<Long, List<NGram>> postsNGrams;
-    private Map<String, Integer> totalnGramsListIndexes;
+    private Map<String, Integer> totalNGramsListIndexes;
     private List<Long> normalizedIdsTrain;
     private List<Long> normalizedIdsTest;
-    private static final Logger logger = Logger.getLogger(Dataset.class);
 
     public Dataset(DBConnector db) throws SQLException {
         selector = null;
         postsNGrams = new HashMap<>();
-        tags = db.getTopNormalizedTagNames(MIN_NUMBER_POSTS_OF_TAG, MAX_NUMBER_POSTS_OF_TAG);
+        tags = db.getTopNormalizedTagNamesByOffset(MIN_NUMBER_POSTS_OF_TAG, MAX_NUMBER_POSTS_OF_TAG);
         logger.info("Number of popular tags: " + tags.size());
     }
 
-    public Set<String> getAllnGrammsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
+    public Set<String> getAllNGramsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
         Set<String> ngramsSet = new HashSet<>();
         for (Long id : normalizedIds) {
             List<NGram> allNGram = db.getAllNGramNames(id, DBConnector.NGramType.UNIGRAM);
@@ -52,25 +52,30 @@ public class Dataset {
         return ngramsSet;
     }
 
-    private void setnGramAttributeIndex(Set<String> ngramsList) {
+    private void setNGramAttributeIndex(Set<String> ngramsList) {
         int i = 0;
-        totalnGramsListIndexes = new HashMap<>();
-        for (String nGramm : ngramsList) {
-            totalnGramsListIndexes.put(nGramm, i++);
+        totalNGramsListIndexes = new HashMap<>();
+        for (String nGram : ngramsList) {
+            totalNGramsListIndexes.put(nGram, i++);
         }
     }
 
-    public Instances getDataset(List<Long> normalizedIds, DBConnector db, Set<String> totalnGramsList) throws SQLException, IllegalArgumentException {
+    public Instances getDataset(List<Long> normalizedIds, DBConnector db, Set<String> totalNGramsList) throws SQLException, IllegalArgumentException {
         if (attributeVector == null) {
             throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
                     "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
                     "method to provide unique format of dataset.");
         }
         logger.info("Getting dataset...");
-        // Create an empty training set
+        /**
+         * Create an empty training set
+         */
         Instances isTrainingSet = new Instances("Rel", attributeVector, normalizedIds.size());
-        // Set class index
-        isTrainingSet.setClassIndex(totalnGramsList.size()); // нумерация с 0 же, последний элемент - Tag.
+        /**
+         * Set class index
+         * нумерация с 0, так что последний элемент - Tag.
+         */
+        isTrainingSet.setClassIndex(totalNGramsList.size());
 
         for (Long postId : normalizedIds) {
             List<String> allTagsOfPost = getProperTagName(db, postId);
@@ -83,11 +88,13 @@ public class Dataset {
             for (String tagOfPost : allTagsOfPost) {
                 logger.info("Post " + postId + ":  ");
                 Instance iExample = new Instance(1, new double[attributeVector.size()]);
-                allNGram.stream().filter(nGram -> totalnGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
-                    // Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
-                    iExample.setValue(totalnGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
+                allNGram.stream().filter(nGram -> totalNGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
+                    /**
+                     * Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
+                     */
+                    iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
                 });
-                iExample.setValue((Attribute) attributeVector.elementAt(totalnGramsList.size()), tagOfPost);
+                iExample.setValue((Attribute) attributeVector.elementAt(totalNGramsList.size()), tagOfPost);
                 isTrainingSet.add(iExample);
             }
         }
@@ -126,10 +133,10 @@ public class Dataset {
 
     public void setAttributes(Set<String> attributes) {
         attributeVector = new FastVector(attributes.size() + 1);
-        for (String nGramm : attributes) {
-            attributeVector.addElement(new Attribute(nGramm));
+        for (String nGram : attributes) {
+            attributeVector.addElement(new Attribute(nGram));
         }
-        setnGramAttributeIndex(attributes);
+        setNGramAttributeIndex(attributes);
         FastVector fvClassVal = new FastVector(tags.size());
         tags.forEach(fvClassVal::addElement);
         Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
@@ -140,8 +147,10 @@ public class Dataset {
         normalizedIdsTrain = normalizedIds;
         normalizedIdsTest = new ArrayList<>();
 
-        // рандомно собираю normalizedIdsTest
-        int numberOfPostsInTestingSet = (int)(normalizedIds.size() * ratio);
+        /**
+         * рандомно собираю normalizedIdsTest
+         */
+        int numberOfPostsInTestingSet = (int) (normalizedIds.size() * ratio);
         while (normalizedIdsTest.size() < numberOfPostsInTestingSet) {
             int nextPostNumber = (int) (Math.random() * normalizedIds.size());
             if (!normalizedIdsTest.contains(normalizedIds.get(nextPostNumber))) {

@@ -24,7 +24,10 @@ public class NaiveBayes {
         Classifier cModel = new weka.classifiers.bayes.NaiveBayes();
         cModel.buildClassifier(isTrainingSet);
 
-        // Test the model
+        /**
+         * Test the model
+         */
+
         Evaluation eTest = new Evaluation(isTrainingSet);
         eTest.evaluateModel(cModel, isTrainingSet);
 

@@ -16,7 +16,6 @@ import java.util.List;
  * Date: 06.10.2015 14:47
  */
 
-@SuppressWarnings("Duplicates")
 public class DBConnectorToNormalizer extends DBConnector {
     private Integer normalizerId;
 
@@ -113,7 +112,7 @@ public class DBConnectorToNormalizer extends DBConnector {
         return result;
     }
 
-    public int updatePostNormalized(long postId) throws SQLException {                                                                     //TODO
+    public int updatePostNormalized(long postId) throws SQLException {
         int rowsAffected = 0;
         String updateNormalizedString =
                 "UPDATE Post SET normalized = TRUE WHERE id = ?;";

@@ -42,16 +42,17 @@ public class InfGetRssTest {
         Assert.assertNotNull(rawTags);
         Queue<String> workingTags = new LinkedList<>(rawTags);
         long iter = 0;
+        //noinspection InfiniteLoopStatement
         while (true) {
             if (workingTags.isEmpty()) {
                 workingTags.addAll(rawTags);
             }
-            String tagname = workingTags.poll();
+            String tagName = workingTags.poll();
             String response = null;
-            logger.info("Iteration: " + ++iter + " : " + tagname);
+            logger.info("Iteration: " + ++iter + " : " + tagName);
             try {
                 TagPostLoader loader = new TagPostLoader();
-                response = loader.loadData(null, nick, tagname);
+                response = loader.loadData(null, nick, tagName);
             } catch (UnirestException e) {
                 logger.warn("User: " + nick + " haven't access. Unirest exception.");
                 logger.error("User: " + nick + " haven't access. " + e);
@@ -67,10 +68,8 @@ public class InfGetRssTest {
                 }
             }
 
-            if (response == null) {
+            if (response == null)
                 logger.warn("No access to user: " + nick);
-                continue;
-            }
         }
     }
 }

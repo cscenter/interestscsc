@@ -19,11 +19,10 @@ import java.util.Set;
 
 public class NaiveBayesTest {
 
-    private final static int NUMBER_ITERATION_OF_CV = 100;
-
+    private static final int NUMBER_ITERATION_OF_CV = 100;
+    private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
     private DBConnector db;
     private Dataset dataset;
-    private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
 
     @Before
     public void setUp() throws SQLException {
@@ -45,31 +44,34 @@ public class NaiveBayesTest {
         logger.info("Finish getting posts.");
         logger.info("Number of normalized posts: " + normalizedIds.size());
 
-        Set<String> allnGrammsFromDB = null;
+        Set<String> allNGramsFromDB = null;
         try {
-            allnGrammsFromDB = dataset.getAllnGrammsFromDB(normalizedIds, db);
+            allNGramsFromDB = dataset.getAllNGramsFromDB(normalizedIds, db);
             logger.info("Finish getting of nGram.");
-            dataset.setAttributes(allnGrammsFromDB);
+            dataset.setAttributes(allNGramsFromDB);
 
         } catch (SQLException e) {
             logger.error("Working with DB failed. " + e);
         }
 
-        Assert.assertNotNull(allnGrammsFromDB);
+        Assert.assertNotNull(allNGramsFromDB);
 
         for (int i = 0; i < NUMBER_ITERATION_OF_CV; ++i) {
-            // 0.1 - количество теста относительно всего сета, т. е. 1/10 test, 9/10 - train
+            /**
+             * 0.1 - количество теста относительно всего сета, т. е. 1/10 test, 9/10 - train
+             */
             dataset.splitToTrainAndTest(normalizedIds, 0.1);
             List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
             List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
 
             Instances isTrainingSet = null;
             Instances isTestingSet = null;
+            //noinspection Duplicates
             try {
                 logger.info("Training set: ");
-                isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allnGrammsFromDB);
+                isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allNGramsFromDB);
                 logger.info("Testing set: ");
-                isTestingSet = dataset.getDataset(normalizedIdsTest, db, allnGrammsFromDB);
+                isTestingSet = dataset.getDataset(normalizedIdsTest, db, allNGramsFromDB);
 
             } catch (SQLException | IllegalArgumentException e) {
                 logger.error("Getting dataset failed. " + e);
@@ -103,11 +105,12 @@ public class NaiveBayesTest {
 
         Instances isTrainingSet = null;
         Instances isTestingSet = null;
+        //noinspection Duplicates
         try {
             logger.info("Training set: ");
-            isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allnGrammsFromDB);
+            isTrainingSet = dataset.getDataset(normalizedIdsTrain, db, allNGramsFromDB);
             logger.info("Testing set: ");
-            isTestingSet = dataset.getDataset(normalizedIdsTest, db, allnGrammsFromDB);
+            isTestingSet = dataset.getDataset(normalizedIdsTest, db, allNGramsFromDB);
 
         } catch (SQLException | IllegalArgumentException e) {
             logger.error("Getting dataset failed. " + e);
@@ -119,7 +122,9 @@ public class NaiveBayesTest {
         logger.info("Число постов: " + isTrainingSet.numInstances());
         logger.info("Число аттрибутов в TrainingSet: " + isTrainingSet.numAttributes());
 
-        // With LSA
+        /**
+         * With LSA
+         */
         try {
             dataset.setParametersForLSA(isTrainingSet, 0.9);
             Instances newTrainingSet = dataset.getLSAReducedDataset(isTrainingSet);

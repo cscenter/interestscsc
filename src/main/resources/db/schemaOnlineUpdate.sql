@@ -1,6 +1,7 @@
 -- =======================================
 -- 15_11_04
 
+-- noinspection SqlResolve
 ALTER TABLE Post RENAME COLUMN text_norm TO normalized;
 ALTER TABLE Post
 ALTER COLUMN normalized SET DATA TYPE BOOLEAN USING (normalized::BOOLEAN),
@@ -9,8 +10,11 @@ UPDATE Post SET normalized = FALSE;
 ALTER TABLE Post
 ALTER COLUMN normalized SET NOT NULL;
 
+-- noinspection SqlResolve
 ALTER TABLE UnigramToPost RENAME COLUMN unigram_id TO ngram_id;
+-- noinspection SqlResolve
 ALTER TABLE DigramToPost RENAME COLUMN digram_id TO ngram_id;
+-- noinspection SqlResolve
 ALTER TABLE TrigramToPost RENAME COLUMN trigram_id TO ngram_id;
 
 ALTER TABLE UnigramToPost

@@ -18,78 +18,12 @@ import java.util.*;
  * Date: 06.10.2015 14:47
  */
 
-@SuppressWarnings("Duplicates")
 public class DBConnector {
     protected static final String SCHEMA_PATH = "src/main/resources/db/schema.sql";
     protected static final String SCHEMA_ENCODING = "UTF-8";
     protected static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
 
     protected final DataBase dataBase;
-
-    public enum NGramType {
-        UNIGRAM("unigram", "unigramToPost"),
-        DIGRAM("digram", "digramToPost"),
-        TRIGRAM("trigram", "trigramToPost");
-
-        private final String tableName;
-        private final String tableToPostName;
-
-        NGramType(String tableName, String tableToPostName) {
-            this.tableName = tableName;
-            this.tableToPostName = tableToPostName;
-        }
-
-        public String getTableName() {
-            return tableName;
-        }
-
-        public String getTableToPostName() {
-            return tableToPostName;
-        }
-    }
-
-    public enum DataBase {
-        PROD("185.72.144.129", 5432, "veiloneru_prod", "veiloneru_prod", "veiloneru_prod", 20, 5),
-        MAIN("185.72.144.129", 5432, "veiloneru", "veiloneru", "wasddsaw", 20, 5),
-        TEST("185.72.144.129", 5432, "veiloneru_test", "veiloneru_test", "wasddsaw", 20, 5),
-        LOCAL("localhost", 5432, "interests", "interests", "12345", 20, 5);
-
-        private final String host;
-        private final int port;                 // 5432 - стандартный порт постгрес
-        private final String db;
-        private final String user;
-        private final String pass;
-        private final int maxConnections;       // 100 - внутреннее ограничение постгрес
-        private final int maxTries;             // число попыток выполнения при временной (*) неудаче (>1)
-
-        private PGPoolingDataSource connectionPool;
-
-        DataBase(String host, int port, String db, String user, String pass, int maxConnections, int maxTries) {
-            this.host = host;
-            this.port = port;
-            this.db = db;
-            this.user = user;
-            this.pass = pass;
-            this.maxConnections = maxConnections;
-            this.maxTries = maxTries;
-            this.connectionPool = preparePool();
-        }
-
-        private PGPoolingDataSource preparePool() {
-            PGPoolingDataSource pool = new PGPoolingDataSource();
-            pool.setServerName(host);
-            pool.setPortNumber(port);
-            pool.setDatabaseName(db);
-            pool.setUser(user);
-            pool.setPassword(pass);
-            pool.setMaxConnections(maxConnections);
-            return pool;
-        }
-
-        public int getMaxTries() {
-            return maxTries;
-        }
-    }
 
     public DBConnector(DataBase dataBase) {
         this.dataBase = dataBase;
@@ -110,7 +44,7 @@ public class DBConnector {
     }
 
     protected boolean checkTable(String tableName) throws SQLException {
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectTableString = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = ?;";
         try (
                 Connection con = getConnection();
@@ -279,7 +213,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //noinspection SqlResolve,SqlCheckUsingColumns
+        @SuppressWarnings("SqlResolve")
         String selectTagNamesString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id FROM ( " +
@@ -321,7 +255,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //noinspection SqlResolve,SqlCheckUsingColumns
+        @SuppressWarnings("SqlResolve")
         String selectTagNamesString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id FROM ( " +
@@ -355,7 +289,6 @@ public class DBConnector {
                         currentId = nextId;
                         currentList = result.get(nextId);
                     }
-                    //noinspection ConstantConditions
                     currentList.add(rs.getString(++i));
                 }
             }
@@ -363,17 +296,30 @@ public class DBConnector {
         return result;
     }
 
-    //TODO
-    public List<String> getTopNormalizedTagNames(long minScore, long maxScore) throws SQLException {
+    /**
+     * Строит топ тегов по популярности среди нормализованных постов (post_uses),
+     * с учетом количества пользователей (user_uses), которые их использовали в
+     * этих постах.
+     * Очки (score) начисляются тегу как произведение чисел user_uses и post_uses.
+     *
+     * @param minScore - нижняя граница score.
+     * @param maxScore - верхняя граница score.
+     *                 <p>
+     *                 norm_users - пользователи, имеющий хоть один нормализованный пост
+     *                 tags_user_uses - теги и количество пользователей из norm_users, имеющих их
+     *                 TODO Должно быть: использовавших тег только (!) в нормализованных постах
+     *                 tags_post_uses - теги и количесвто их использований в нормализованных постах
+     */
+    public List<String> getTopNormalizedTagNamesByScoreGap(long minScore, long maxScore) throws SQLException {
         List<String> result = new LinkedList<>();
         String selectTopTagNamesString =
-                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
-                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
-                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
+                "WITH norm_users AS ( " +
+                "    SELECT user_id " +
+                "    FROM Post " +
                 "    WHERE normalized " +
                 "    GROUP BY user_id " +
                 "), " +
-                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "tags_user_uses AS ( " +
                 "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
                 "    FROM norm_users nu " +
                 "      JOIN tagtouserlj tu USING(user_id) " +
@@ -407,17 +353,31 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getTopNormalizedTagNames(int offset, int limit) throws SQLException {
+    /**
+     * Строит топ тегов по популярности среди нормализованных постов (post_uses),
+     * с учетом количества пользователей (user_uses), которые их использовали в
+     * этих постах.
+     * Очки (score) начисляются тегу как произведение чисел user_uses и post_uses.
+     *
+     * @param offset - сдвиг по топу.
+     * @param limit  - количество требуемых позиций топа, начиная с offset.
+     *               <p>
+     *               norm_users - пользователи, имеющий хоть один нормализованный пост
+     *               tags_user_uses - теги и количество пользователей из norm_users, имеющих их
+     *               TODO Должно быть: использовавших тег только (!) в нормализованных постах
+     *               tags_post_uses - теги и количесвто их использований в нормализованных постах
+     */
+    public List<String> getTopNormalizedTagNamesByOffset(int offset, int limit) throws SQLException {
         if (offset < 0 || limit < 0) throw new IllegalArgumentException("Arguments must be greater or equal to 0.");
         List<String> result = new LinkedList<>();
         String selectTopTagNamesString =
-                "WITH norm_users AS ( " +   //TODO не 100% корректно, т.к. это просто пользователи,
-                "    SELECT user_id " +     // у которых мы нормализовали хоть один пост
-                "    FROM Post " +          // для первого приближения - ок, возможно нужно будет улучшить
+                "WITH norm_users AS ( " +
+                "    SELECT user_id " +
+                "    FROM Post " +
                 "    WHERE normalized " +
                 "    GROUP BY user_id " +
                 "), " +
-                "tags_user_uses AS ( " +   //количество пользователей использовавших тег в нормализованных постах
+                "tags_user_uses AS ( " +
                 "    SELECT tu.tag_id, count(DISTINCT user_id) user_uses " +
                 "    FROM norm_users nu " +
                 "      JOIN tagtouserlj tu USING(user_id) " +
@@ -471,6 +431,7 @@ public class DBConnector {
 
     public int getPostCount() throws SQLException {
         String selectPostCountString = "SELECT count(*) FROM Post;";
+        //noinspection Duplicates
         try (
                 Connection con = getConnection();
                 PreparedStatement selectPostCount = con.prepareStatement(selectPostCountString)
@@ -484,6 +445,7 @@ public class DBConnector {
 
     public int getPostNormalizedCount() throws SQLException {
         String selectPostNormalizedCountString = "SELECT count(*) FROM Post WHERE normalized;";
+        //noinspection Duplicates
         try (
                 Connection con = getConnection();
                 PreparedStatement selectPostNormalizedCount = con.prepareStatement(selectPostNormalizedCountString)
@@ -510,38 +472,6 @@ public class DBConnector {
         return result;
     }
 
-    @Deprecated
-    public List<Long> getAllPostNormalizedIds(String tag1, String tag2) throws SQLException {
-        if (tag1 == null || tag2 == null)
-            throw new IllegalArgumentException("Expected not null arguments");
-        List<Long> result = new LinkedList<>();
-        //noinspection SqlResolve
-        String selectPostNormalizedIdsString =
-                "WITH with_tags AS (" +
-                "    SELECT post_id " +
-                "    FROM TagNameToPost " +
-                "    WHERE text IN (VALUES (?), (?)) " +
-                ") " +
-                "SELECT id " +
-                "FROM Post p " +
-                "  JOIN with_tags wt ON wt.post_id = p.id " +
-                "  JOIN unigramtopost USING(post_id)" +            //TODO не особо эффективный JOIN
-                "WHERE p.normalized;";
-        try (
-                Connection con = getConnection();
-                PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
-        ) {
-            int i = 0;
-            selectPostNormalizedIds.setString(++i, tag1);
-            selectPostNormalizedIds.setString(++i, tag2);
-            ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
-            if (rs != null)
-                while (rs.next())
-                    result.add(rs.getLong(1));
-        }
-        return result;
-    }
-
     public List<Long> getAllPostNormalizedIds(List<String> tags) throws SQLException {
         if (tags == null)
             throw new IllegalArgumentException("Expected not null argument");
@@ -552,7 +482,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(tags.size() * attr.length());
         for (int i = tags.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectPostNormalizedIdsString =
                 "WITH tag_text_list AS ( " +
                 "    SELECT text " +
@@ -602,7 +532,11 @@ public class DBConnector {
         }
     }
 
-    //TODO лля единообразия кидает исключение, если один из постов не был нормализован
+    /**
+     * @param postIDs список id нормализованных (!) постов
+     * @return Отображение id нормализованных постов в значение их длины
+     * @throws IllegalStateException если один из передаваемых постов не был нормализован
+     */
     public Map<Long, Integer> getPostLength(List<Long> postIDs) throws SQLException {
         if (postIDs == null)
             throw new IllegalArgumentException("Expected not null argument");
@@ -613,7 +547,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //noinspection SqlResolve,SqlCheckUsingColumns
+        @SuppressWarnings("SqlResolve")
         String selectLengthString =
                 "WITH post_list AS ( " +
                 "    SELECT id FROM ( " +
@@ -695,7 +629,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-//        noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectNGramString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id  " +
@@ -715,6 +649,7 @@ public class DBConnector {
             for (long postID : postIDs)
                 selectNGram.setLong(++i, postID);
             ResultSet rs = tryQueryTransaction(selectNGram, "AllNGramTextPost");
+            //noinspection Duplicates
             if (rs != null) {
                 List<NGram> currentList = null;
                 Long currentId = null;
@@ -725,7 +660,6 @@ public class DBConnector {
                         currentId = nextId;
                         currentList = result.get(nextId);
                     }
-                    //noinspection ConstantConditions
                     currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
                 }
             }
@@ -745,7 +679,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //        noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectNGramString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id  " +
@@ -767,6 +701,7 @@ public class DBConnector {
             for (long postID : postIDs)
                 selectNGram.setLong(++i, postID);
             ResultSet rs = tryQueryTransaction(selectNGram, nGramType.getTableName());
+            //noinspection Duplicates
             if (rs != null) {
                 List<NGram> currentList = null;
                 Long currentId = null;
@@ -777,7 +712,6 @@ public class DBConnector {
                         currentId = nextId;
                         currentList = result.get(nextId);
                     }
-                    //noinspection ConstantConditions
                     currentList.add(new NGram(rs.getString(++i), null, rs.getInt(++i)));
                 }
             }
@@ -810,7 +744,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectNGramString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id  " +
@@ -839,7 +773,7 @@ public class DBConnector {
 
     public List<NGram> getAllNGramNames(long postId, NGramType nGramType) throws SQLException {
         List<NGram> result = new LinkedList<>();
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectNGramString = "SELECT n.text, np.uses_cnt " +
                 "FROM " + nGramType.getTableName() + " n " +
                 "JOIN " + nGramType.getTableToPostName() + " np ON n.id = np.ngram_id " +
@@ -866,7 +800,7 @@ public class DBConnector {
         List<String> result = new LinkedList<>();
         if (postIDs.isEmpty())
             return result;
-        //noinspection SqlResolve
+        @SuppressWarnings("SqlResolve")
         String selectNGramString =
                 "WITH post_list AS ( " +
                 "    SELECT post_id " +
@@ -886,7 +820,7 @@ public class DBConnector {
         StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
         for (int i = postIDs.size() - 1; i > 0; i--)
             attrs.append(attr);
-        selectNGramString = String.format(selectNGramString,attrs.toString());
+        selectNGramString = String.format(selectNGramString, attrs.toString());
         try (
                 Connection con = getConnection();
                 PreparedStatement selectNGram = con.prepareStatement(selectNGramString)
@@ -922,7 +856,8 @@ public class DBConnector {
     public int[][] getTagByWeekStatisticsPerYear(ArrayList<Date> weekInvPos,
                                                  ArrayList<String> tagInvPos, int topLimit) throws SQLException {
         final int MAX_WEEKS_IN_YEAR = 53;
-        if (weekInvPos == null || tagInvPos == null) throw new IllegalArgumentException("Expecting not null arguments.");
+        if (weekInvPos == null || tagInvPos == null)
+            throw new IllegalArgumentException("Expecting not null arguments.");
         if (topLimit <= 0) throw new IllegalArgumentException("Argument topLimit must be greater than 0.");
         String selectWeekStatString =
                 "SELECT week.week::DATE " +
@@ -993,7 +928,6 @@ public class DBConnector {
                         tag = tagInc;
                         tagInvPos.add(tagInc++, tagName);
                     }
-                    //noinspection UnusedAssignment
                     weekTagResult[tag][week] = rs.getInt(++paramInd);
                 }
             return weekTagResult;
@@ -1005,7 +939,9 @@ public class DBConnector {
      * При возникновении некоторых исключений, повторяет запрос до MAX_TRIES-1 раз.
      *
      * @return объект класса <code>ResultSet</code>, содержащий результат запроса;
-     * надо проверять на <code>null</code>      //TODO хочется никогда не возвращать null
+     * надо проверять на <code>null</code>
+     *
+     * TODO хочется никогда не возвращать null
      */
     protected ResultSet tryQueryTransaction(PreparedStatement statement, String tableName) throws SQLException {
         boolean retryTransaction = true;
@@ -1085,7 +1021,6 @@ public class DBConnector {
             System.err.println("PSQLException: suspected bad connection. Closing transaction " +
                     (entry ? "with first unprocessed entry: \"" + currEntry + "\"" : "") +
                     ". \n If you see this exception than we need a code fix");
-            //TODO как-то по другому обрабатывать?
             throw pse;
         } else if (undefinedTable.equals(ss)) {
             System.err.println("PSQLException: undefined_table. Seems like you need to initialize DB, " +
@@ -1094,6 +1029,82 @@ public class DBConnector {
         } else {
             System.err.println(ss);
             throw pse;
+        }
+    }
+
+    public enum NGramType {
+        UNIGRAM("unigram", "unigramToPost"),
+        DIGRAM("digram", "digramToPost"),
+        TRIGRAM("trigram", "trigramToPost");
+
+        private final String tableName;
+        private final String tableToPostName;
+
+        NGramType(String tableName, String tableToPostName) {
+            this.tableName = tableName;
+            this.tableToPostName = tableToPostName;
+        }
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public String getTableToPostName() {
+            return tableToPostName;
+        }
+    }
+
+    public enum DataBase {
+
+        /**
+         * host,
+         * port (5432 - стандартный для postgresql),
+         * database,
+         * user,
+         * password,
+         * maxConnections (100 - внутреннее ограничение postgresql),
+         * maxTries - число попыток выполнения при временной неудаче (>1)
+         */
+
+        PROD("185.72.144.129", 5432, "veiloneru_prod", "veiloneru_prod", "veiloneru_prod", 20, 5),
+        MAIN("185.72.144.129", 5432, "veiloneru", "veiloneru", "wasddsaw", 20, 5),
+        TEST("185.72.144.129", 5432, "veiloneru_test", "veiloneru_test", "wasddsaw", 20, 5),
+        LOCAL("localhost", 5432, "interests", "interests", "12345", 20, 5);
+
+        private final String host;
+        private final int port;
+        private final String db;
+        private final String user;
+        private final String pass;
+        private final int maxConnections;
+        private final int maxTries;
+
+        private final PGPoolingDataSource connectionPool;
+
+        DataBase(String host, int port, String db, String user, String pass, int maxConnections, int maxTries) {
+            this.host = host;
+            this.port = port;
+            this.db = db;
+            this.user = user;
+            this.pass = pass;
+            this.maxConnections = maxConnections;
+            this.maxTries = maxTries;
+            this.connectionPool = preparePool();
+        }
+
+        private PGPoolingDataSource preparePool() {
+            PGPoolingDataSource pool = new PGPoolingDataSource();
+            pool.setServerName(host);
+            pool.setPortNumber(port);
+            pool.setDatabaseName(db);
+            pool.setUser(user);
+            pool.setPassword(pass);
+            pool.setMaxConnections(maxConnections);
+            return pool;
+        }
+
+        public int getMaxTries() {
+            return maxTries;
         }
     }
 }

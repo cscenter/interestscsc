@@ -5,6 +5,116 @@ import java.sql.Timestamp;
 import java.util.List;
 
 public class User {
+    private final Long id;
+    private final String nick;
+    private final String region;
+    private final Timestamp dateCreated;
+    private final Timestamp dateUpdated;
+    private final Timestamp dateFetched;
+    private final Date birthday;
+    private final String interests;
+    private final String customCity;
+    private final Integer postsNum;
+    private final Integer commentsPosted;
+    private final Integer commentsReceived;
+    private final String biography;
+    private final List<School> schools;
+
+    public User(UserBuilder builder) {
+        if (builder.schools == null)
+            throw new IllegalArgumentException("List of schools can't be null");
+        id = builder.id;
+        nick = builder.nick;
+        region = builder.region;
+        dateCreated = builder.dateCreated;
+        dateUpdated = builder.dateUpdated;
+        dateFetched = builder.dateFetched;
+        birthday = builder.birthday;
+        interests = builder.interests;
+        customCity = builder.customCity;
+        postsNum = builder.postsNum;
+        commentsPosted = builder.commentsPosted;
+        commentsReceived = builder.commentsReceived;
+        biography = builder.biography;
+        schools = builder.schools;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNick() {
+        return nick;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public Timestamp getDateCreated() {
+        return dateCreated;
+    }
+
+    public Timestamp getDateUpdated() {
+        return dateUpdated;
+    }
+
+    public Timestamp getDateFetched() {
+        return dateFetched;
+    }
+
+    public Date getBirthday() {
+        return birthday;
+    }
+
+    public String getInterests() {
+        return interests;
+    }
+
+    public String getCustomCity() {
+        return customCity;
+    }
+
+    public Integer getPostsNum() {
+        return postsNum;
+    }
+
+    public Integer getCommentsPosted() {
+        return commentsPosted;
+    }
+
+    public Integer getCommentsReceived() {
+        return commentsReceived;
+    }
+
+    public String getBiography() {
+        return biography;
+    }
+
+    public List<School> getSchools() {
+        return schools;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", nick='" + nick + '\'' +
+                ", region='" + region + '\'' +
+                ", dateCreated=" + dateCreated +
+                ", dateUpdated=" + dateUpdated +
+                ", dateFetched=" + dateFetched +
+                ", birthday=" + birthday +
+                ", interests='" + interests + '\'' +
+                ", customCity='" + customCity + '\'' +
+                ", postsNum=" + postsNum +
+                ", commentsPosted=" + commentsPosted +
+                ", commentsReceived=" + commentsReceived +
+                ", biography='" + biography + '\'' +
+                ", schools=" + schools +
+                '}';
+    }
+
     public static class School {
         private String title;
         private Date start;
@@ -29,26 +139,15 @@ public class User {
         }
     }
 
-    private final Long id;
-    private final String nick;
-    private final String region;
-    private final Timestamp dateCreated;
-    private final Timestamp dateUpdated;
-    private final Timestamp dateFetched;
-    private final Date birthday;
-    private final String interests;
-    private final String customCity;
-    private final Integer postsNum;
-    private final Integer commentsPosted;
-    private final Integer commentsReceived;
-    private final String biography;
-    private final List<School> schools;
-
     public static class UserBuilder {
-        // not null
+        /**
+         * not null
+         */
         private final String nick;
 
-        // maybe null
+        /**
+         * may be null
+         */
         private Long id = null;
         private String region = null;
         private Timestamp dateCreated = null;
@@ -135,100 +234,5 @@ public class User {
         public User build() {
             return new User(this);
         }
-    }
-
-    public User(UserBuilder builder) {
-        if(builder.schools == null)
-            throw new IllegalArgumentException("List of schools can't be null");
-       id = builder.id;
-       nick = builder.nick;
-       region = builder.region;
-       dateCreated = builder.dateCreated;
-       dateUpdated = builder.dateUpdated;
-       dateFetched = builder.dateFetched;
-       birthday = builder.birthday;
-       interests = builder.interests;
-       customCity = builder.customCity;
-       postsNum = builder.postsNum;
-       commentsPosted = builder.commentsPosted;
-       commentsReceived = builder.commentsReceived;
-       biography = builder.biography;
-       schools = builder.schools;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getNick() {
-        return nick;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public Timestamp getDateCreated() {
-        return dateCreated;
-    }
-
-    public Timestamp getDateUpdated() {
-        return dateUpdated;
-    }
-
-    public Timestamp getDateFetched() {
-        return dateFetched;
-    }
-
-    public Date getBirthday() {
-        return birthday;
-    }
-
-    public String getInterests() {
-        return interests;
-    }
-
-    public String getCustomCity() {
-        return customCity;
-    }
-
-    public Integer getPostsNum() {
-        return postsNum;
-    }
-
-    public Integer getCommentsPosted() {
-        return commentsPosted;
-    }
-
-    public Integer getCommentsReceived() {
-        return commentsReceived;
-    }
-
-    public String getBiography() {
-        return biography;
-    }
-
-    public List<School> getSchools() {
-        return schools;
-    }
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", nick='" + nick + '\'' +
-                ", region='" + region + '\'' +
-                ", dateCreated=" + dateCreated +
-                ", dateUpdated=" + dateUpdated +
-                ", dateFetched=" + dateFetched +
-                ", birthday=" + birthday +
-                ", interests='" + interests + '\'' +
-                ", customCity='" + customCity + '\'' +
-                ", postsNum=" + postsNum +
-                ", commentsPosted=" + commentsPosted +
-                ", commentsReceived=" + commentsReceived +
-                ", biography='" + biography + '\'' +
-                ", schools=" + schools +
-                '}';
     }
 }

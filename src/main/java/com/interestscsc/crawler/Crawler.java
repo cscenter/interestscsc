@@ -1,7 +1,5 @@
 package com.interestscsc.crawler;
 
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
 import com.interestscsc.crawler.loaders.*;
 import com.interestscsc.crawler.parsers.*;
 import com.interestscsc.crawler.proxy.ProxyFactory;
@@ -10,6 +8,8 @@ import com.interestscsc.data.Tag;
 import com.interestscsc.data.User;
 import com.interestscsc.db.DBConnector;
 import com.interestscsc.db.DBConnectorToCrawler;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
@@ -25,38 +25,55 @@ public class Crawler {
     private static final int MAX_NUMBER_OF_SESSIONS = 100;
     private static final int MAX_NUMBER_OF_USERS_PER_SESSION = 100;
     private static final int NUMBER_TO_CHANGE_PROXY = 20;
+    private static final Logger logger = Logger.getLogger(Crawler.class);
 
-    // queue of users who should be considered
+    /**
+     * set of all user's post's url
+     */
+    public static Set<Long> userPostUrls;
+
+    /**
+     * checking: is user allowed pages?
+     */
+    private static Boolean allowedUser;
+
+    /**
+     * queue of users who should be considered
+     */
     private Queue<String> usersQueue;
 
-    // dictionary where key=tags' name; value=count uses of this tags
+    /**
+     * dictionary where key=tags' name; value=count uses of this tags
+     */
     private Map<String, Integer> allTags;
 
-    // connector to DB
+    /**
+     * connector to DB
+     */
     private DBConnectorToCrawler db;
 
-    // proxyFactory-factory
+    /**
+     * proxyFactory-factory
+     */
     private ProxyFactory proxyFactory;
     private HttpHost proxy;
 
-    // set of all user's post's url
-    public static Set<Long> userPostUrls;
-
-    // set of region
+    /**
+     * set of region
+     */
     private Set<String> regions;
 
-    // checking: is user allowed pages?
-    private static Boolean allowedUser;
-
-    // only statistics
+    /**
+     * only statistics
+     */
     private List<String> usersDisallow;
     private List<String> usersNoTags;
 
-    // list for reconnect
+    /**
+     * list for reconnect
+     */
     private List<String> usersNoAccess;
     private List<Tag> tagsNoAccess;
-
-    private static final Logger logger = Logger.getLogger(Crawler.class);
 
     public Crawler(DBConnector.DataBase dataBase, String crawlerName) throws SQLException {
         try {
@@ -79,7 +96,9 @@ public class Crawler {
             logger.info("Start " + (MAX_NUMBER_OF_SESSIONS - numberSession) + " session...");
             initStartUsersQueue();
 
-            // reconnect
+            /**
+             * reconnect
+             */
             int triesReconnect = MAX_TRIES_RECONNECT;
             while (triesReconnect-- > 0) {
 
@@ -94,18 +113,24 @@ public class Crawler {
                     break;
                 }
 
-                // before reconnect crawler sleeps 10 sec, we don't want to connect on the same page too often
+                /**
+                 * before reconnect crawler sleeps 10 sec, we don't want to connect on the same page too often
+                 */
                 sleepCrawler(10);
                 logger.info("Start reconnecting...");
             }
-            // logging statistics for session
+            /**
+             * logging statistics for session
+             */
             logFinalStatistics();
             UserInfoParser.logStatistics();
         }
     }
 
-    // initialization of Crawler
-    // start checking proxies
+    /**
+     * initialization of Crawler
+     * start checking proxies
+     */
     private void initCrawler(final String startUser) throws SQLException {
 
         logger.info("Start...");
@@ -117,13 +142,17 @@ public class Crawler {
         proxyFactory.startCheckingProxy();
     }
 
-    // initialization of user's queue
-    // add starting user and get list of users from DB
+    /**
+     * initialization of user's queue
+     * add starting user and get list of users from DB
+     */
     private void initStartUsersQueue() throws SQLException {
         try {
             proxy = proxyFactory.getNextProxy();
             logger.info("Starting proxy for crawler is " + proxy);
-            //get regions
+            /**
+             * get regions
+             */
             regions = new HashSet<>(db.getRegions());
 
             List<String> usersToProceed = db.getUnfinishedRawUsers();
@@ -143,7 +172,9 @@ public class Crawler {
 
     private void collectAllUsers() throws SQLException {
 
-        // for all users
+        /**
+         * for all users
+         */
         while (!usersQueue.isEmpty()) {
 
             String nick = usersQueue.poll();
@@ -205,18 +236,24 @@ public class Crawler {
             collectPosts(nick, userTags);
             updateUserStatusInDB(nick);
 
-            // logging info about tag
+            /**
+             * logging info about tag
+             */
             logTagStatistics(nick, userTags);
         }
     }
 
-    // collect all posts by user
+    /**
+     * collect all posts by user
+     */
     private void collectPosts(final String nick, final Set<Tag> userTags) throws SQLException {
         tagsNoAccess = new ArrayList<>();
         userPostUrls = db.getAllUserPostUrls(nick);
         logger.info("Getting posts...");
         logger.info("Use proxy: " + (!allowedUser ? proxy : null) + " for getting posts of user: " + nick);
-        // reconnect
+        /**
+         * reconnect
+         */
         int triesPostReconnect = MAX_TRIES_RECONNECT;
         while (triesPostReconnect-- > 0) {
             collectPostsByAllTags(nick, userTags);
@@ -271,7 +308,10 @@ public class Crawler {
                 continue;
             }
 
-            // every "NUMBER_TO_CHANGE_PROXY" we change proxy to prevent ban and get highest speed(default 20)
+            /**
+             * every "NUMBER_TO_CHANGE_PROXY" we change proxy
+             * to prevent ban and get highest speed(default 20)
+             */
             changeProxyCountdown--;
             if (changeProxyCountdown == 0) {
                 proxy = proxyFactory.getNextProxy();
@@ -303,19 +343,25 @@ public class Crawler {
                                           final User userInfo,
                                           final Set<Tag> userTags) {
         try {
-            // add information into DB
+            /**
+             * add information into DB
+             */
             logger.info("Insertion friends to DB...");
             db.insertRawUsers(friends);
             logger.info("Insertion user info to DB...");
             db.insertUser(userInfo);
 
-            // if find new region, add it into DB
+            /**
+             * if find new region, add it into DB
+             */
             if (userInfo.getRegion() != null && !regions.contains(userInfo.getRegion())) {
                 db.insertRegion(userInfo.getRegion());
                 regions.add(userInfo.getRegion());
             }
 
-            // if user's region don't suit us
+            /**
+             * if user's region don't suit us
+             */
             if (userInfo.getRegion() != null && !userInfo.getRegion().equals("RU")) {
                 logger.info("User: " + nick + " is not from RU. So, we ignore this user.");
                 updateUserStatusInDB(nick);
@@ -332,7 +378,9 @@ public class Crawler {
         return true;
     }
 
-    // trying to update status of user
+    /**
+     * trying to update status of user
+     */
     private void updateUserStatusInDB(final String nick) {
         try {
             db.updateUserFetched(nick);
@@ -342,7 +390,9 @@ public class Crawler {
         }
     }
 
-    // sleeping
+    /**
+     * sleeping
+     */
     private void sleepCrawler(final long time) {
         try {
             Thread.sleep(TimeUnit.SECONDS.toMillis(time));
@@ -351,7 +401,9 @@ public class Crawler {
         }
     }
 
-    // get user's info
+    /**
+     * get user's info
+     */
     private User getUserInfo(final String nick) throws IOException, UnirestException, InterruptedException, RuntimeException {
 
         logger.info("Use proxy: " + proxy + " for getting info of user: " + nick);
@@ -364,7 +416,9 @@ public class Crawler {
 
     }
 
-    // get all user's friends
+    /**
+     * get all user's friends
+     */
     private List<String> getUserFriends(final String nick) throws IOException, UnirestException, InterruptedException, RuntimeException {
 
         logger.info("Use proxy: " + (!allowedUser ? proxy : null) + " for getting friends of user: " + nick);
@@ -376,7 +430,9 @@ public class Crawler {
 
     }
 
-    // get all user's tags
+    /**
+     * get all user's tags
+     */
     private Set<Tag> getUserTags(final String nick) throws IOException, UnirestException, InterruptedException, RuntimeException {
 
         logger.info("Use proxy: " + proxy + " for getting tags for user: " + nick);
@@ -389,7 +445,9 @@ public class Crawler {
 
     }
 
-    // get 25 posts by current tag
+    /**
+     * get 25 posts by current tag
+     */
     private List<Post> getTagPosts(final String nick, final Tag tag) throws IOException, UnirestException, ParseException, InterruptedException, RuntimeException {
 
         String response = new TagPostLoader().loadData(!allowedUser ? proxy : null, nick, tag.getName());
@@ -408,7 +466,9 @@ public class Crawler {
 
     }
 
-    // logging statistics by Tag
+    /**
+     * logging statistics by Tag
+     */
     private void logTagStatistics(final String nick, final Set<Tag> userTags) {
         logger.info("----------------------------------------");
 
@@ -421,7 +481,9 @@ public class Crawler {
         logger.info(nick + " use tags: " + countUserTagsUses);
     }
 
-    // logging statistics by user
+    /**
+     * logging statistics by user
+     */
     private void logFinalStatistics() {
 
         long countTags = allTags.keySet().size();

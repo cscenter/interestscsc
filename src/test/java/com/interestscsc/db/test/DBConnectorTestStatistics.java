@@ -15,12 +15,17 @@ import java.util.Date;
  */
 
 public class DBConnectorTestStatistics {
-    // Задать нужное количество тегов из топа по количеству употреблений
+    /**
+     * Задать нужное количество тегов из топа по количеству употреблений
+     */
     private static final int NUMBER_OF_TOP_TAGS_TO_GET_STATISTIC_FOR = 100;
 
     public static void main(String[] args)
             throws SQLException, FileNotFoundException, UnsupportedEncodingException {
 
+        /**
+         * TODO Выбрать нужную БД
+         */
         DBConnector.DataBase dbName = DBConnector.DataBase.MAIN;
         DBConnector db = new DBConnector(dbName);
 

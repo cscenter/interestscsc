@@ -20,7 +20,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class TagPostParser {
-    // Post's selectors
+    /**
+     * Post's selectors
+     */
     private static final String POST_SELECTOR = "item";
     private static final String TITLE_SELECTOR = "title";
     private static final String TEXT_SELECTOR = "description";
@@ -46,7 +48,10 @@ public class TagPostParser {
             String safeText = Jsoup.clean(text.text().replaceAll("<", " <"), Whitelist.none());
             List<String> tagsList = postTags.stream().map(Element::text).map(String::toLowerCase).collect(Collectors.toList());
 
-            String regex = "/\\d+";    // the number
+            /**
+             * RegExp for number
+             */
+            String regex = "/\\d+";
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(url.text());
             Long urlNumber = null;

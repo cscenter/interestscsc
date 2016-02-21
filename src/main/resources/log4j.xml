@@ -22,17 +22,17 @@
         </layout>
     </appender>
 
-    <!--PostToNGram appenders-->
+    <!--Normalizer appenders-->
 
-    <appender name="PostToNGramConsole" class="org.apache.log4j.ConsoleAppender">
+    <appender name="NormalizerConsole" class="org.apache.log4j.ConsoleAppender">
         <layout class="org.apache.log4j.PatternLayout">
             <param name="ConversionPattern"
                    value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
         </layout>
     </appender>
 
-    <appender name="PostToNGramFile" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="${user.home}/logs/interestscsc/post_to_ngram.log"/>
+    <appender name="NormalizerFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/normalizer.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">
@@ -100,9 +100,9 @@
         <appender-ref ref="ClassifierNaiveBayesFile"/>
     </logger>
 
-    <logger name="com.interestscsc.posttongram">
-        <appender-ref ref="PostToNGramConsole"/>
-        <appender-ref ref="PostToNGramFile"/>
+    <logger name="com.interestscsc.normalizer">
+        <appender-ref ref="NormalizerConsole"/>
+        <appender-ref ref="NormalizerFile"/>
     </logger>
 
     <logger name="com.interestscsc.dataset">
