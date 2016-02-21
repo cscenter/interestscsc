@@ -1,0 +1,21 @@
+encoding "utf8"; // указываем кодировку, в которой написан конфигурационный файл
+TTextMinerConfig {
+  Dictionary = "src/main/resources/posttongram/tomita/trigram.gzt"; // путь к корневому словарю
+  PrettyOutput = "src/main/resources/posttongram/tomita/PrettyOutput.html"; // путь к файлу с отладочным выводом в удобном для чтения виде
+  Input = {
+    File = "src/main/resources/posttongram/tomita/input.txt"; // путь к входному файлу
+  }
+  Articles = [
+    { Name = "N-Grams"; } // название статьи в корневом словаре,
+                                          // которая содержит запускаемую грамматику
+  ]
+Facts = [
+    { Name = "NGrams";
+    }
+]
+Output = {
+    File = "facts.txt";
+    Format = text;        
+                          
+}
+}

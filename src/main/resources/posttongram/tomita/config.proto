@@ -1,0 +1,20 @@
+encoding "utf8"; // указываем кодировку, в которой написан конфигурационный файл
+
+//MaxFactsCountPerSentence = 100;
+
+TTextMinerConfig {
+  Dictionary = "src/main/resources/posttongram/tomita/mydic.gzt"; // путь к корневому словарю
+  PrettyOutput = "src/main/resources/posttongram/tomita/PrettyOutput.html"; // путь к файлу с отладочным выводом в удобном для чтения виде
+  //MaxFactsCountPerSentence = 100;
+  Input = {
+    File = "src/main/resources/posttongram/tomita/input.txt"; // путь к входному файлу
+  }
+  Articles = [
+    { Name = "N-Grams" } // название статьи в корневом словаре,
+                                          // которая содержит запускаемую грамматику
+  ]
+Facts = [
+    { Name = "NGrams" }
+]
+
+}
