@@ -40,7 +40,7 @@ public class NormalizatorTest {
 
         DBConnector.DataBase dbName = DBConnector.DataBase.TEST;
 
-        DBConnectorToNormalizer db = new DBConnectorToNormalizer(dbName, System.getProperty("user.name") + "2016-02-21");
+        DBConnectorToNormalizer db = new DBConnectorToNormalizer(dbName, System.getProperty("user.name"));
 
         List<Post> postToNormalize = db.getReservedPosts();
 

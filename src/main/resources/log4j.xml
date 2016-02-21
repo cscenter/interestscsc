@@ -13,7 +13,7 @@
     </appender>
 
     <appender name="ClassifierNaiveBayesFile" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="D:\\logs-test\\classifiers.naive_bayes.log"/>
+        <param name="File" value="${user.home}/logs/interestscsc/classifiers.naive_bayes.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">
@@ -32,7 +32,7 @@
     </appender>
 
     <appender name="PostToNGramFile" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="D:\\logs-test\\post_to_n-gram.log"/>
+        <param name="File" value="${user.home}/logs/interestscsc/post_to_ngram.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">
@@ -51,7 +51,7 @@
     </appender>
 
     <appender name="DatasetFile" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="D:\\logs-test\\dataset.log"/>
+        <param name="File" value="${user.home}/logs/interestscsc/dataset.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">
@@ -70,7 +70,7 @@
     </appender>
 
     <appender name="CrawlerFileDebug" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="D:\\logs-test\\interestscsc-debug.log"/>
+        <param name="File" value="${user.home}/logs/interestscsc/crawler-debug.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">
@@ -80,7 +80,7 @@
     </appender>
 
     <appender name="CrawlerFile" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="D:\\logs-test\\interestscsc.log"/>
+        <param name="File" value="${user.home}/logs/interestscsc/crawler.log"/>
         <param name="MaxFileSize" value="100MB"/>
         <param name="MaxBackupIndex" value="10"/>
         <layout class="org.apache.log4j.PatternLayout">

@@ -1,3 +1,9 @@
 *.iml
 /.idea/*
 target/*
+src/main/resources/posttongram/tomita/*.bin
+src/main/resources/posttongram/tomita/*.html
+src/main/resources/posttongram/tomita/input.txt
+src/main/resources/posttongram/mystem/input.txt
+**/tomitaparser.exe
+**/mystem.exe

@@ -4,6 +4,7 @@ import com.interestscsc.data.NGram;
 import com.interestscsc.db.DBConnector;
 import org.apache.log4j.Logger;
 import weka.attributeSelection.AttributeSelection;
+import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
 import weka.core.Attribute;
 import weka.core.FastVector;
@@ -102,7 +103,8 @@ public class Dataset {
     public void setParametersForLSA(Instances isTrainingSet, double R) throws Exception {
         selector = new AttributeSelection();
         Ranker rank = new Ranker();
-        LSA asEvaluation = new LSA();
+        LatentSemanticAnalysis asEvaluation = new LatentSemanticAnalysis();
+        asEvaluation.setMaximumAttributeNames(Integer.MAX_VALUE);
         asEvaluation.setRank(R);
         selector.setEvaluator(asEvaluation);
         selector.setSearch(rank);
