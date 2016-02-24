@@ -1,13 +1,13 @@
-package com.interestscsc.classifier.bayes;
+package com.interestscsc.classifier;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
+import weka.classifiers.lazy.IBk;
 import weka.core.Instances;
 
-public class NaiveBayes {
-
-    public static Classifier trainClassifier(Instances isTrainingSet) throws Exception {
-        Classifier cModel = new weka.classifiers.bayes.NaiveBayes();
+public class KNNClassifier {
+    public static Classifier trainClassifier(Instances isTrainingSet, int k) throws Exception {
+        IBk cModel = new IBk(k);
         cModel.buildClassifier(isTrainingSet);
         return cModel;
     }

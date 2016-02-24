@@ -1,13 +1,13 @@
-package com.interestscsc.classifier.bayes;
+package com.interestscsc.classifier;
 
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
+import weka.classifiers.trees.J48;
 import weka.core.Instances;
 
-public class NaiveBayes {
-
+public class TreeClassifier {
     public static Classifier trainClassifier(Instances isTrainingSet) throws Exception {
-        Classifier cModel = new weka.classifiers.bayes.NaiveBayes();
+        J48 cModel = new J48();
         cModel.buildClassifier(isTrainingSet);
         return cModel;
     }
