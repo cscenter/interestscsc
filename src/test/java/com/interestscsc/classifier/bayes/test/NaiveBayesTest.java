@@ -1,6 +1,7 @@
 package com.interestscsc.classifier.bayes.test;
 
 import com.interestscsc.classifier.bayes.NaiveBayes;
+import com.interestscsc.classifier.AbstractClassifier;
 import com.interestscsc.dataset.Dataset;
 import com.interestscsc.db.DBConnector;
 import org.apache.log4j.Logger;
@@ -52,37 +53,7 @@ public class NaiveBayesTest {
     @Test
     public void testNaiveBayesClassifier() {
 
-        // getting normalizes posts id for tags
-        List<Long> normalizedPostIds = null;
-        try {
-            normalizedPostIds = dataset.getNormalizedPostIds(db);
-        } catch (SQLException e) {
-            logger.error("Getting normalized posts from DB failed. " + e);
-        }
-        Assert.assertNotNull(normalizedPostIds);
-        logger.info("Finish getting posts.");
-        logger.info("Number of normalized posts: " + normalizedPostIds.size());
-
-        // getting features = allNGrams
-        Set<String> allnGrammsFromDB = null;
-        try {
-            allnGrammsFromDB = dataset.getAllnGramsNamesFromDB(normalizedPostIds, db);
-            logger.info("Finish getting of nGram. Number of nGramms: " + allnGrammsFromDB.size());
-            dataset.setAttributes(allnGrammsFromDB);
-
-        } catch (SQLException e) {
-            logger.error("Working with DB failed. " + e);
-        }
-
-        Assert.assertNotNull(allnGrammsFromDB);
-
-        // getting dataset
-        Instances instances = null;
-        try {
-            instances = dataset.getDataset(normalizedPostIds, db);
-        } catch (SQLException | IllegalArgumentException e) {
-            logger.error("Getting dataset failed. " + e);
-        }
+        Instances instances = getNormalizedInstances();
 
         Assert.assertNotNull(instances);
 
@@ -92,13 +63,14 @@ public class NaiveBayesTest {
             getDataset(instances);
 
             try {
-                Classifier classifier = NaiveBayesClassifier.trainClassifier(trainingSet);
+                AbstractClassifier classifier = new NaiveBayesClassifier();
+                Classifier cModel = classifier.trainClassifier(trainingSet);
 
-                Evaluation eTrain = NaiveBayesClassifier.validateClassifier(classifier, trainingSet);
+                Evaluation eTrain = classifier.validateClassifier(cModel, trainingSet);
                 logger.info("Result onto Training Set:");
                 logger.info(eTrain.toSummaryString());
 
-                Evaluation eTest = NaiveBayesClassifier.validateClassifier(classifier, testingSet);
+                Evaluation eTest = classifier.validateClassifier(cModel, testingSet);
                 logger.info("Result onto Testing Set: " + eTest.pctCorrect());
                 logger.info(eTest.toSummaryString());
 
@@ -118,18 +90,55 @@ public class NaiveBayesTest {
             logger.info(newTrainingSet.equalHeaders(newTestingSet));
 
 
-            Classifier naiveBayes = NaiveBayesClassifier.trainClassifier(newTrainingSet);
+            AbstractClassifier classifier = new NaiveBayesClassifier();
+            Classifier naiveBayes = classifier.trainClassifier(newTrainingSet);
             logger.info("ошибка на исходном множестве:");
-            Evaluation eTrain = NaiveBayesClassifier.validateClassifier(naiveBayes, newTrainingSet);
+            Evaluation eTrain = classifier.validateClassifier(naiveBayes, newTrainingSet);
             logger.info("Result onto Training Set:");
             logger.info(eTrain.toSummaryString());
 
-            Evaluation eTest = NaiveBayesClassifier.validateClassifier(naiveBayes, newTestingSet);
+            Evaluation eTest = classifier.validateClassifier(naiveBayes, newTestingSet);
             logger.info("Result onto Testing Set: " + eTest.pctCorrect());
             logger.info(eTest.toSummaryString());
         } catch (Exception e) {
             logger.error("Working with classifier with LSA failed. " + e);
         }
+    }
+
+    private Instances getNormalizedInstances() {
+
+        // getting normalizes posts id for tags
+        List<Long> normalizedPostIds = null;
+        try {
+            normalizedPostIds = dataset.getNormalizedPostIds(db);
+        } catch (SQLException e) {
+            logger.error("Getting normalized posts from DB failed. " + e);
+        }
+        Assert.assertNotNull(normalizedPostIds);
+        logger.info("Finish getting posts.");
+        logger.info("Number of normalized posts: " + normalizedPostIds.size());
+
+        // getting features = allNGrams
+        Set<String> allnGrammsFromDB = null;
+        try {
+            allnGrammsFromDB = dataset.getAllnGramsNamesFromDB(normalizedPostIds, db);
+            logger.info("Finish getting of nGram. Number of nGramms: " + allnGrammsFromDB.size());
+            dataset.setAttributes(allnGrammsFromDB);
+        } catch (SQLException e) {
+            logger.error("Working with DB failed. " + e);
+        }
+
+        Assert.assertNotNull(allnGrammsFromDB);
+
+        // getting dataset
+        Instances instances = null;
+        try {
+            instances = dataset.getDataset(normalizedPostIds, db);
+        } catch (SQLException | IllegalArgumentException e) {
+            logger.error("Getting dataset failed. " + e);
+        }
+
+        return instances;
     }
 
     private void getDataset(final Instances instances) {
