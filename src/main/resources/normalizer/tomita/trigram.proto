@@ -13,9 +13,4 @@ Facts = [
     { Name = "NGrams";
     }
 ]
-Output = {
-    File = "facts.txt";
-    Format = text;        
-                          
-}
 }
