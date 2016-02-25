@@ -1,12 +1,17 @@
 package com.interestscsc.normalizer;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class WordFilter {
+    private static final String STOP_WORDS_RESOURCE_PATH = "normalizer/stopwords/RU.txt";
+    private static final String STOP_WORDS_ENCODING = "UTF-8";
+    private static HashSet<String> stopWords = null;
 
     public static List<String> filter(List<String> words) {
         Set<String> stopWords = getStopWords();
@@ -29,14 +34,28 @@ public class WordFilter {
     }
 
     public static Set<String> getStopWords() {
-        Set<String> stopWords = new HashSet<>();
-        String[] stopWordsArray = {
-                "в", "нет", "до", "эта", "ли", "с", "уж", "той", "тут", "той",
-                "пот", "ком", "один", "второй", "втора", "ува", "впоследствии",
-                "гот", "другой", "том", "кв"
-        };
-        Collections.addAll(stopWords, stopWordsArray);
-        return stopWords;
+        if (stopWords != null)
+            return stopWords;
+
+        URL url = WordFilter.class.getClassLoader()
+                .getResource(STOP_WORDS_RESOURCE_PATH);
+        Scanner scanner;
+        try {
+            //noinspection ConstantConditions
+            scanner = new Scanner(new File(
+                    new URI(url.toString()).getPath()), STOP_WORDS_ENCODING
+            );
+        } catch (NullPointerException | FileNotFoundException | URISyntaxException e) {
+            e.printStackTrace();
+            throw new IllegalStateException("resource '" + STOP_WORDS_RESOURCE_PATH +
+                    "' could not be found or the invoker doesn't have adequate " +
+                    "privileges to get the resource");
+        }
+        LinkedList<String> wordList = new LinkedList<>();
+        while (scanner.hasNext())
+            wordList.add(scanner.next());
+
+        return stopWords = new HashSet<>(wordList);
     }
 }
 

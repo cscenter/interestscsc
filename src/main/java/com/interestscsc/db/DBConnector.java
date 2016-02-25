@@ -7,6 +7,9 @@ import org.postgresql.util.PSQLException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,7 +22,7 @@ import java.util.*;
  */
 
 public class DBConnector {
-    protected static final String SCHEMA_PATH = "src/main/resources/db/schema.sql";
+    protected static final String SCHEMA_RESOURCE_PATH = "db/schema.sql";
     protected static final String SCHEMA_ENCODING = "UTF-8";
     protected static final String DROPDATA_PASS = "Bzw7HPtmHmVVqKvSHe7d";
 
@@ -30,14 +33,25 @@ public class DBConnector {
     }
 
     /**
-     * Пересоздает указанную базу из схемы, указанной в SCHEMA_PATH
+     * Пересоздает указанную базу из схемы, указанной в SCHEMA_RESOURCE_PATH
      * с кодировкой SCHEMA_ENCODING
      */
-    public static void dropInitDatabase(DataBase dataBase, String pass) throws FileNotFoundException, SQLException {
+    public static void dropInitDatabase(DataBase dataBase, String pass) throws SQLException {
         if (!DROPDATA_PASS.equalsIgnoreCase(pass))
             throw new IllegalArgumentException("Maybe you shouldn't drop db?");
-        String schemaSQL = new Scanner(new File(SCHEMA_PATH), SCHEMA_ENCODING)
-                .useDelimiter("\\Z").next();
+        URL url = DBConnector.class.getClassLoader().getResource(SCHEMA_RESOURCE_PATH);
+        String schemaSQL;
+        try {
+            //noinspection ConstantConditions
+            schemaSQL = new Scanner(
+                    new File(new URI(url.toString()).getPath()), SCHEMA_ENCODING
+            ).useDelimiter("\\Z").next();
+        } catch (NullPointerException | FileNotFoundException | URISyntaxException e) {
+            e.printStackTrace();
+            throw new IllegalStateException("resource '" + SCHEMA_RESOURCE_PATH +
+                    "' could not be found or the invoker doesn't have adequate " +
+                    "privileges to get the resource");
+        }
         try (Connection conn = dataBase.connectionPool.getConnection()) {
             conn.createStatement().execute(schemaSQL);
         }
@@ -940,7 +954,7 @@ public class DBConnector {
      *
      * @return объект класса <code>ResultSet</code>, содержащий результат запроса;
      * надо проверять на <code>null</code>
-     *
+     * <p>
      * TODO хочется никогда не возвращать null
      */
     protected ResultSet tryQueryTransaction(PreparedStatement statement, String tableName) throws SQLException {
