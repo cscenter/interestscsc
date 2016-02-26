@@ -1,3 +1,9 @@
 *.iml
 /.idea/*
 target/*
+src/main/resources/normalizer/tomita/*.bin
+src/main/resources/normalizer/tomita/*.html
+src/main/resources/normalizer/tomita/input.txt
+src/main/resources/normalizer/mystem/input.txt
+**/tomitaparser.exe
+**/mystem.exe

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="false"
+                     xmlns:log4j='http://jakarta.apache.org/log4j/'>
+
+    <!--NaiveBayesClassifier appenders-->
+
+    <appender name="ClassifierNaiveBayesConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="ClassifierNaiveBayesFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/classifiers.naive_bayes.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <!--Normalizer appenders-->
+
+    <appender name="NormalizerConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="NormalizerFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/normalizer.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <!--Dataset appenders-->
+
+    <appender name="DatasetConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="DatasetFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/dataset.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <!--crawler.Main logger-->
+
+    <appender name="CrawlerConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="CrawlerFileDebug" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/crawler-debug.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="CrawlerFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/crawler.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+        <filter class="org.apache.log4j.varia.LevelRangeFilter">
+            <param name="LevelMin" value="WARN"/>
+            <param name="LevelMax" value="FATAL"/>
+            <param name="AcceptOnMatch" value="true"/>
+        </filter>
+    </appender>
+
+
+    <logger name="com.interestscsc.classifier.bayes">
+        <appender-ref ref="ClassifierNaiveBayesConsole"/>
+        <appender-ref ref="ClassifierNaiveBayesFile"/>
+    </logger>
+
+    <logger name="com.interestscsc.normalizer">
+        <appender-ref ref="NormalizerConsole"/>
+        <appender-ref ref="NormalizerFile"/>
+    </logger>
+
+    <logger name="com.interestscsc.dataset">
+        <appender-ref ref="DatasetConsole"/>
+        <appender-ref ref="DatasetFile"/>
+    </logger>
+
+    <logger name="com.interestscsc.crawler">
+        <appender-ref ref="CrawlerConsole"/>
+        <appender-ref ref="CrawlerFileDebug"/>
+        <appender-ref ref="CrawlerFile"/>
+    </logger>
+
+    <root>
+        <level value="INFO"/>
+    </root>
+
+</log4j:configuration>
