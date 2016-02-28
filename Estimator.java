@@ -1,24 +1,12 @@
 package com.interestscsc.classifier;
 
-import data.NGram;
-import db.DBConnector;
-import meka.classifiers.multilabel.BCC;
 import meka.core.Result;
-import weka.attributeSelection.AttributeSelection;
-import weka.attributeSelection.Ranker;
-import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.functions.SMO;
 import weka.core.*;
-
-import java.sql.SQLException;
-import java.util.*;
-
-import static meka.classifiers.multilabel.Evaluation.testClassifier;
 
 public class Estimator {
 
     // точность сравнивания double
-    private double epsilon = 0.01;
+    private double EPSILON = 0.01;
     private int truePositive;
     private int trueNegative;
     private int falsePositive;
@@ -28,99 +16,91 @@ public class Estimator {
     }
 
     public void clear() {
-        this.truePositive = 0;
-        this.falsePositive = 0;
-        this.falsePositive = 0;
-        this.falseNegative = 0;
+        truePositive = 0;
+        falsePositive = 0;
+        falsePositive = 0;
+        falseNegative = 0;
     }
 
     //dataset[startIndex; lastIndex-1] -- true answers
-    public void estimate(Result result, Instances dataset, int startIndex, int lastIndex) throws Exception {
-        this.clear();
+    public void estimate(Result result, Instances dataset, int startIndex, int lastIndex) {
+        clear();
         double [][] predictions = result.allPredictions();
         for (int j = 0; j < dataset.size(); j++) {
             for (int i = startIndex; i < lastIndex; i++) {
-                this.truePositive += this.isTruePositive(dataset.get(j).value(i), predictions[j][i]);
-                this.trueNegative += this.isTrueNegaive(dataset.get(j).value(i), predictions[j][i]);
-                this.falsePositive += this.isFalsePositive(dataset.get(j).value(i), predictions[j][i]);
-                this.falseNegative += this.isFalseNegative(dataset.get(j).value(i), predictions[j][i]);
+                truePositive += isTruePositive(dataset.get(j).value(i), predictions[j][i]);
+                trueNegative += isTrueNegaive(dataset.get(j).value(i), predictions[j][i]);
+                falsePositive += isFalsePositive(dataset.get(j).value(i), predictions[j][i]);
+                falseNegative += isFalseNegative(dataset.get(j).value(i), predictions[j][i]);
                 }
             }
         }
 
 
+    private boolean matchesPair(double first, double second, double firstMatch, double secondMatch) {
+        return (Math.abs(first - firstMatch) < EPSILON) && (Math.abs(second - secondMatch) < EPSILON);
+    }
+
     private int isTruePositive(double trueValue, double predictedValue) {
         // trueValue == predictedValue and trueValue == 1
-        if ((Math.abs(trueValue - predictedValue) < epsilon) && (Math.abs(trueValue - 1) < epsilon)) {
-            return 1;
-        }
-        return 0;
+        return matchesPair(trueValue, predictedValue, 1, 1) ? 1 : 0;
     }
 
     private int isTrueNegaive(double trueValue, double predictedValue) {
         // trueValue == predictedValue and trueValue == 0
-        if ((Math.abs(trueValue - predictedValue) < epsilon) && (Math.abs(trueValue - 0) < epsilon)) {
-            return 1;
-        }
-        return 0;
+        return matchesPair(trueValue, predictedValue, 0, 0) ? 1 : 0;
     }
 
     private int isFalsePositive(double trueValue, double predictedValue) {
         // predictedValue == 1 and trueValue == 0
-        if ((Math.abs(trueValue) < epsilon) && (Math.abs(1 - predictedValue) < epsilon)) {
-            return 1;
-        }
-        return 0;
+        return matchesPair(trueValue, predictedValue, 0, 1) ? 1 : 0;
     }
 
     private int isFalseNegative(double trueValue, double predictedValue) {
         // trueValue == 1 and predictedValue == 0
-        if ((Math.abs(1 - trueValue) < epsilon) && (Math.abs(predictedValue) < epsilon)) {
-            return 1;
-        }
-        return 0;
+        return matchesPair(trueValue, predictedValue, 1, 0) ? 1 : 0;
     }
 
     public int getTruePositive() {
-        return this.truePositive;
+        return truePositive;
     }
 
     public int getTrueNegative() {
-        return this.trueNegative;
+        return trueNegative;
     }
 
     public int getFalsePositive() {
-        return this.falsePositive;
+        return falsePositive;
     }
 
     public int getFalseNegative() {
-        return this.falseNegative;
+        return falseNegative;
     }
 
     public double getAccuracy() {
         //tp+tn / (tp+tn+fp+fn)
-        return (this.trueNegative + this.truePositive) / (double)(this.truePositive + this.trueNegative +
-                this.falsePositive + this.falseNegative);
+        return (trueNegative + truePositive) / (double)(truePositive + trueNegative + falsePositive + falseNegative);
     }
 
     public double getPrecision() {
         //tp / (tp + fp)
-        return this.truePositive / (double)(this.truePositive + this.falsePositive);
+        return truePositive / (double)(truePositive + falsePositive);
     }
 
     public double getRecall() {
         // tp / (tp + fn)
-        return this.truePositive / (double)(this.truePositive + this.falseNegative);
+        return truePositive / (double)(truePositive + falseNegative);
     }
 
     public double getWeightedFMeasure(double beta) {
         // (beta^2 + 1)PR / (beta^2 * P + R)
-        double precision = this.getPrecision();
-        double recall = this.getRecall();
+        double precision = getPrecision();
+        double recall = getRecall();
         return ((beta * beta + 1) * precision * recall) / (beta * beta * precision + recall);
     }
 
     public double getFMeasure() {
-        return this.getWeightedFMeasure(1);
+        return getWeightedFMeasure(1);
     }
 }
+
