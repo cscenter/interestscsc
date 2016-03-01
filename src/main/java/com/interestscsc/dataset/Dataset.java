@@ -6,10 +6,7 @@ import org.apache.log4j.Logger;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
-import weka.core.Attribute;
-import weka.core.FastVector;
-import weka.core.Instance;
-import weka.core.Instances;
+import weka.core.*;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -87,7 +84,7 @@ public class Dataset {
 
             for (String tagOfPost : allTagsOfPost) {
                 logger.info("Post " + postId + ":  ");
-                Instance iExample = new Instance(1, new double[attributeVector.size()]);
+                Instance iExample = new DenseInstance(1, new double[attributeVector.size()]);
                 allNGram.stream().filter(nGram -> totalNGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
                     /**
                      * Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
