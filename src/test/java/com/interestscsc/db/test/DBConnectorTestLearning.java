@@ -159,6 +159,42 @@ public class DBConnectorTestLearning {
         System.out.println("\n============\n");
 
         /**
+         * Обновляем материализованное представление в БД.
+         *
+         * Если после последнего такого обновления, например представления tf-idf,
+         * были нормализованны новые посты, для обновления информации в TFIDFSimple
+         * необходимо вызвать этот метод.
+         */
+        System.out.println("Started an update of TF-IDF Materialized View. Please wait.");
+        db.refreshMaterializedView(DBConnector.MaterializedView.TFIDFSimple);
+        System.out.println("Update complete.");
+        System.out.println("\n============\n");
+
+        /**
+         * Извлекаем из БД список н-грамм, связанных с заданным списком тегов
+         * {@code preferredTags} и максимальным значением tf-idf-simple, ограничивая
+         * число выдаваемых н-грамм по {@code perTagLimit} на каждый тег.
+         */
+        int perTagLimit = 10;
+        allNGramNames = db.getTFIDFTopNGramNamesByPerTagLimit(preferredTags, perTagLimit);
+        System.out.println(String.format("Getting TF-IDF-Top nGramNames from DB - max %d per tag:", perTagLimit));
+        for (String nGramName : allNGramNames)
+            System.out.println("\t" + nGramName);
+        System.out.println("\n============\n");
+
+        /**
+         * Извлекаем из БД список н-грамм связанных с заданным списком тегов
+         * {@code preferredTags} и максимальным значением tf-idf-simple, ограничивая
+         * общее число выдаваемых н-грамм по {@code maxNGramNum}.
+         */
+        int maxNGramNum = 10;
+        allNGramNames = db.getTFIDFTopNGramNamesByTotalLimit(preferredTags, maxNGramNum);
+        System.out.println(String.format("Getting TF-IDF-Top nGramNames from DB - max %d totally:", maxNGramNum));
+        for (String nGramName : allNGramNames)
+            System.out.println("\t" + nGramName);
+        System.out.println("\n============\n");
+
+        /**
          * Извлекаем из БД список всех н-грамм для списка постов
          */
         List<String> allNGramNamesForPosts = db.getAllNGramNames(selectedPosts);

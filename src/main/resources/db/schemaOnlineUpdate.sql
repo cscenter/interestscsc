@@ -78,25 +78,22 @@ ALTER TABLE Post ALTER COLUMN url SET DATA TYPE BIGINT USING (url::BIGINT);
 -- =======================================
 -- 16_02_26
 
-CREATE INDEX unigram_to_post ON unigramtopost(post_id);
-CREATE INDEX digram_to_post ON digramtopost(post_id);
-CREATE INDEX trigram_to_post ON trigramtopost(post_id);
-CREATE INDEX tag_to_post ON tagtopost(post_id);
-CREATE INDEX tf_idf_test_tf_idf ON tf_idf_test(tf_idf);
+CREATE INDEX DigramToPost_post_id ON DigramToPost (post_id);
+CREATE INDEX TrigramToPost_post_id ON TrigramToPost (post_id);
+CREATE INDEX TagToPost_post_id ON TagToPost (post_id);
+CREATE INDEX TFIDFSimple_tag_id ON TFIDFSimple (tag_id);
+CREATE INDEX TFIDFSimple_tf_idf ON TFIDFSimple (tf_idf);
 
-CREATE MATERIALIZED VIEW tf_idf_test AS (
+CREATE MATERIALIZED VIEW TFIDFSimple AS (
   WITH allNGrams AS (
     SELECT 1 as type, up.ngram_id, up.post_id, up.uses_cnt, ttp.tag_id
     FROM unigramtopost up JOIN tagtopost ttp USING(post_id)
-    --     JOIN unigram u ON up.ngram_id = u.id
     UNION ALL
     SELECT 2 as type, dp.ngram_id, dp.post_id, dp.uses_cnt, ttp.tag_id
     FROM digramtopost dp JOIN tagtopost ttp USING(post_id)
-    --     JOIN digram d ON dp.ngram_id = d.id
     UNION ALL
     SELECT 3 as type, tp.ngram_id, tp.post_id, tp.uses_cnt, ttp.tag_id
     FROM trigramtopost tp JOIN tagtopost ttp USING(post_id)
-    --     JOIN trigram t ON tp.ngram_id = t.id
   ),
       totalWordCountByTag AS (
         SELECT tag_id, sum(uses_cnt) as val
@@ -104,14 +101,14 @@ CREATE MATERIALIZED VIEW tf_idf_test AS (
         GROUP BY tag_id
     ),
       wordCountByTag AS (
-        SELECT tag_id, type, ngram_id, sum(uses_cnt) as val
+        SELECT tag_id, type, ngram_id, sum(uses_cnt) AS val
         FROM allNGrams
         GROUP BY tag_id, type, ngram_id
     ),
     -- Сейчас учитывается число только тех тегов,
     -- которые имеют нормализованные посты
       totalTagCount AS (
-        SELECT count(DISTINCT tag_id) as val
+        SELECT count(DISTINCT tag_id) AS val
         FROM allNGrams
     ),
       tagCountByWord AS (
@@ -125,11 +122,11 @@ CREATE MATERIALIZED VIEW tf_idf_test AS (
     wCBT.ngram_id,
     wCBT.val :: FLOAT / tWCBT.val AS tf,
     -- Сейчас логарифм десятичный
-    log((SELECT val FROM totalTagCount)::FLOAT / tCBW.val) AS idf,
-    (wCBT.val :: FLOAT / tWCBT.val) * (log((SELECT val FROM totalTagCount)::FLOAT / tCBW.val)) as tf_idf
+    log((SELECT val FROM totalTagCount) :: FLOAT / tCBW.val) AS idf,
+    (wCBT.val :: FLOAT / tWCBT.val) * (log((SELECT val FROM totalTagCount) :: FLOAT / tCBW.val)) AS tf_idf
   FROM wordCountByTag wCBT
-    JOIN totalWordCountByTag tWCBT USING(tag_id)
-    JOIN tagCountByWord tCBW USING(type, ngram_id)
-);
+    JOIN totalWordCountByTag tWCBT USING (tag_id)
+    JOIN tagCountByWord tCBW USING (type, ngram_id)
+) WITH NO DATA;
 
--- REFRESH MATERIALIZED VIEW tf_idf_test;
+REFRESH MATERIALIZED VIEW TFIDFSimple;

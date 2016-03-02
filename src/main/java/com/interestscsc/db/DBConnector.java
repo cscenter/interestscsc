@@ -425,6 +425,184 @@ public class DBConnector {
         return result;
     }
 
+    /**
+     * Обновляет материализованное представление в базе.
+     *
+     * Если после последнего такого обновления, например представления tf-idf,
+     * были нормализованны новые посты, для обновления информации в TFIDFSimple
+     * необходимо вызвать этот метод.
+     *
+     * Обновление происходит полностью внутри БД. Тем не менее, операция может
+     * занять много времени для больших представлений.
+     * Т.о. обновления раз в сутки должно быть достаточно
+     *
+     * @param view предствавление, которое требует обновления.
+     * @throws SQLException
+     */
+    public void refreshMaterializedView(MaterializedView view) throws SQLException {
+        String refreshString = "REFRESH MATERIALIZED VIEW " + view.name+ ";";
+        try (Connection conn = getConnection()) {
+            conn.createStatement().execute(refreshString);
+        }
+    }
+
+    /**
+     * Извлевает из БД список н-грамм связанных с заданным списком тегов
+     * {@code tagList} и максимальным значением tf-idf-simple, ограничивая
+     * число выдаваемых н-грамм по {@code perTagLimit} на каждый тег.
+     * Т.о. общее число возвращаемых н-грамм не превышает
+     * {@code tagList.size * perTagLimit}.
+     *
+     * ВАЖНО: Метод не проверяет выдачу на наличие повторов между разными
+     * типами н-грамм. (Пока таких повторов в базе не должно быть и пока
+     * не было, а проверять это каждый раз слишном затратно.
+     *
+     * @param tagList список тегов
+     * @param perTagLimit макс число выдаваемых н-грамм  на каждый тег
+     * @return список строк - значений н-грамм
+     * @throws SQLException
+     */
+    public List<String> getTFIDFTopNGramNamesByPerTagLimit(List<String> tagList, int perTagLimit) throws SQLException {
+        if (tagList == null || perTagLimit <= 0)
+            throw new IllegalStateException("Expecting notNull tagList, and positive perTagLimit");
+        List<String> result = new LinkedList<>();
+        if (tagList.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(tagList.size() * attr.length());
+        for (int i = tagList.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTfIdfTopNgramsString =
+                "WITH tag_list AS ( " +
+                "  SELECT id AS tag_id " +
+                "  FROM ( " +
+                "         VALUES (?) " + attrs.toString() + " " +
+                "       ) AS tag_text_list(text) " +
+                "    JOIN tag USING(text) " +
+                "), ranked_ngram_top AS ( " +
+                "  SELECT  " +
+                "    type,  " +
+                "    ngram_id,  " +
+                "    row_number() OVER (PARTITION BY tag_id ORDER BY tf_idf DESC ) AS row_number " +
+                "  FROM tag_list " +
+                "    JOIN TFIDFSimple USING(tag_id) " +
+                "), ranked_ngram_top_limited AS ( " +
+                "  SELECT type, ngram_id " +
+                "  FROM ranked_ngram_top " +
+                "  WHERE row_number <= ? " +
+                "  GROUP BY type, ngram_id " +
+                ")  " +
+                "SELECT text FROM ranked_ngram_top_limited rnt " +
+                "  JOIN unigram u ON (type = 1 AND rnt.ngram_id = u.id) " +
+                "UNION ALL " +
+                "SELECT text FROM ranked_ngram_top_limited rnt " +
+                "  JOIN digram d ON (type = 2 AND rnt.ngram_id = d.id) " +
+                "UNION ALL " +
+                "SELECT text FROM ranked_ngram_top_limited rnt " +
+                "  JOIN trigram t ON (type = 3 AND rnt.ngram_id = t.id);";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTfIdfTopNgrams = con.prepareStatement(selectTfIdfTopNgramsString)
+        ) {
+            int i = 0;
+            for (String tag : tagList)
+                selectTfIdfTopNgrams.setString(++i, tag);
+            selectTfIdfTopNgrams.setInt(++i, perTagLimit);
+            ResultSet rs = tryQueryTransaction(selectTfIdfTopNgrams, "tf-idf");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
+    /**
+     * Извлевает из БД список н-грамм связанных с заданным списком тегов
+     * {@code tagList} и максимальным значением tf-idf-simple, ограничивая
+     * общее число выдаваемых н-грамм по {@code maxNGramNum}.
+     *
+     * Число н-грамм для каждого тега равно
+     * {@code (maxNGramNum / totalNGramNum) * tagNGramNum }, где
+     * {@code maxNGramNum} - параметр метода, {@code totalNGramNum} - общеее
+     * число н-грамм для данного набора тегов, {@code tagNGramNum } - число
+     * н-грамм для конкретного тега. Т.о. от каждого тега берется равная
+     * часть н-грамм из числа его представляющих.
+     * Проще говоря, из заданного параметра и общего числа н-грамм для набора
+     * тегов вычисляется процент топовых н-грамм, который берется для каждого
+     * тега.
+     *
+     * ВАЖНО: Метод не проверяет выдачу на наличие повторов между разными
+     * типами н-грамм. (Пока таких повторов в базе не должно быть и пока
+     * не было, а проверять это каждый раз слишном затратно.
+     *
+     * @param tagList список тегов
+     * @param maxNGramNum макс число выдаваемых н-грамм
+     * @return список строк - значений н-грамм
+     * @throws SQLException
+     */
+    public List<String> getTFIDFTopNGramNamesByTotalLimit(List<String> tagList, int maxNGramNum) throws SQLException {
+        if (tagList == null || maxNGramNum <= 0)
+            throw new IllegalStateException("Expecting notNull tagList, and positive perTagLimit");
+        List<String> result = new LinkedList<>();
+        if (tagList.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(tagList.size() * attr.length());
+        for (int i = tagList.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTfIdfTopNgramsString =
+                "WITH tag_list AS (" +
+                        "  SELECT id AS tag_id" +
+                        "  FROM (" +
+                        "         VALUES (?) " + attrs.toString() + " " +
+                        "       ) AS tag_text_list(text)" +
+                        "  JOIN tag USING(text)" +
+                        "), percent AS (" +
+                        "  SELECT (?)::FLOAT / count(*) AS val" +
+                        "  FROM tag_list" +
+                        "    JOIN TFIDFSimple USING(tag_id)" +
+                        "), ranked_ngram_top AS (" +
+                        "  SELECT" +
+                        "    type," +
+                        "    ngram_id," +
+                        "    row_number() OVER (PARTITION BY tag_id ORDER BY tf_idf DESC ) AS row_number," +
+                        "    count(*) OVER (PARTITION BY tag_id) * (SELECT val FROM percent) AS max_row" +
+                        "  FROM tag_list" +
+                        "    JOIN TFIDFSimple USING(tag_id)" +
+                        "), ranked_ngram_top_limited AS (" +
+                        "  SELECT type, ngram_id" +
+                        "  FROM ranked_ngram_top" +
+                        "  WHERE row_number <= max_row" +
+                        "  GROUP BY type, ngram_id" +
+                        ")" +
+                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                        "    JOIN unigram u ON (type = 1 AND rnt.ngram_id = u.id)" +
+                        "  UNION ALL" +
+                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                        "    JOIN digram d ON (type = 2 AND rnt.ngram_id = d.id)" +
+                        "  UNION ALL" +
+                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                        "    JOIN trigram t ON (type = 3 AND rnt.ngram_id = t.id)" +
+                        "  LIMIT ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTfIdfTopNgrams = con.prepareStatement(selectTfIdfTopNgramsString)
+        ) {
+            int i = 0;
+            for (String tag : tagList)
+                selectTfIdfTopNgrams.setString(++i, tag);
+            for (int j = 0; j < 2; j++)
+                selectTfIdfTopNgrams.setInt(++i, maxNGramNum);
+            ResultSet rs = tryQueryTransaction(selectTfIdfTopNgrams, "tf-idf");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getString(1));
+        }
+        return result;
+    }
+
     public Set<Long> getAllUserPostUrls(String userLJNick) throws SQLException {
         Set<Long> result = new HashSet<>();
         String selectUserPostUrlsString = "SELECT url FROM Post p " +
@@ -1120,5 +1298,22 @@ public class DBConnector {
         public int getMaxTries() {
             return maxTries;
         }
+    }
+
+    public enum MaterializedView {
+
+        /**
+         * Названия материализованных представлений для обновления
+         */
+
+        TFIDFSimple("TFIDFSimple");
+
+        public final String name;
+
+        MaterializedView(String matViewName) {
+            this.name = matViewName;
+        }
+
+
     }
 }
