@@ -26,12 +26,12 @@ public class Estimator {
     public void estimate(Result result, Instances dataset, int startIndex, int lastIndex) {
         clear();
         double [][] predictions = result.allPredictions();
-        for (int j = 0; j < dataset.size(); j++) {
+        for (int j = 0; j < dataset.numInstances(); j++) {
             for (int i = startIndex; i < lastIndex; i++) {
-                truePositive += isTruePositive(dataset.get(j).value(i), predictions[j][i]);
-                trueNegative += isTrueNegaive(dataset.get(j).value(i), predictions[j][i]);
-                falsePositive += isFalsePositive(dataset.get(j).value(i), predictions[j][i]);
-                falseNegative += isFalseNegative(dataset.get(j).value(i), predictions[j][i]);
+                truePositive += isTruePositive(dataset.instance(j).value(i), predictions[j][i]);
+                trueNegative += isTrueNegaive(dataset.instance(j).value(i), predictions[j][i]);
+                falsePositive += isFalsePositive(dataset.instance(j).value(i), predictions[j][i]);
+                falseNegative += isFalseNegative(dataset.instance(j).value(i), predictions[j][i]);
                 }
             }
         }
