@@ -1,5 +1,6 @@
-package com.interestscsc.classifier;
+package com.interestscsc.classifier.tree;
 
+import com.interestscsc.classifier.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.trees.J48;

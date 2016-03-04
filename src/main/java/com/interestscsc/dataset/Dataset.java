@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 /**
  * Created by jamsic on 12.12.15.
+ * Updated by Maxim on 04.03.16
  */
 public class Dataset {
 
@@ -37,13 +38,13 @@ public class Dataset {
         selector = null;
     }
 
-    public void setTagList(DBConnector db, int minScore, int maxScore) throws SQLException {
-        tags = db.getTopNormalizedTagNames(minScore, maxScore);
+    public void setTagListByScoreGap(DBConnector db, int minScore, int maxScore) throws SQLException {
+        tags = db.getTopNormalizedTagNamesByScoreGap(minScore, maxScore);
         logger.info("Number of tags: " + tags.size());
     }
 
-    public void setTagList(DBConnector db, long offset, long limit) throws SQLException {
-        tags = db.getTopNormalizedTagNames(offset, limit);
+    public void setTagListByOffset(DBConnector db, int offset, int limit) throws SQLException {
+        tags = db.getTopNormalizedTagNamesByOffset(offset, limit);
         logger.info("Number of tags: " + tags.size());
     }
 

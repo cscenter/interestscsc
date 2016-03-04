@@ -1,17 +1,17 @@
-package com.interestscsc.classifier.bayes.test;
+package com.interestscsc.classifier.tree.test;
 
 import com.interestscsc.classifier.AbstractClassifier;
 import com.interestscsc.classifier.CommonClassifierTest;
-import com.interestscsc.classifier.bayes.NaiveBayes;
+import com.interestscsc.classifier.tree.TreeClassifier;
 import org.apache.log4j.Logger;
 
-public class NaiveBayesTest extends CommonClassifierTest {
+public class TreeClassifierTest extends CommonClassifierTest {
 
-    private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
+    private static final Logger logger = Logger.getLogger(TreeClassifierTest.class);
 
     @Override
     public AbstractClassifier getClassifier() {
-        return new NaiveBayes();
+        return new TreeClassifier();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.interestscsc.classifier.bayes;
 
+import com.interestscsc.classifier.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.core.Instances;

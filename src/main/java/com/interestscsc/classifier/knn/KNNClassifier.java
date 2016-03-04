@@ -1,5 +1,6 @@
-package com.interestscsc.classifier;
+package com.interestscsc.classifier.knn;
 
+import com.interestscsc.classifier.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.lazy.IBk;
