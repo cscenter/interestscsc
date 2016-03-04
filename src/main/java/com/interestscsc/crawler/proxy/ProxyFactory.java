@@ -100,6 +100,7 @@ public class ProxyFactory {
     private void startCheckingProxy() {
         if (isCheckingNow) {
             logger.info("Please, wait finding new working proxy. A search is working now.");
+            return;
         }
 
         if (rawProxies.isEmpty()) {

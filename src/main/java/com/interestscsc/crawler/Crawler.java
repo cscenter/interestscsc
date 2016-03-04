@@ -1,7 +1,7 @@
 package com.interestscsc.crawler;
 
-import com.interestscsc.crawler.exceptions.AccessDeniedException;
-import com.interestscsc.crawler.exceptions.ForbiddenPageException;
+import com.interestscsc.exceptions.AccessDeniedException;
+import com.interestscsc.exceptions.ForbiddenPageException;
 import com.interestscsc.crawler.loaders.*;
 import com.interestscsc.crawler.parsers.*;
 import com.interestscsc.crawler.proxy.ProxyFactory;
@@ -222,6 +222,9 @@ public class Crawler {
 
             if (allowedUser == null || userInfo == null || userTags == null || friends == null) {
                 logger.warn("No access to user: " + nick + " or other problem. Response returns NULL!");
+                if (!usersNoAccess.contains(nick)) {
+                    usersNoAccess.add(nick);
+                }
                 continue;
             }
 
