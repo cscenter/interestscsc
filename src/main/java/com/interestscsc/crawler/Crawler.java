@@ -196,25 +196,16 @@ public class Crawler {
                 userInfo = getUserInfo(nick);
                 userTags = getUserTags(nick);
             } catch (UnirestException e) {
-                logger.warn("User: " + nick + " haven't access. Unirest exception.");
-                logger.error("User: " + nick + " haven't access. " + e);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
+                handleException("User: " + nick + " haven't access. Unirest exception. ", e);
             } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
-                logger.error("User: " + nick + " " + e);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
+                handleException("User: " + nick + ". ", e);
             } catch (RuntimeException e) {
-                logger.error("Runtime exception from the method setProxy() for user: " + nick + " " + e);
+                handleException("Runtime exception from the method setProxy() for user: " + nick + " . ", e);
                 logger.error("Start sleeping.");
                 sleepCrawler(10);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
             } catch (AccessDeniedException e) {
-                logger.warn(e.getMessage());
+                handleException(e.getMessage(), e);
                 usersNoAccess.add(nick);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
                 continue;
             } catch (ForbiddenPageException e) {
                 logger.info(e.getMessage());
@@ -298,27 +289,21 @@ public class Crawler {
             try {
                 posts = getTagPosts(nick, tag);
             } catch (UnirestException | IOException e) {
-                logger.error("User: " + nick + " " + e);
+                handleException("User: " + nick + " haven't access. Unirest exception. ", e);
                 tagsNoAccess.add(tag);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
                 changeProxyCountdown = NUMBER_TO_CHANGE_PROXY;
                 logger.info("Change proxy to: " + proxy + " for getting posts of user: " + nick);
             } catch (InterruptedException | ParseException e) {
                 logger.error("User: " + nick + " " + e);
             } catch (RuntimeException e) {
-                logger.error("Runtime exception from the method setProxy() for user: " + nick + " " + e);
+                handleException("Runtime exception from the method setProxy() for user: " + nick + " . ", e);
                 logger.error("Start sleeping.");
                 sleepCrawler(10);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
                 changeProxyCountdown = NUMBER_TO_CHANGE_PROXY;
                 logger.info("Change proxy to: " + proxy + " for getting posts of user: " + nick);
             } catch (AccessDeniedException e) {
-                logger.warn(e.getMessage());
+                handleException(e.getMessage(), e);
                 tagsNoAccess.add(tag);
-                proxyFactory.setBrokenProxies(proxy);
-                proxy = proxyFactory.getNextProxy();
                 continue;
             } catch (ForbiddenPageException e) {
                 logger.info(e.getMessage());
@@ -564,5 +549,14 @@ public class Crawler {
             logger.info("Users with forbidden page:");
             usersForbidden.forEach(logger::info);
         }
+    }
+
+    /**
+     * handling exception
+     */
+    private void handleException(String message, Exception e) {
+        logger.error(message + e);
+        proxyFactory.setBrokenProxies(proxy);
+        proxy = proxyFactory.getNextProxy();
     }
 }

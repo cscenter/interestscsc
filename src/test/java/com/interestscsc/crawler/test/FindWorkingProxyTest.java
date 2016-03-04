@@ -36,7 +36,7 @@ public class FindWorkingProxyTest {
         Queue<String> rawUsersQueue = db.getRawUsers();
         Set<String> rawUsersSet = new HashSet<>(rawUsersQueue);
         proxyFactory.setRawAllUsers(rawUsersSet);
-        proxyFactory.findWorkingProxy();
+        proxyFactory.getNextProxy();
 
         logger.info("Test was finished!");
         logger.info("-----------------------------");

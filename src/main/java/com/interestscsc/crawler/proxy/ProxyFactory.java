@@ -14,15 +14,17 @@ import java.util.concurrent.TimeUnit;
 public class ProxyFactory {
 
     private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.95;
-    private boolean isCheckingNow = false;
     private static final Logger logger = Logger.getLogger(ProxyFactory.class);
-    private static final String defaultUser = "mi3ch";
+    private static final String DEFAULT_USER = "mi3ch";
     private static final String RAW_PROXIES_FILE = "proxies.txt";
     private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
-    private final Random random = new Random();
-    private final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
+    private static final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
             "main" + File.separator + "resources" + File.separator +
             "crawler" + File.separator + "proxy" + File.separator;
+
+    private final Random random = new Random();
+    private boolean isCheckingNow = false;
+
     private Set<HttpHost> rawProxies;
     private List<HttpHost> workingProxies;
     private List<HttpHost> brokenProxies;
@@ -33,7 +35,7 @@ public class ProxyFactory {
         workingProxies = new ArrayList<>();
         brokenProxies = new ArrayList<>();
         rawAllUsers = new HashSet<>();
-        rawAllUsers.add(defaultUser);
+        rawAllUsers.add(DEFAULT_USER);
     }
 
     public void setRawAllUsers(final Set<String> rawAllUsers) {
@@ -95,7 +97,7 @@ public class ProxyFactory {
         }
     }
 
-    public void startCheckingProxy() {
+    private void startCheckingProxy() {
         if (isCheckingNow) {
             logger.info("Please, wait finding new working proxy. A search is working now.");
         }
@@ -112,7 +114,7 @@ public class ProxyFactory {
         proxyThread.start();
     }
 
-    public void findWorkingProxy() {
+    private void findWorkingProxy() {
         ExecutorService service = Executors.newCachedThreadPool();
         Iterator<String> iterator = rawAllUsers.iterator();
         iterator.next();
