@@ -1,17 +1,20 @@
 package com.interestscsc.classifier.tree.test;
 
-import com.interestscsc.classifier.AbstractClassifier;
+/**
+ * Created by Maxim on 05.03.2016.
+ */
 import com.interestscsc.classifier.CommonClassifierTest;
-import com.interestscsc.classifier.tree.TreeClassifier;
 import org.apache.log4j.Logger;
+import weka.classifiers.Classifier;
+import weka.classifiers.trees.J48;
 
 public class TreeClassifierTest extends CommonClassifierTest {
 
     private static final Logger logger = Logger.getLogger(TreeClassifierTest.class);
 
     @Override
-    public AbstractClassifier getClassifier() {
-        return new TreeClassifier();
+    public Classifier getClassifier() {
+        return new J48();
     }
 
     @Override

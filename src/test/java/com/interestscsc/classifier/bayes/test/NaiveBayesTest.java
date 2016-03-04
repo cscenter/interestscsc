@@ -1,16 +1,19 @@
 package com.interestscsc.classifier.bayes.test;
 
-import com.interestscsc.classifier.AbstractClassifier;
+/**
+ * Created by Maxim on 05.03.2016.
+ */
 import com.interestscsc.classifier.CommonClassifierTest;
-import com.interestscsc.classifier.bayes.NaiveBayes;
 import org.apache.log4j.Logger;
+import weka.classifiers.Classifier;
+import weka.classifiers.bayes.NaiveBayes;
 
 public class NaiveBayesTest extends CommonClassifierTest {
 
     private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
 
     @Override
-    public AbstractClassifier getClassifier() {
+    public Classifier getClassifier() {
         return new NaiveBayes();
     }
 
