@@ -74,3 +74,59 @@ CREATE TABLE Normalizer (
 );
 
 ALTER TABLE Post ALTER COLUMN url SET DATA TYPE BIGINT USING (url::BIGINT);
+
+-- =======================================
+-- 16_02_26
+
+CREATE INDEX DigramToPost_post_id ON DigramToPost (post_id);
+CREATE INDEX TrigramToPost_post_id ON TrigramToPost (post_id);
+CREATE INDEX TagToPost_post_id ON TagToPost (post_id);
+CREATE INDEX TFIDFSimple_tag_id ON TFIDFSimple (tag_id);
+CREATE INDEX TFIDFSimple_tf_idf ON TFIDFSimple (tf_idf);
+
+CREATE MATERIALIZED VIEW TFIDFSimple AS (
+  WITH allNGrams AS (
+    SELECT 1 as type, up.ngram_id, up.post_id, up.uses_cnt, ttp.tag_id
+    FROM unigramtopost up JOIN tagtopost ttp USING(post_id)
+    UNION ALL
+    SELECT 2 as type, dp.ngram_id, dp.post_id, dp.uses_cnt, ttp.tag_id
+    FROM digramtopost dp JOIN tagtopost ttp USING(post_id)
+    UNION ALL
+    SELECT 3 as type, tp.ngram_id, tp.post_id, tp.uses_cnt, ttp.tag_id
+    FROM trigramtopost tp JOIN tagtopost ttp USING(post_id)
+  ),
+      totalWordCountByTag AS (
+        SELECT tag_id, sum(uses_cnt) as val
+        FROM allNGrams
+        GROUP BY tag_id
+    ),
+      wordCountByTag AS (
+        SELECT tag_id, type, ngram_id, sum(uses_cnt) AS val
+        FROM allNGrams
+        GROUP BY tag_id, type, ngram_id
+    ),
+    -- Сейчас учитывается число только тех тегов,
+    -- которые имеют нормализованные посты
+      totalTagCount AS (
+        SELECT count(DISTINCT tag_id) AS val
+        FROM allNGrams
+    ),
+      tagCountByWord AS (
+        SELECT type, ngram_id, count(*) as val
+        FROM allNGrams
+        GROUP BY type, ngram_id
+    )
+  SELECT
+    wCBT.tag_id,
+    wCBT.type,
+    wCBT.ngram_id,
+    wCBT.val :: FLOAT / tWCBT.val AS tf,
+    -- Сейчас логарифм десятичный
+    log((SELECT val FROM totalTagCount) :: FLOAT / tCBW.val) AS idf,
+    (wCBT.val :: FLOAT / tWCBT.val) * (log((SELECT val FROM totalTagCount) :: FLOAT / tCBW.val)) AS tf_idf
+  FROM wordCountByTag wCBT
+    JOIN totalWordCountByTag tWCBT USING (tag_id)
+    JOIN tagCountByWord tCBW USING (type, ngram_id)
+) WITH NO DATA;
+
+REFRESH MATERIALIZED VIEW TFIDFSimple;
