@@ -260,7 +260,7 @@ public class DBConnector {
     public Map<Long, List<String>> getAllTags(List<Long> postIDs) throws SQLException {
         if (postIDs == null)
             throw new IllegalArgumentException("Expected not null argument");
-        Map<Long, List<String>> result = new HashMap<>();
+        Map<Long, List<String>> result = new HashMap<>(postIDs.size());
         if (postIDs.isEmpty())
             return result;
         for (Long postId : postIDs)
@@ -276,15 +276,15 @@ public class DBConnector {
                 "        VALUES (?) " + attrs.toString() + " " +
                 "    ) AS post_list(post_id) " +
                 "), tag_list AS ( " +
-                "SELECT tp.post_id, tp.tag_id id " +
-                "FROM TagToPost tp " +
-                "JOIN post_list USING (post_id) " +
-                "GROUP BY tp.post_id, tp.tag_id " +
+                "    SELECT post_id, tag_id id " +
+                "    FROM TagToPost " +
+                "      JOIN post_list USING (post_id) " +
+                "    GROUP BY post_id, tag_id " +
                 ") " +
-                "SELECT tl.post_id, t.text " +
-                "FROM TAG t " +
-                "JOIN tag_list tl USING(id) " +
-                "ORDER BY tl.post_id;";
+                "SELECT post_id, text " +
+                "FROM TAG " +
+                "  JOIN tag_list USING(id) " +
+                "ORDER BY post_id;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
