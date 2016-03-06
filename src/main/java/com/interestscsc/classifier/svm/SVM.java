@@ -23,6 +23,12 @@ public class SVM {
     private static final double LEARN_PART_SIZE = 0.5;
 
     /**
+     * Запятая в имени класса гарантирует неповторяемость среди прочих тегов,
+     * по крайней мере для системы livejournal.com
+     */
+    private static final String NULL_CLASS = "<NULL(,)>";
+
+    /**
      * TODO: Сейчас главная проблема в том, как снизить влияние атрибутов-классов
      */
     public static void testSVM() throws Exception {
@@ -93,7 +99,7 @@ public class SVM {
 
         {
             /**
-             * Собираем в сет все теги, проставленные к данным постам
+             * Собираем в сет все теги, проставленные к данным постам + пустой тег
              */
             Set<String> allTags = new HashSet<>();
             /**
@@ -103,6 +109,8 @@ public class SVM {
              * Временно: для простейшего классификатора только заданные классы
              */
             allTags.addAll(classes);
+            allTags.add(NULL_CLASS);
+
             /**
              * Добавляем теги в общий вектор атрибутов в качестве одного
              * атрибута (возможных классов)
@@ -157,15 +165,9 @@ public class SVM {
                 boolean learnSet = new Random().nextFloat() < LEARN_PART_SIZE;
 
                 /**
-                 * Для каждого тега, проставленного посту создаем новый элемент датасета
+                 * Для каждого класса
                  */
-                for (String tagOfPost : allTagsOfPost) {
-
-                    /**
-                     * Временно: для простейшего классификатора оставляем только нужные теги
-                     */
-                    if (!classes.contains(tagOfPost))
-                        continue;
+                for (String tag : classes) {
 
                     /**
                      * Узнаем длину поста "в юниграммах"
@@ -202,7 +204,12 @@ public class SVM {
                     /**
                      * Устанавливаем нужный класс в атрибут
                      */
-                    example.setValue(classNameToAttributeIndex.get(tagOfPost), 1);
+                    String tagOfPost = NULL_CLASS;
+                    if(allTagsOfPost.contains(tag)) {
+                        tagOfPost = tag;
+                        // TODO Оптимизировать в мапу по class -> post_id
+                    }
+                    example.setValue(classNameToAttributeIndex.get(tag), 1);
 
                     /**
                      * Устанавливаем новому элементу датасета нужный класс и добавляем
