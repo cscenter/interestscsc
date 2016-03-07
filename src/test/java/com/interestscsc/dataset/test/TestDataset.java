@@ -1,5 +1,6 @@
-package com.interestscsc.dataset;
+package com.interestscsc.dataset.test;
 
+import com.interestscsc.dataset.Dataset;
 import com.interestscsc.db.DBConnector;
 import meka.classifiers.multilabel.BCC;
 import meka.core.Result;
