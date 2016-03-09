@@ -2,6 +2,7 @@ package com.interestscsc.dataset.test;
 
 import com.interestscsc.dataset.Dataset;
 import com.interestscsc.db.DBConnector;
+import com.interestscsc.classifier.*;
 import meka.classifiers.multilabel.BCC;
 import meka.core.Result;
 import weka.classifiers.Evaluation;
@@ -27,22 +28,29 @@ public class TestDataset {
         allTags.add("зарубежная архитектура");
         allTags.add("музеи");
         Dataset dataset = new Dataset(allTags);
+        ///*
         List<Long> normalizedIds = dataset.getNormalizedIds(db);
         Set<String> allNGramsFromDB  = dataset.getAllNGramsFromDB(normalizedIds, db);
+        ///*
         dataset.setMultilabelAttributes(allNGramsFromDB);
+        ///*
         dataset.splitToTrainAndTest(normalizedIds, 0.1);
         List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
 
+        ///*
         Instances isTrainingSet = null;
 
         isTrainingSet = dataset.getMultilabelDataset(normalizedIdsTrain, db);
         System.out.println(isTrainingSet.toString());
-
-                BCC bcc = new BCC();
-        bcc.setClassifier(new NaiveBayes());
-        bcc.buildClassifier(isTrainingSet);
-        Result trainResult = testClassifier(bcc, isTrainingSet);
-
+        //MultiLabelClassifier
+        ///*
+        BCC bcc = new BCC();
+        ///*
+        //bcc.setClassifier(new NaiveBayes());
+        ///*
+        //bcc.buildClassifier(isTrainingSet);
+        //Result trainResult = testClassifier(bcc, isTrainingSet);
+        ///*
 
         Dataset dataset2 = new Dataset(allTags);
         normalizedIds = dataset2.getNormalizedIds(db);
@@ -59,6 +67,7 @@ public class TestDataset {
         eTest.evaluateModel(naiveBayes, isTrainingSet2);
         System.out.print(eTest.toSummaryString());
 
+        /*
         double a[][] = trainResult.allPredictions();
         for (int i = 0; i < Integer.min(a.length, MAX_COUNT); i++) {
             for (int j = 0; j < a[i].length; j++) {
@@ -66,6 +75,13 @@ public class TestDataset {
             }
             System.out.println();
         }
+
+        Estimator estimator = new Estimator();
+        System.out.println(allTags.size());
+        estimator.estimate(trainResult, isTrainingSet, 0, allTags.size());
+        double acc = estimator.getAccuracy();
+        System.out.println(acc);
+        */
     };
 
 }

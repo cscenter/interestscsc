@@ -17,12 +17,12 @@ public class Dataset {
     private final static int MIN_NUMBER_POSTS_OF_TAG = 150;
     private final static int MAX_NUMBER_POSTS_OF_TAG = 1000000000;
     private static final Logger logger = Logger.getLogger(Dataset.class);
-    private final static int minAllowedNGramCount = 2;
+    private final static int MIN_ALLOWED_NGRAM_COUNT = 2;
 
     private List<String> tags;
 
     private AttributeSelection selector;
-    private ArrayList attributeVector;
+    private FastVector attributeVector;
     private Map<Long, List<NGram>> postsNGrams;
     private Map<String, Integer> totalNGramsListIndexes;
     private List<Long> normalizedIdsTrain;
@@ -82,20 +82,20 @@ public class Dataset {
             List<String> allTagsOfPost = getProperTagName(db, postId);
 
             List<NGram> allNGram = postsNGrams.get(postId);
-            if (allNGram.size() < minAllowedNGramCount) {
+            if (allNGram.size() < MIN_ALLOWED_NGRAM_COUNT) {
                 continue;
             }
 
             for (String tagOfPost : allTagsOfPost) {
                 logger.info("Post " + postId + ":  ");
-                Instance iExample = new DenseInstance(1, new double[attributeVector.size()]);
+                Instance iExample = new Instance(1, new double[attributeVector.size()]);
                 allNGram.stream().filter(nGram -> totalNGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
                     /**
                      * Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
                      */
                     iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
                 });
-                iExample.setValue((Attribute) attributeVector.get(totalNGramsList.size()), tagOfPost);
+                iExample.setValue((Attribute) attributeVector.elementAt(totalNGramsList.size()), tagOfPost);
                 //attributeVector.get()
                 isTrainingSet.add(iExample);
             }
@@ -124,19 +124,19 @@ public class Dataset {
             allTagsOfPost = assertTagNames(allTagsOfPost);
 
             List<NGram> allNGram = postsNGrams.get(postId);
-            if (allNGram.size() < minAllowedNGramCount) {
+            if (allNGram.size() < MIN_ALLOWED_NGRAM_COUNT) {
                 continue;
             }
 
             logger.info("Post " + postId + ":  ");
-            Instance iExample = new DenseInstance(1, new double[attributeVector.size()]);
+            Instance iExample = new Instance(1, new double[attributeVector.size()]);
 
             for (String tag: allTagsOfPost) {
                 /**
                  * ставим 1, если тег есть, 0 по дефолту будет
                  */
-                Attribute g = (Attribute) attributeVector.get(totalNGramsListIndexes.get(tag));
-                iExample.setValue((Attribute) this.attributeVector.get(totalNGramsListIndexes.get(tag)), "1");
+                Attribute g = (Attribute) attributeVector.elementAt(totalNGramsListIndexes.get(tag));
+                iExample.setValue((Attribute) this.attributeVector.elementAt(totalNGramsListIndexes.get(tag)), "1");
             }
 
             for (NGram nGram : allNGram) {
@@ -182,33 +182,33 @@ public class Dataset {
     }
 
     public void setAttributes(Set<String> attributes) {
-        attributeVector = new ArrayList(attributes.size() + 1);
+        attributeVector = new FastVector(attributes.size() + 1);
         for (String nGram : attributes) {
-            attributeVector.add(new Attribute(nGram));
+            attributeVector.addElement(new Attribute(nGram));
         }
         List<String> allFeatures = new ArrayList<String>();
         allFeatures.addAll(attributes);
         setNGramAttributeIndex(allFeatures);
-        ArrayList fvClassVal = new ArrayList(tags.size());
-        tags.forEach(fvClassVal::add);
+        FastVector fvClassVal = new FastVector(tags.size());
+        tags.forEach(fvClassVal::addElement);
         Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
-        attributeVector.add(ClassAttribute);
+        attributeVector.addElement(ClassAttribute);
     }
 
     public void setMultilabelAttributes(Set<String> attributes) {
-        attributeVector = new ArrayList(attributes.size() + tags.size());
+        attributeVector = new FastVector(attributes.size() + tags.size());
         /**
          * какие значения могут принимать столбцы с тегами (1 - соответствует тегу, 0 - не соответствует
           */
-        List<String> allowedValuesForTags = new ArrayList<String>();
-        allowedValuesForTags.add("0");
-        allowedValuesForTags.add("1");
+        FastVector allowedValuesForTags = new FastVector();
+        allowedValuesForTags.addElement("0");
+        allowedValuesForTags.addElement("1");
         List<String> assertedTags = assertTagNames(tags);
         for (String tag : assertedTags) {
-            attributeVector.add(new Attribute(tag, allowedValuesForTags));
+            attributeVector.addElement(new Attribute(tag, allowedValuesForTags));
         }
         for (String nGram : attributes) {
-            attributeVector.add(new Attribute(nGram));
+            attributeVector.addElement(new Attribute(nGram));
         }
         List<String> allFeatures = new ArrayList<String>();
         allFeatures.addAll(assertedTags);
@@ -246,5 +246,12 @@ public class Dataset {
 
     public List<Long> getNormalizedIdsTest() {
         return normalizedIdsTest;
+    }
+
+    public static void main(String[] args) throws SQLException {
+        List<String> allTags = new ArrayList<String>();
+        allTags.add("зарубежная архитектура");
+        allTags.add("музеи");
+        Dataset d = new Dataset(allTags);
     }
 }
