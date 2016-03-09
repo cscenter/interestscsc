@@ -13,16 +13,18 @@ import java.util.concurrent.TimeUnit;
 
 public class ProxyFactory {
 
-    private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.85;
+    private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.95;
     private static final Logger logger = Logger.getLogger(ProxyFactory.class);
-    private static final HttpHost defaultWorkingProxy = new HttpHost("24.246.127.180", 8080);
-    private static final String defaultUser = "mi3ch";
+    private static final String DEFAULT_USER = "mi3ch";
     private static final String RAW_PROXIES_FILE = "proxies.txt";
     private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
-    private final Random random = new Random();
-    private final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
+    private static final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
             "main" + File.separator + "resources" + File.separator +
             "crawler" + File.separator + "proxy" + File.separator;
+
+    private final Random random = new Random();
+    private boolean isCheckingNow = false;
+
     private Set<HttpHost> rawProxies;
     private List<HttpHost> workingProxies;
     private List<HttpHost> brokenProxies;
@@ -31,10 +33,9 @@ public class ProxyFactory {
     public ProxyFactory() {
         rawProxies = new HashSet<>();
         workingProxies = new ArrayList<>();
-        workingProxies.add(defaultWorkingProxy);
         brokenProxies = new ArrayList<>();
         rawAllUsers = new HashSet<>();
-        rawAllUsers.add(defaultUser);
+        rawAllUsers.add(DEFAULT_USER);
     }
 
     public void setRawAllUsers(final Set<String> rawAllUsers) {
@@ -62,6 +63,7 @@ public class ProxyFactory {
          */
         while (workingProxies.isEmpty()) {
             try {
+                logger.info("Haven't any working proxy. Crawler wait 10 sec.");
                 Thread.sleep(TimeUnit.SECONDS.toMillis(10));
             } catch (InterruptedException e) {
                 logger.error("Interrupt sleeping. " + e);
@@ -95,22 +97,28 @@ public class ProxyFactory {
         }
     }
 
-    public void startCheckingProxy() {
+    private void startCheckingProxy() {
+        if (isCheckingNow) {
+            logger.info("Please, wait finding new working proxy. A search is working now.");
+            return;
+        }
+
         if (rawProxies.isEmpty()) {
             insertFromFile(WORKING_PROXIES_FILE);
             insertFromFile(RAW_PROXIES_FILE);
         }
+
         logger.info("Start new session of checking proxies!");
         brokenProxies.clear();
-        Thread proxyThread = new Thread(() -> {
-            findWorkingProxy(rawAllUsers);
-        });
+        isCheckingNow = true;
+        Thread proxyThread = new Thread(this::findWorkingProxy);
         proxyThread.start();
     }
 
-    public void findWorkingProxy(final Set<String> rawUsers) {
+    private void findWorkingProxy() {
         ExecutorService service = Executors.newCachedThreadPool();
-        Iterator<String> iterator = rawUsers.iterator();
+        Iterator<String> iterator = rawAllUsers.iterator();
+        iterator.next();
         rawProxies.parallelStream().forEach(
                 proxy -> service.execute(
                         () -> checkProxy(proxy, iterator.next()))
@@ -126,18 +134,21 @@ public class ProxyFactory {
         }
 
         logger.info("All thread was finished.");
+        isCheckingNow = false;
         writeWorkingProxiesToFile("working-proxies.txt");
     }
 
     private void writeWorkingProxiesToFile(final String fileName) {
 
         File file = new File(PATH_TO_FILE_WITH_PROXY + fileName);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                logger.info("Error creating new file: " + fileName);
+        try {
+            if (file.createNewFile()) {
+                logger.info("File: " + file.getName() + " is created!");
+            } else {
+                logger.info("File: " + file.getName() + " already exists.");
             }
+        } catch (IOException e) {
+            logger.info("Error creating new file: " + file.getName());
         }
 
         try (BufferedWriter bufferedWriterProxy = new BufferedWriter(new FileWriter(file.getAbsoluteFile()))) {
@@ -150,7 +161,7 @@ public class ProxyFactory {
     }
 
     private synchronized void checkProxy(final HttpHost proxy, final String nick) {
-        int response;
+        boolean response;
         try {
             logger.info("Check proxy: " + proxy.toString());
             response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
@@ -161,7 +172,7 @@ public class ProxyFactory {
             return;
         }
 
-        if (response == 0) {
+        if (!response) {
             logger.info("Find new working proxy: " + proxy.toString());
             if (!workingProxies.contains(proxy)) {
                 workingProxies.add(proxy);
