@@ -1,5 +1,6 @@
 package com.interestscsc.dataset.test;
 
+import com.interestscsc.classifier.Estimator;
 import com.interestscsc.dataset.Dataset;
 import com.interestscsc.db.DBConnector;
 import meka.classifiers.multilabel.BCC;
@@ -69,6 +70,8 @@ public class TestDataset {
             System.out.println();
         }
         */
+
+        //Estimator estimator = new Estimator();
     };
 
 }
