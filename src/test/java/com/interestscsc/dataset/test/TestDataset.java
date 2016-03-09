@@ -44,7 +44,7 @@ public class TestDataset {
         System.out.println(isTrainingSet.toString());
         //MultiLabelClassifier
         ///*
-        BCC bcc = new BCC();
+        //BCC bcc = new BCC();
         ///*
         //bcc.setClassifier(new NaiveBayes());
         ///*
