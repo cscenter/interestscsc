@@ -2,6 +2,7 @@ package com.interestscsc.classifier;
 
 /**
  * Created by Maxim on 05.03.2016.
+ * Updated by Maxim on 09.03.2016.
  */
 
 import com.interestscsc.exceptions.GeneralClassifierException;
@@ -17,7 +18,7 @@ public class ClassifierBuilder {
         this.classifier = classifier;
     }
 
-    public void trainClassifier(Instances trainingSet) throws GeneralClassifierException {
+    public void buildClassifier(Instances trainingSet) throws GeneralClassifierException {
         try {
             classifier.buildClassifier(trainingSet);
         } catch (Exception e) {
@@ -26,13 +27,13 @@ public class ClassifierBuilder {
     }
 
     public Evaluation validateClassifier(Instances validationSet) throws GeneralClassifierException {
-        Evaluation eTest;
+        Evaluation evaluationModel;
         try {
-            eTest = new Evaluation(validationSet);
-            eTest.evaluateModel(classifier, validationSet);
+            evaluationModel = new Evaluation(validationSet);
+            evaluationModel.evaluateModel(classifier, validationSet);
         } catch (Exception e) {
             throw new GeneralClassifierException("A classifier's evaluation failed! " + e.getMessage());
         }
-        return eTest;
+        return evaluationModel;
     }
 }

@@ -2,6 +2,7 @@ package com.interestscsc.classifier;
 
 /**
  * Created by Maxim on 05.03.2016.
+ * Updated by Maxim on 09.03.2016.
  */
 
 import com.interestscsc.dataset.Dataset;
@@ -20,13 +21,23 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class CommonClassifierTest {
-    // Parameters to playing
-    // number iteration of cv
+    /**
+     *  Parameters to playing
+     */
+
+    /**
+     * Number iteration of cv
+     */
     private final static int NUMBER_ITERATION_OF_CV = 5;
-    // test set ration: 0.2 means that train = 80%, test = 20%
+
+    /**
+     * Ration of testing set: 0.2 means that train = 80%, test = 20%
+     */
     private final static double CV_RATIO_TEST = 0.2;
 
-    // getting tags from db: start popular tag index and limit of popular tags
+    /**
+     * Getting tags from db: start popular tag index and limit of popular tags
+     */
     private final static int START_POSITION_OF_POPULAR_TAGS = 200;
     private final static int LIMIT_NUMBER_OF_POPULAR_TAGS = 5;
 
@@ -57,14 +68,16 @@ public abstract class CommonClassifierTest {
 
         Assert.assertNotNull(instances);
 
-        // CV and classification
+        /**
+         *  CV and classification
+         */
         for (int i = 0; i < NUMBER_ITERATION_OF_CV; ++i) {
             logger.info("Cross-Validation " + (i + 1));
-            getDataset(instances);
+            getTrainAndTestSet(instances);
 
             try {
                 ClassifierBuilder classifierBuilder = new ClassifierBuilder(getClassifier());
-                classifierBuilder.trainClassifier(trainingSet);
+                classifierBuilder.buildClassifier(trainingSet);
 
                 Evaluation eTrain = classifierBuilder.validateClassifier(trainingSet);
                 logger.info("Result onto Training Set:");
@@ -90,7 +103,9 @@ public abstract class CommonClassifierTest {
         }
 
 
-        // With LSA
+        /**
+         *  CV and classification with LSA
+         */
         double rankLSA = 0.9;
         logger.info("Start using LSA with rank " + rankLSA);
         try {
@@ -103,7 +118,7 @@ public abstract class CommonClassifierTest {
 
 
             ClassifierBuilder classifierBuilder = new ClassifierBuilder(getClassifier());
-            classifierBuilder.trainClassifier(newTrainingSet);
+            classifierBuilder.buildClassifier(newTrainingSet);
             logger.info("ошибка на исходном множестве:");
             Evaluation eTrain = classifierBuilder.validateClassifier(newTrainingSet);
             logger.info("Result onto Training Set:");
@@ -129,7 +144,9 @@ public abstract class CommonClassifierTest {
 
     private Instances getNormalizedInstances() {
 
-        // getting normalizes posts id for tags
+        /**
+         *  Getting normalizes posts id for tags
+         */
         List<Long> normalizedPostIds = null;
         try {
             normalizedPostIds = dataset.getNormalizedPostIds(db);
@@ -140,7 +157,9 @@ public abstract class CommonClassifierTest {
         logger.info("Finish getting posts.");
         logger.info("Number of normalized posts: " + normalizedPostIds.size());
 
-        // getting features = allNGrams
+        /**
+         *  Getting features = allNGrams
+         */
         Set<String> allnGrammsFromDB = null;
         try {
             allnGrammsFromDB = dataset.getAllnGramsNamesFromDB(normalizedPostIds, db);
@@ -152,7 +171,9 @@ public abstract class CommonClassifierTest {
 
         Assert.assertNotNull(allnGrammsFromDB);
 
-        // getting dataset
+        /**
+         *  Getting instances from dataset
+         */
         Instances instances = null;
         try {
             instances = dataset.getDataset(normalizedPostIds, db);
@@ -163,7 +184,10 @@ public abstract class CommonClassifierTest {
         return instances;
     }
 
-    private void getDataset(final Instances instances) {
+    /**
+     * Splitting instances on Training and Testing set
+     */
+    private void getTrainAndTestSet(final Instances instances) {
         dataset.splitToTrainAndTest(instances, CV_RATIO_TEST);
 
         logger.info("Training set: ");
