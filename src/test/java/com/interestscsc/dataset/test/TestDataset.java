@@ -39,8 +39,9 @@ public class TestDataset {
         isTrainingSet = dataset.getMultilabelDataset(normalizedIdsTrain, db);
         System.out.println(isTrainingSet.toString());
 
+        ///*
+        //BCC bcc = new BCC();
         /*
-                BCC bcc = new BCC();
         bcc.setClassifier(new NaiveBayes());
         bcc.buildClassifier(isTrainingSet);
         Result trainResult = testClassifier(bcc, isTrainingSet);
