@@ -7,6 +7,7 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +27,8 @@ public class ProxyFactory {
     private boolean isCheckingNow = false;
 
     private Set<HttpHost> rawProxies;
-    private List<HttpHost> workingProxies;
-    private List<HttpHost> brokenProxies;
+    private static List<HttpHost> workingProxies;
+    private static List<HttpHost> brokenProxies;
     private Set<String> rawAllUsers;
 
     public ProxyFactory() {
@@ -109,10 +110,16 @@ public class ProxyFactory {
         }
 
         logger.info("Start new session of checking proxies!");
+        logger.info("Clearing file with working proxies.");
+        try (FileWriter fileWriter = new FileWriter(PATH_TO_FILE_WITH_PROXY + WORKING_PROXIES_FILE)) {
+            fileWriter.write("");
+        } catch (IOException e) {
+            logger.error("Error clearing file: " + e);
+        }
+
         brokenProxies.clear();
         isCheckingNow = true;
-        Thread proxyThread = new Thread(this::findWorkingProxy);
-        proxyThread.start();
+        findWorkingProxy();
     }
 
     private void findWorkingProxy() {
@@ -120,66 +127,60 @@ public class ProxyFactory {
         Iterator<String> iterator = rawAllUsers.iterator();
         iterator.next();
         rawProxies.parallelStream().forEach(
-                proxy -> service.execute(
-                        () -> checkProxy(proxy, iterator.next()))
+                proxy -> service.submit(
+                        new ProxyChecker(proxy, iterator.next(), PATH_TO_FILE_WITH_PROXY + WORKING_PROXIES_FILE)
+                )
         );
 
         service.shutdown();
-        while (!service.isTerminated()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                logger.error("Interrupt error");
-            }
-        }
-
-        logger.info("All thread was finished.");
         isCheckingNow = false;
-        writeWorkingProxiesToFile("working-proxies.txt");
     }
 
-    private void writeWorkingProxiesToFile(final String fileName) {
+    private static class ProxyChecker implements Callable {
 
-        File file = new File(PATH_TO_FILE_WITH_PROXY + fileName);
-        try {
-            if (file.createNewFile()) {
-                logger.info("File: " + file.getName() + " is created!");
+        private HttpHost proxy;
+        private String nick;
+        private String filename;
+
+        public ProxyChecker(HttpHost proxy, String nick, String filename) {
+            this.proxy = proxy;
+            this.nick = nick;
+            this.filename = filename;
+        }
+
+        @Override
+        public Object call() throws Exception {
+            boolean response;
+            try {
+                logger.info("Check proxy: " + proxy.toString());
+                response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
+            } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
+                logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
+                brokenProxies.add(proxy);
+                return false;
+            }
+
+            if (response) {
+                logger.info("Find new working proxy: " + proxy.toString());
+                if (!workingProxies.contains(proxy)) {
+                    workingProxies.add(proxy);
+                    writeProxyToFile();
+                }
             } else {
-                logger.info("File: " + file.getName() + " already exists.");
+                logger.info("No access to LJ for proxy: " + proxy.toString());
+                brokenProxies.add(proxy);
             }
-        } catch (IOException e) {
-            logger.info("Error creating new file: " + file.getName());
+            return response;
         }
 
-        try (BufferedWriter bufferedWriterProxy = new BufferedWriter(new FileWriter(file.getAbsoluteFile()))) {
-            for (HttpHost proxy : workingProxies) {
-                bufferedWriterProxy.write(proxy.getHostName() + ":" + proxy.getPort() + "\n");
+        private synchronized boolean writeProxyToFile() {
+            try (PrintWriter printWriter = new PrintWriter(new FileWriter(filename, true))) {
+                printWriter.println(proxy.getHostName() + ":" + proxy.getPort());
+            } catch (IOException e) {
+                logger.error("Error writing to file: " + filename + ". " + e);
+                return false;
             }
-        } catch (IOException e) {
-            logger.error("Error writing to file: " + fileName + ". " + e);
-        }
-    }
-
-    private synchronized void checkProxy(final HttpHost proxy, final String nick) {
-        boolean response;
-        try {
-            logger.info("Check proxy: " + proxy.toString());
-            response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
-        } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
-            logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
-            brokenProxies.add(proxy);
-            Thread.currentThread().interrupt();
-            return;
-        }
-
-        if (!response) {
-            logger.info("Find new working proxy: " + proxy.toString());
-            if (!workingProxies.contains(proxy)) {
-                workingProxies.add(proxy);
-            }
-        } else {
-            logger.info("No access to LJ for proxy: " + proxy.toString());
-            brokenProxies.add(proxy);
+            return true;
         }
     }
 }

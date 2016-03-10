@@ -28,8 +28,7 @@ public class ProxyLoader {
         conn.setReadTimeout(new Long(TimeUnit.SECONDS.toMillis(8)).intValue());
         conn.connect();
         InputStream inputStream = conn.getInputStream();
-        return inputStream == null;
-
+        return inputStream != null;
     }
 
     public String getUrl() {
