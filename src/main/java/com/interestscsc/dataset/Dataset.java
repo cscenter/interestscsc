@@ -22,7 +22,7 @@ public class Dataset {
     private List<String> tags;
 
     private AttributeSelection selector;
-    private FastVector attributeVector;
+    private ArrayList<Attribute> attributeVector;
     private Map<Long, List<NGram>> postsNGrams;
     private Map<String, Integer> totalNGramsListIndexes;
     private List<Long> normalizedIdsTrain;
@@ -65,11 +65,7 @@ public class Dataset {
     }
 
     public Instances getDataset(List<Long> normalizedIds, DBConnector db, Set<String> totalNGramsList) throws SQLException, IllegalArgumentException {
-        if (attributeVector == null) {
-            throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
-                    "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
-                    "method to provide unique format of dataset.");
-        }
+        assureAttributeVectorNotNull();
         logger.info("Getting dataset...");
         Instances isTrainingSet = new Instances("Rel", attributeVector, normalizedIds.size());
         /**
@@ -88,15 +84,14 @@ public class Dataset {
 
             for (String tagOfPost : allTagsOfPost) {
                 logger.info("Post " + postId + ":  ");
-                Instance iExample = new Instance(1, new double[attributeVector.size()]);
+                Instance iExample = new DenseInstance(1, new double[attributeVector.size()]);
                 allNGram.stream().filter(nGram -> totalNGramsListIndexes.containsKey(nGram.getText())).forEach(nGram -> {
                     /**
                      * Attention! На вход подаются АБСОЛЮТНЫЕ ЧАСТОТЫ
                      */
                     iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
                 });
-                iExample.setValue((Attribute) attributeVector.elementAt(totalNGramsList.size()), tagOfPost);
-                //attributeVector.get()
+                iExample.setValue((Attribute) attributeVector.get(totalNGramsList.size()), tagOfPost);
                 isTrainingSet.add(iExample);
             }
         }
@@ -104,11 +99,7 @@ public class Dataset {
     }
 
     public Instances getMultilabelDataset(List<Long> normalizedIds, DBConnector db) throws SQLException, IllegalArgumentException {
-        if (attributeVector == null) {
-            throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
-                    "setAttributes(List<String> attributes, List<String> tags)' before calling this" +
-                    "method to provide unique format of dataset.");
-        }
+        assureAttributeVectorNotNull();
         logger.info("Getting Multilabeldataset...");
         /**
          * Create an empty training set
@@ -129,19 +120,18 @@ public class Dataset {
             }
 
             logger.info("Post " + postId + ":  ");
-            Instance iExample = new Instance(1, new double[attributeVector.size()]);
+            Instance iExample = new DenseInstance(1, new double[attributeVector.size()]);
 
-            for (String tag: allTagsOfPost) {
+            for (String tag : allTagsOfPost) {
                 /**
                  * ставим 1, если тег есть, 0 по дефолту будет
                  */
-                Attribute g = (Attribute) attributeVector.elementAt(totalNGramsListIndexes.get(tag));
-                iExample.setValue((Attribute) this.attributeVector.elementAt(totalNGramsListIndexes.get(tag)), "1");
+                iExample.setValue((Attribute) this.attributeVector.get(totalNGramsListIndexes.get(tag)), "1");
             }
 
             for (NGram nGram : allNGram) {
                 if (totalNGramsListIndexes.containsKey(nGram.getText())) {
-                    iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double)nGram.getUsesCnt());
+                    iExample.setValue(totalNGramsListIndexes.get(nGram.getText()), (double) nGram.getUsesCnt());
                 }
             }
 
@@ -150,10 +140,17 @@ public class Dataset {
         return isTrainingSet;
     }
 
+    private void assureAttributeVectorNotNull() {
+        if(attributeVector==null) {
+            throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
+                "setAttributes(List<String> attributes)' or 'setMultilabelAttributes(Set<String> attributes)' " +
+                    "before calling this method to provide unique format of dataset.");
+        }
+    }
+
     private List<String> getProperTagName(DBConnector db, Long postId) throws SQLException {
         List<String> allTagsOfPost = db.getAllTagNames(postId);
         allTagsOfPost.removeIf(tag -> !tags.contains(tag));
-        //allTagsOfPost = assertTagNames(allTagsOfPost);
         return allTagsOfPost;
     }
 
@@ -182,33 +179,33 @@ public class Dataset {
     }
 
     public void setAttributes(Set<String> attributes) {
-        attributeVector = new FastVector(attributes.size() + 1);
+        attributeVector = new ArrayList<Attribute> (attributes.size() + 1);
         for (String nGram : attributes) {
-            attributeVector.addElement(new Attribute(nGram));
+            attributeVector.add(new Attribute(nGram));
         }
         List<String> allFeatures = new ArrayList<String>();
         allFeatures.addAll(attributes);
         setNGramAttributeIndex(allFeatures);
-        FastVector fvClassVal = new FastVector(tags.size());
-        tags.forEach(fvClassVal::addElement);
+        ArrayList<String>  fvClassVal = new ArrayList<> (tags.size());
+        tags.forEach(fvClassVal::add);
         Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
-        attributeVector.addElement(ClassAttribute);
+        attributeVector.add(ClassAttribute);
     }
 
     public void setMultilabelAttributes(Set<String> attributes) {
-        attributeVector = new FastVector(attributes.size() + tags.size());
+        attributeVector = new ArrayList<Attribute> (attributes.size() + tags.size());
         /**
          * какие значения могут принимать столбцы с тегами (1 - соответствует тегу, 0 - не соответствует
           */
-        FastVector allowedValuesForTags = new FastVector();
-        allowedValuesForTags.addElement("0");
-        allowedValuesForTags.addElement("1");
+        ArrayList<String>  allowedValuesForTags = new ArrayList<> ();
+        allowedValuesForTags.add("0");
+        allowedValuesForTags.add("1");
         List<String> assertedTags = assertTagNames(tags);
         for (String tag : assertedTags) {
-            attributeVector.addElement(new Attribute(tag, allowedValuesForTags));
+            attributeVector.add(new Attribute(tag, allowedValuesForTags));
         }
         for (String nGram : attributes) {
-            attributeVector.addElement(new Attribute(nGram));
+            attributeVector.add(new Attribute(nGram));
         }
         List<String> allFeatures = new ArrayList<String>();
         allFeatures.addAll(assertedTags);
