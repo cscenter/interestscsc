@@ -21,6 +21,7 @@ import static meka.classifiers.multilabel.Evaluation.testClassifier;
 public class DatasetTest {
 
     private final static int MAX_COUNT = 10;
+    private final static double PROPORTION = 0.2;
     private List<String> allTags;
     private DBConnector db;
     private Instances isTrainingSet;
@@ -47,7 +48,7 @@ public class DatasetTest {
         Set<String> allNGramsFromDB  = dataset.getAllNGramsFromDB(normalizedIds, db);
         dataset.setMultilabelAttributes(allNGramsFromDB);
 
-        dataset.splitToTrainAndTest(normalizedIds, 0.1);
+        dataset.splitToTrainAndTest(normalizedIds, PROPORTION);
         List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
         List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
 
@@ -60,7 +61,7 @@ public class DatasetTest {
         allNGramsFromDB  = dataset2.getAllNGramsFromDB(normalizedIds, db);
         dataset2.setAttributes(allNGramsFromDB);
 
-        dataset2.splitToTrainAndTest(normalizedIds, 0.1);
+        dataset2.splitToTrainAndTest(normalizedIds, PROPORTION);
         normalizedIdsTrain = dataset2.getNormalizedIdsTrain();
         normalizedIdsTest = dataset2.getNormalizedIdsTest();
 
@@ -71,7 +72,7 @@ public class DatasetTest {
     };
 
     @After
-    public void testUsingDatasets() throws Exception {
+    public void testUsigDatasets() throws Exception {
 
 
         NaiveBayes naiveBayes = new NaiveBayes();
