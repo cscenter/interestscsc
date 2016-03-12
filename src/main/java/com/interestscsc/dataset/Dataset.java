@@ -7,6 +7,7 @@ import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.LatentSemanticAnalysis;
 import weka.attributeSelection.Ranker;
 import weka.core.*;
+
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,10 +17,10 @@ public class Dataset {
 
     private final static int MIN_NUMBER_POSTS_OF_TAG = 150;
     private final static int MAX_NUMBER_POSTS_OF_TAG = 1000000000;
-    private static final Logger logger = Logger.getLogger(Dataset.class);
     private final static int MIN_ALLOWED_NGRAM_COUNT = 2;
 
     private List<String> tags;
+    private DBConnector db;
 
     private AttributeSelection selector;
     private ArrayList<Attribute> attributeVector;
@@ -27,24 +28,28 @@ public class Dataset {
     private Map<String, Integer> totalNGramsListIndexes;
     private List<Long> normalizedIdsTrain;
     private List<Long> normalizedIdsTest;
+    private static final Logger logger = Logger.getLogger(Dataset.class);
 
     public static final String prefix = "Tag_";
 
     public Dataset(DBConnector db) throws SQLException {
-        selector = null;
+        this.db = db;
         postsNGrams = new HashMap<>();
-        tags = db.getTopNormalizedTagNamesByOffset(MIN_NUMBER_POSTS_OF_TAG, MAX_NUMBER_POSTS_OF_TAG);
-        logger.info("Number of popular tags: " + tags.size());
     }
 
-    public Dataset(List<String> wantedTags) throws SQLException {
-        selector = null;
+    public Dataset(List<String> wantedTags, DBConnector db) throws SQLException {
+        this.db = db;
         postsNGrams = new HashMap<>();
         tags = wantedTags;
         logger.info("Number of popular tags: " + tags.size());
     }
 
-    public Set<String> getAllNGramsFromDB(List<Long> normalizedIds, DBConnector db) throws SQLException {
+    public void setTagListByScoreGap(int minScore, int maxScore) throws SQLException {
+        tags = db.getTopNormalizedTagNamesByScoreGap(minScore, maxScore);
+        logger.info("Number of tags: " + tags.size());
+    }
+
+    public Set<String> getAllNGramsFromDB(List<Long> normalizedIds) throws SQLException {
         Set<String> ngramsSet = new HashSet<>();
         for (Long id : normalizedIds) {
             List<NGram> allNGram = db.getAllNGramNames(id, DBConnector.NGramType.UNIGRAM);
@@ -56,6 +61,16 @@ public class Dataset {
         return ngramsSet;
     }
 
+    public void setTagListByOffset(int offset, int limit) throws SQLException {
+        tags = db.getTopNormalizedTagNamesByOffset(offset, limit);
+        logger.info("Number of tags: " + tags.size());
+    }
+
+    public void setTagList(List<String> inputTags) throws SQLException {
+        tags = inputTags;
+        logger.info("Number of tags: " + tags.size());
+    }
+
     private void setNGramAttributeIndex(List<String> ngramsList) {
         int i = 0;
         totalNGramsListIndexes = new HashMap<>();
@@ -64,7 +79,7 @@ public class Dataset {
         }
     }
 
-    public Instances getDataset(List<Long> normalizedIds, DBConnector db, Set<String> totalNGramsList) throws SQLException, IllegalArgumentException {
+    public Instances getDataset(List<Long> normalizedIds, Set<String> totalNGramsList) throws SQLException, IllegalArgumentException {
         assureAttributeVectorNotNull();
         logger.info("Getting dataset...");
         Instances isTrainingSet = new Instances("Rel", attributeVector, normalizedIds.size());
@@ -75,10 +90,10 @@ public class Dataset {
         isTrainingSet.setClassIndex(totalNGramsList.size());
 
         for (Long postId : normalizedIds) {
-            List<String> allTagsOfPost = getProperTagName(db, postId);
+            List<String> allTagsOfPost = getProperTagName(postId);
 
             List<NGram> allNGram = postsNGrams.get(postId);
-            if (allNGram.size() < MIN_ALLOWED_NGRAM_COUNT) {
+            if (allNGram == null || allNGram.size() < MIN_ALLOWED_NGRAM_COUNT) {
                 continue;
             }
 
@@ -98,7 +113,7 @@ public class Dataset {
         return isTrainingSet;
     }
 
-    public Instances getMultilabelDataset(List<Long> normalizedIds, DBConnector db) throws SQLException, IllegalArgumentException {
+    public Instances getMultilabelDataset(List<Long> normalizedIds) throws SQLException, IllegalArgumentException {
         assureAttributeVectorNotNull();
         logger.info("Getting Multilabeldataset...");
         /**
@@ -111,7 +126,7 @@ public class Dataset {
         isTrainingSet.setClassIndex(this.tags.size());
 
         for (Long postId : normalizedIds) {
-            List<String> allTagsOfPost = getProperTagName(db, postId);
+            List<String> allTagsOfPost = getProperTagName(postId);
             allTagsOfPost = assertTagNames(allTagsOfPost);
 
             List<NGram> allNGram = postsNGrams.get(postId);
@@ -141,14 +156,14 @@ public class Dataset {
     }
 
     private void assureAttributeVectorNotNull() {
-        if(attributeVector==null) {
+        if (attributeVector == null) {
             throw new IllegalArgumentException("No attributes for dataset were provided. Set them using 'public void " +
-                "setAttributes(List<String> attributes)' or 'setMultilabelAttributes(Set<String> attributes)' " +
+                    "setAttributes(List<String> attributes)' or 'setMultilabelAttributes(Set<String> attributes)' " +
                     "before calling this method to provide unique format of dataset.");
         }
     }
 
-    private List<String> getProperTagName(DBConnector db, Long postId) throws SQLException {
+    private List<String> getProperTagName(Long postId) throws SQLException {
         List<String> allTagsOfPost = db.getAllTagNames(postId);
         allTagsOfPost.removeIf(tag -> !tags.contains(tag));
         return allTagsOfPost;
@@ -174,30 +189,30 @@ public class Dataset {
         return selector.reduceDimensionality(set);
     }
 
-    public List<Long> getNormalizedIds(DBConnector db) throws SQLException {
+    public List<Long> getNormalizedIds() throws SQLException {
         return db.getAllPostNormalizedIds(tags);
     }
 
-    public void setAttributes(Set<String> attributes) {
-        attributeVector = new ArrayList<Attribute> (attributes.size() + 1);
+    public void setAttributes(final Set<String> attributes) {
+        attributeVector = new ArrayList<Attribute>(attributes.size() + 1);
         for (String nGram : attributes) {
             attributeVector.add(new Attribute(nGram));
         }
         List<String> allFeatures = new ArrayList<String>();
         allFeatures.addAll(attributes);
         setNGramAttributeIndex(allFeatures);
-        ArrayList<String>  fvClassVal = new ArrayList<> (tags.size());
+        ArrayList<String> fvClassVal = new ArrayList<>(tags.size());
         tags.forEach(fvClassVal::add);
         Attribute ClassAttribute = new Attribute("Tag", fvClassVal);
         attributeVector.add(ClassAttribute);
     }
 
     public void setMultilabelAttributes(Set<String> attributes) {
-        attributeVector = new ArrayList<Attribute> (attributes.size() + tags.size());
+        attributeVector = new ArrayList<Attribute>(attributes.size() + tags.size());
         /**
          * какие значения могут принимать столбцы с тегами (1 - соответствует тегу, 0 - не соответствует
-          */
-        ArrayList<String>  allowedValuesForTags = new ArrayList<> ();
+         */
+        ArrayList<String> allowedValuesForTags = new ArrayList<>();
         allowedValuesForTags.add("0");
         allowedValuesForTags.add("1");
         List<String> assertedTags = assertTagNames(tags);
@@ -215,7 +230,7 @@ public class Dataset {
 
     /**
      * Чтобы имена тегов не путались с именами нграмм, добавляем в начало префикс
-      */
+     */
     public static List<String> assertTagNames(List<String> list) {
         return list.stream().map(entry -> prefix + entry).collect(Collectors.toList());
     }
@@ -243,12 +258,5 @@ public class Dataset {
 
     public List<Long> getNormalizedIdsTest() {
         return normalizedIdsTest;
-    }
-
-    public static void main(String[] args) throws SQLException {
-        List<String> allTags = new ArrayList<String>();
-        allTags.add("зарубежная архитектура");
-        allTags.add("музеи");
-        Dataset d = new Dataset(allTags);
     }
 }

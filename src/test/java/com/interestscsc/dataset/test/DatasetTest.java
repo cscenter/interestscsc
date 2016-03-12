@@ -43,30 +43,30 @@ public class DatasetTest {
     @Test
     public void testGettingDatasets() throws Exception {
 
-        Dataset dataset = new Dataset(allTags);
-        List<Long> normalizedIds = dataset.getNormalizedIds(db);
-        Set<String> allNGramsFromDB  = dataset.getAllNGramsFromDB(normalizedIds, db);
+        Dataset dataset = new Dataset(allTags, db);
+        List<Long> normalizedIds = dataset.getNormalizedIds();
+        Set<String> allNGramsFromDB  = dataset.getAllNGramsFromDB(normalizedIds);
         dataset.setMultilabelAttributes(allNGramsFromDB);
 
         dataset.splitToTrainAndTest(normalizedIds, PROPORTION);
         List<Long> normalizedIdsTrain = dataset.getNormalizedIdsTrain();
         List<Long> normalizedIdsTest = dataset.getNormalizedIdsTest();
 
-        isTrainingMultiSet = dataset.getMultilabelDataset(normalizedIdsTrain, db);
-        isTestingMultiSet = dataset.getMultilabelDataset(normalizedIdsTest, db);
+        isTrainingMultiSet = dataset.getMultilabelDataset(normalizedIdsTrain);
+        isTestingMultiSet = dataset.getMultilabelDataset(normalizedIdsTest);
         System.out.println(isTestingMultiSet.toString());
 
-        Dataset dataset2 = new Dataset(allTags);
-        normalizedIds = dataset2.getNormalizedIds(db);
-        allNGramsFromDB  = dataset2.getAllNGramsFromDB(normalizedIds, db);
+        Dataset dataset2 = new Dataset(allTags, db);
+        normalizedIds = dataset2.getNormalizedIds();
+        allNGramsFromDB  = dataset2.getAllNGramsFromDB(normalizedIds);
         dataset2.setAttributes(allNGramsFromDB);
 
         dataset2.splitToTrainAndTest(normalizedIds, PROPORTION);
         normalizedIdsTrain = dataset2.getNormalizedIdsTrain();
         normalizedIdsTest = dataset2.getNormalizedIdsTest();
 
-        isTrainingSet = dataset2.getDataset(normalizedIdsTrain, db, allNGramsFromDB);
-        isTestingSet = dataset2.getDataset(normalizedIdsTest, db, allNGramsFromDB);
+        isTrainingSet = dataset2.getDataset(normalizedIdsTrain, allNGramsFromDB);
+        isTestingSet = dataset2.getDataset(normalizedIdsTest, allNGramsFromDB);
         System.out.println(isTestingSet.toString());
 
     };

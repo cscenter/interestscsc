@@ -10,6 +10,7 @@ import java.net.URLEncoder;
 
 public abstract class BaseLoader {
     public static final String ERROR_STATUS_PAGE = "ERROR";
+    public static final String FORBIDDEN_STATUS_PAGE = "Forbidden";
 
     public String loadData(HttpHost proxy, String... argsToEncode) throws IOException, UnirestException, InterruptedException, RuntimeException {
         String url = getUrl();
@@ -27,7 +28,7 @@ public abstract class BaseLoader {
 
         Unirest.shutdown();
         if (!"OK".equals(response.getStatusText())) {
-            return ERROR_STATUS_PAGE;
+            return response.getStatusText();
         }
         return response.getBody();
     }
