@@ -1,4 +1,4 @@
-package com.interestscsc.classifier.bayes.test;
+package com.interestscsc.classifier.tree.test;
 
 /**
  * Created by Maxim on 05.03.2016.
@@ -6,15 +6,15 @@ package com.interestscsc.classifier.bayes.test;
 import com.interestscsc.classifier.CommonClassifierTest;
 import org.apache.log4j.Logger;
 import weka.classifiers.Classifier;
-import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.trees.J48;
 
-public class NaiveBayesTest extends CommonClassifierTest {
+public class TreeClassifierTest extends CommonClassifierTest {
 
-    private static final Logger logger = Logger.getLogger(NaiveBayesTest.class);
+    private static final Logger logger = Logger.getLogger(TreeClassifierTest.class);
 
     @Override
     public Classifier getClassifier() {
-        return new NaiveBayes();
+        return new J48();
     }
 
     @Override

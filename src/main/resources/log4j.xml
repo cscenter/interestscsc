@@ -22,6 +22,44 @@
         </layout>
     </appender>
 
+    <!--KNNClassifier appenders-->
+
+    <appender name="ClassifierKNNConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="ClassifierKNNFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/classifiers.knn.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <!--TreeClassifier appenders-->
+
+    <appender name="ClassifierTreeConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="ClassifierTreeFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/interestscsc/classifiers.tree.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
     <!--Normalizer appenders-->
 
     <appender name="NormalizerConsole" class="org.apache.log4j.ConsoleAppender">
@@ -98,6 +136,16 @@
     <logger name="com.interestscsc.classifier.bayes">
         <appender-ref ref="ClassifierNaiveBayesConsole"/>
         <appender-ref ref="ClassifierNaiveBayesFile"/>
+    </logger>
+
+    <logger name="com.interestscsc.classifier.knn">
+        <appender-ref ref="ClassifierKNNConsole"/>
+        <appender-ref ref="ClassifierKNNFile"/>
+    </logger>
+
+    <logger name="com.interestscsc.classifier.tree">
+        <appender-ref ref="ClassifierTreeConsole"/>
+        <appender-ref ref="ClassifierTreeFile"/>
     </logger>
 
     <logger name="com.interestscsc.normalizer">
