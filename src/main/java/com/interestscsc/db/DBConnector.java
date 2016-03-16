@@ -89,6 +89,7 @@ public class DBConnector {
      * @deprecated Лучше использовать соедиление в качестве ресурса в
      * try-with-resources (см., например, метод dropInitDatabase).
      */
+    @Deprecated
     public void closeConnection(Connection connectionToClose) throws SQLException {
         //noinspection EmptyTryBlock,unused
         try (Connection autoClose = connectionToClose) {
@@ -165,6 +166,46 @@ public class DBConnector {
         return result;
     }
 
+    public List<Long> getTagIdsByNames(List<String> tagNames) throws SQLException {
+        if (tagNames == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        List<Long> result = new LinkedList<>();
+        if (tagNames.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(tagNames.size() * attr.length());
+        for (int i = tagNames.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTagIdsString =
+                "WITH tag_list AS ( " +
+                "    SELECT text FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS tag_list(text) " +
+                ") " +
+                "SELECT id " +
+                "FROM Tag " +
+                "  JOIN tag_list USING (text) " +
+                "GROUP BY id ;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagIds = con.prepareStatement(selectTagIdsString)
+        ) {
+            int i = 0;
+            for (String name : tagNames)
+                selectTagIds.setString(++i, name);
+            ResultSet rs = tryQueryTransaction(selectTagIds, "Tag");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    /**
+     * @deprecated Вместо этого воспользуйтесь List<Long> getAllTagIds()
+     */
+    @Deprecated
     public List<String> getAllTagNames() throws SQLException {
         List<String> result = new LinkedList<>();
         String selectTagString = "SELECT text FROM Tag;";
@@ -180,6 +221,26 @@ public class DBConnector {
         return result;
     }
 
+    public List<Long> getAllTagIds() throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectTagString = "SELECT id FROM Tag;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTag = con.prepareStatement(selectTagString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectTag, "Tag");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    /**
+     * @deprecated Вместо этого воспользуйтесь методом
+     * List<Long> getAllTagIds(String userLJNick)
+     */
+    @Deprecated
     public List<String> getAllTagNames(String userLJNick) throws SQLException {
         List<String> result = new LinkedList<>();
         String selectTagString = "SELECT text FROM Tag t " +
@@ -199,7 +260,30 @@ public class DBConnector {
         return result;
     }
 
-    public List<String> getAllTagNames(long post_id) throws SQLException {
+    public List<Long> getAllTagIds(String userLJNick) throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectTagString = "SELECT tag_id FROM TagToUserLJ " +
+                "WHERE user_id = (SELECT id FROM UserLJ WHERE nick = ?);";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTag = con.prepareStatement(selectTagString)
+        ) {
+            int i = 0;
+            selectTag.setString(++i, userLJNick);
+            ResultSet rs = tryQueryTransaction(selectTag, "Tag");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    /**
+     * @deprecated Вместо этого воспользуйтесь методом
+     * List<Long> getAllTagIds(long postId)
+     */
+    @Deprecated
+    public List<String> getAllTagNames(long postId) throws SQLException {
         List<String> result = new LinkedList<>();
         String selectTagNamesString = "SELECT text FROM TagNameToPost tnp " +
                 "WHERE tnp.post_id = ?;";
@@ -208,7 +292,7 @@ public class DBConnector {
                 PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
         ) {
             int i = 0;
-            selectTagNames.setLong(++i, post_id);
+            selectTagNames.setLong(++i, postId);
             ResultSet rs = tryQueryTransaction(selectTagNames, "TagNameToPost");
             if (rs != null)
                 while (rs.next())
@@ -217,6 +301,29 @@ public class DBConnector {
         return result;
     }
 
+    public List<Long> getAllTagIds(long postId) throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectTagIdsString =
+                "SELECT tag_id FROM TagToPost WHERE post_id = ?;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagIds = con.prepareStatement(selectTagIdsString)
+        ) {
+            int i = 0;
+            selectTagIds.setLong(++i, postId);
+            ResultSet rs = tryQueryTransaction(selectTagIds, "TagToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    /**
+     * @deprecated Вместо этого воспользуйтесь методом
+     * List<Long> getAllTagIds(List<Long> postIDs)
+     */
+    @Deprecated
     public List<String> getAllTagNames(List<Long> postIDs) throws SQLException {
         if (postIDs == null)
             throw new IllegalArgumentException("Expected not null argument");
@@ -257,10 +364,51 @@ public class DBConnector {
         return result;
     }
 
+    public List<Long> getAllTagIds(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        List<Long> result = new LinkedList<>();
+        if (postIDs.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTagIdsString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT tag_id " +
+                "FROM TagToPost " +
+                "  JOIN post_list USING (post_id) " +
+                "GROUP BY tag_id ;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagIds = con.prepareStatement(selectTagIdsString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectTagIds.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectTagIds, "TagToPost");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    /**
+     * @deprecated Вместо этого воспользуйтесь методом
+     * Map<Long, List<Long>> getAllTagsByPosts(List<Long> postIDs)
+     */
+    @Deprecated
     public Map<Long, List<String>> getAllTags(List<Long> postIDs) throws SQLException {
         if (postIDs == null)
             throw new IllegalArgumentException("Expected not null argument");
-        Map<Long, List<String>> result = new HashMap<>();
+        Map<Long, List<String>> result = new HashMap<>(postIDs.size());
         if (postIDs.isEmpty())
             return result;
         for (Long postId : postIDs)
@@ -276,15 +424,15 @@ public class DBConnector {
                 "        VALUES (?) " + attrs.toString() + " " +
                 "    ) AS post_list(post_id) " +
                 "), tag_list AS ( " +
-                "SELECT tp.post_id, tp.tag_id id " +
-                "FROM TagToPost tp " +
-                "JOIN post_list USING (post_id) " +
-                "GROUP BY tp.post_id, tp.tag_id " +
+                "    SELECT post_id, tag_id id " +
+                "    FROM TagToPost " +
+                "      JOIN post_list USING (post_id) " +
+                "    GROUP BY post_id, tag_id " +
                 ") " +
-                "SELECT tl.post_id, t.text " +
-                "FROM TAG t " +
-                "JOIN tag_list tl USING(id) " +
-                "ORDER BY tl.post_id;";
+                "SELECT post_id, text " +
+                "FROM TAG " +
+                "  JOIN tag_list USING(id) " +
+                "ORDER BY post_id;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTagNames = con.prepareStatement(selectTagNamesString)
@@ -304,6 +452,101 @@ public class DBConnector {
                         currentList = result.get(nextId);
                     }
                     currentList.add(rs.getString(++i));
+                }
+            }
+        }
+        return result;
+    }
+
+    public Map<Long, List<Long>> getAllTagsByPosts(List<Long> postIDs) throws SQLException {
+        if (postIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Map<Long, List<Long>> result = new HashMap<>(postIDs.size());
+        if (postIDs.isEmpty())
+            return result;
+        for (Long postId : postIDs)
+            result.put(postId, new LinkedList<>());
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(postIDs.size() * attr.length());
+        for (int i = postIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTagByPostString =
+                "WITH post_list AS ( " +
+                "    SELECT post_id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS post_list(post_id) " +
+                ") " +
+                "SELECT post_id, tag_id " +
+                "FROM TagToPost " +
+                "  JOIN post_list USING (post_id) " +
+                "GROUP BY post_id, tag_id " +
+                "ORDER BY post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagByPost = con.prepareStatement(selectTagByPostString)
+        ) {
+            int i = 0;
+            for (long postID : postIDs)
+                selectTagByPost.setLong(++i, postID);
+            ResultSet rs = tryQueryTransaction(selectTagByPost, "TagToPost");
+            if (rs != null) {
+                List<Long> currentList = null;
+                Long currentPostId = null;
+                while (rs.next()) {
+                    i = 0;
+                    Long nextPostId = rs.getLong(++i);
+                    if (!nextPostId.equals(currentPostId)) {
+                        currentPostId = nextPostId;
+                        currentList = result.get(nextPostId);
+                    }
+                    currentList.add(rs.getLong(++i));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Возвращает HashSet, содержащий все связи тег-пост для указанного списка
+     * тегов (т.к. количество тегов вцелом меньше к-ва постов, кроме того,
+     * обучаемся обычно на заданном наборе тегов).
+     *
+     * TODO Можно возвращать все связи, но сет будет очень большим. Как-то лучше?
+     */
+    public Set<TagToPostRel> getTagToPostRelations(List<Long> tagIDs) throws SQLException {
+        if (tagIDs == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        Set<TagToPostRel> result = new HashSet<>(tagIDs.size());
+        if (tagIDs.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(tagIDs.size() * attr.length());
+        for (int i = tagIDs.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        @SuppressWarnings("SqlResolve")
+        String selectTagToPostSetString =
+                "WITH tag_list AS ( " +
+                "    SELECT tag_id FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS tag_list(tag_id) " +
+                ") " +
+                "SELECT  tag_id, post_id " +
+                "FROM TagToPost " +
+                "  JOIN tag_list USING (tag_id) " +
+                "GROUP BY tag_id, post_id;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectTagToPostSet = con.prepareStatement(selectTagToPostSetString)
+        ) {
+            int i = 0;
+            for (long tagID : tagIDs)
+                selectTagToPostSet.setLong(++i, tagID);
+            ResultSet rs = tryQueryTransaction(selectTagToPostSet, "TagToPost");
+            if (rs != null) {
+                while (rs.next()) {
+                    i = 0;
+                    result.add(new TagToPostRel(rs.getLong(++i), rs.getLong(++i)));
                 }
             }
         }
@@ -554,38 +797,38 @@ public class DBConnector {
         @SuppressWarnings("SqlResolve")
         String selectTfIdfTopNgramsString =
                 "WITH tag_list AS (" +
-                        "  SELECT id AS tag_id" +
-                        "  FROM (" +
-                        "         VALUES (?) " + attrs.toString() + " " +
-                        "       ) AS tag_text_list(text)" +
-                        "  JOIN tag USING(text)" +
-                        "), percent AS (" +
-                        "  SELECT (?)::FLOAT / count(*) AS val" +
-                        "  FROM tag_list" +
-                        "    JOIN TFIDFSimple USING(tag_id)" +
-                        "), ranked_ngram_top AS (" +
-                        "  SELECT" +
-                        "    type," +
-                        "    ngram_id," +
-                        "    row_number() OVER (PARTITION BY tag_id ORDER BY tf_idf DESC ) AS row_number," +
-                        "    count(*) OVER (PARTITION BY tag_id) * (SELECT val FROM percent) AS max_row" +
-                        "  FROM tag_list" +
-                        "    JOIN TFIDFSimple USING(tag_id)" +
-                        "), ranked_ngram_top_limited AS (" +
-                        "  SELECT type, ngram_id" +
-                        "  FROM ranked_ngram_top" +
-                        "  WHERE row_number <= max_row" +
-                        "  GROUP BY type, ngram_id" +
-                        ")" +
-                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
-                        "    JOIN unigram u ON (type = 1 AND rnt.ngram_id = u.id)" +
-                        "  UNION ALL" +
-                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
-                        "    JOIN digram d ON (type = 2 AND rnt.ngram_id = d.id)" +
-                        "  UNION ALL" +
-                        "  SELECT text FROM ranked_ngram_top_limited rnt" +
-                        "    JOIN trigram t ON (type = 3 AND rnt.ngram_id = t.id)" +
-                        "  LIMIT ?;";
+                "  SELECT id AS tag_id" +
+                "  FROM (" +
+                "         VALUES (?) " + attrs.toString() + " " +
+                "       ) AS tag_text_list(text)" +
+                "  JOIN tag USING(text)" +
+                "), percent AS (" +
+                "  SELECT (?)::FLOAT / count(*) AS val" +
+                "  FROM tag_list" +
+                "    JOIN TFIDFSimple USING(tag_id)" +
+                "), ranked_ngram_top AS (" +
+                "  SELECT" +
+                "    type," +
+                "    ngram_id," +
+                "    row_number() OVER (PARTITION BY tag_id ORDER BY tf_idf DESC ) AS row_number," +
+                "    count(*) OVER (PARTITION BY tag_id) * (SELECT val FROM percent) AS max_row" +
+                "  FROM tag_list" +
+                "    JOIN TFIDFSimple USING(tag_id)" +
+                "), ranked_ngram_top_limited AS (" +
+                "  SELECT type, ngram_id" +
+                "  FROM ranked_ngram_top" +
+                "  WHERE row_number <= max_row" +
+                "  GROUP BY type, ngram_id" +
+                ")" +
+                "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                "    JOIN unigram u ON (type = 1 AND rnt.ngram_id = u.id)" +
+                "  UNION ALL" +
+                "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                "    JOIN digram d ON (type = 2 AND rnt.ngram_id = d.id)" +
+                "  UNION ALL" +
+                "  SELECT text FROM ranked_ngram_top_limited rnt" +
+                "    JOIN trigram t ON (type = 3 AND rnt.ngram_id = t.id)" +
+                "  LIMIT ?;";
         try (
                 Connection con = getConnection();
                 PreparedStatement selectTfIdfTopNgrams = con.prepareStatement(selectTfIdfTopNgramsString)
@@ -664,6 +907,11 @@ public class DBConnector {
         return result;
     }
 
+    /**
+     * @deprecated Вместо этого воспользуйтесь методом
+     * List<Long> getAllPostNormalizedIdsByTagIds(List<Long> tagIds)
+     */
+    @Deprecated
     public List<Long> getAllPostNormalizedIds(List<String> tags) throws SQLException {
         if (tags == null)
             throw new IllegalArgumentException("Expected not null argument");
@@ -700,6 +948,52 @@ public class DBConnector {
             int i = 0;
             for (String tag : tags)
                 selectPostNormalizedIds.setString(++i, tag);
+            ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
+    public List<Long> getAllPostNormalizedIdsByTagIds(List<Long> tagIds) throws SQLException {
+        if (tagIds == null)
+            throw new IllegalArgumentException("Expected not null argument");
+        List<Long> result = new LinkedList<>();
+        if (tagIds.isEmpty())
+            return result;
+        String attr = ",(?)";
+        StringBuilder attrs = new StringBuilder(tagIds.size() * attr.length());
+        for (int i = tagIds.size() - 1; i > 0; i--)
+            attrs.append(attr);
+        /**
+         * Здесь в post_list еще был JOIN unigramtopost USING(post_id) - зачем,
+         * если и так выбираются p.normalized?
+         */
+        @SuppressWarnings("SqlResolve")
+        String selectPostNormalizedIdsString =
+                "WITH tag_list AS ( " +
+                "    SELECT tag_id " +
+                "    FROM ( " +
+                "        VALUES (?) " + attrs.toString() + " " +
+                "    ) AS tag_list(tag_id) " +
+                "), post_list AS ( " +
+                "    SELECT post_id id " +
+                "    FROM tag_list " +
+                "      JOIN tagtopost USING(tag_id) " +
+                "    GROUP BY post_id " +
+                ") " +
+                "SELECT id " +
+                "FROM Post p " +
+                "  JOIN post_list USING(id) " +
+                "WHERE p.normalized;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostNormalizedIds = con.prepareStatement(selectPostNormalizedIdsString)
+        ) {
+            int i = 0;
+            for (Long tag : tagIds)
+                selectPostNormalizedIds.setLong(++i, tag);
             ResultSet rs = tryQueryTransaction(selectPostNormalizedIds, "Post");
             if (rs != null)
                 while (rs.next())
@@ -1315,5 +1609,15 @@ public class DBConnector {
         }
 
 
+    }
+
+    public static class TagToPostRel {
+        public final Long tagId;
+        public final Long postId;
+
+        public TagToPostRel(Long tagId, Long postId) {
+            this.tagId = tagId;
+            this.postId = postId;
+        }
     }
 }
