@@ -7,7 +7,7 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -17,30 +17,33 @@ public class ProxyFactory {
     private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.95;
     private static final Logger logger = Logger.getLogger(ProxyFactory.class);
     private static final String DEFAULT_USER = "mi3ch";
-    private static final String RAW_PROXIES_FILE = "proxies.txt";
-    private static final String WORKING_PROXIES_FILE = "working-proxies.txt";
-    private static final String PATH_TO_FILE_WITH_PROXY = "src" + File.separator +
+    private static final String RAW_PROXIES_FILE_FULL_PATH = "src" + File.separator +
             "main" + File.separator + "resources" + File.separator +
-            "crawler" + File.separator + "proxy" + File.separator;
+            "crawler" + File.separator + "proxy" + File.separator +
+            "proxies.txt";
+    private static final String WORKING_PROXIES_FILE_FULL_PATH = "src" + File.separator +
+            "main" + File.separator + "resources" + File.separator +
+            "crawler" + File.separator + "proxy" + File.separator +
+            "working-proxies.txt";
 
     private final Random random = new Random();
     private boolean isCheckingNow = false;
 
     private Set<HttpHost> rawProxies;
-    private static List<HttpHost> workingProxies;
-    private static List<HttpHost> brokenProxies;
-    private Set<String> rawAllUsers;
+    private List<HttpHost> workingProxies;
+    private List<HttpHost> brokenProxies;
+    private List<String> rawAllUsers;
 
     public ProxyFactory() {
         rawProxies = new HashSet<>();
         workingProxies = new ArrayList<>();
         brokenProxies = new ArrayList<>();
-        rawAllUsers = new HashSet<>();
+        rawAllUsers = new ArrayList<>();
         rawAllUsers.add(DEFAULT_USER);
     }
 
     public void setRawAllUsers(final Set<String> rawAllUsers) {
-        this.rawAllUsers = rawAllUsers;
+        this.rawAllUsers.addAll(rawAllUsers);
     }
 
     public void setBrokenProxies(final HttpHost proxy) {
@@ -51,6 +54,10 @@ public class ProxyFactory {
             logger.info("Broken proxies are too much. Maybe, need to change proxy list?!");
             startCheckingProxy();
         }
+    }
+
+    public void clearWorkingProxy() {
+        workingProxies.clear();
     }
 
     public HttpHost getNextProxy() {
@@ -85,8 +92,8 @@ public class ProxyFactory {
         return workingProxies.size();
     }
 
-    public void insertFromFile(String fileName) {
-        File file = new File(PATH_TO_FILE_WITH_PROXY + fileName);
+    public void insertFromFile() {
+        File file = new File(RAW_PROXIES_FILE_FULL_PATH);
         try (BufferedReader bufferedReaderProxy = new BufferedReader(new FileReader(file.getAbsoluteFile()))) {
             String line;
             while ((line = bufferedReaderProxy.readLine()) != null) {
@@ -94,7 +101,7 @@ public class ProxyFactory {
                 rawProxies.add(new HttpHost(proxyString[0], Integer.parseInt(proxyString[1])));
             }
         } catch (IOException e) {
-            logger.error("Invalid filename: " + fileName + " or error reading data from the file. " + e);
+            logger.error("Invalid filename: " + RAW_PROXIES_FILE_FULL_PATH + " or error reading data from the file. " + e);
         }
     }
 
@@ -105,13 +112,12 @@ public class ProxyFactory {
         }
 
         if (rawProxies.isEmpty()) {
-            insertFromFile(WORKING_PROXIES_FILE);
-            insertFromFile(RAW_PROXIES_FILE);
+            insertFromFile();
         }
 
         logger.info("Start new session of checking proxies!");
         logger.info("Clearing file with working proxies.");
-        try (FileWriter fileWriter = new FileWriter(PATH_TO_FILE_WITH_PROXY + WORKING_PROXIES_FILE)) {
+        try (FileWriter fileWriter = new FileWriter(WORKING_PROXIES_FILE_FULL_PATH)) {
             fileWriter.write("");
         } catch (IOException e) {
             logger.error("Error clearing file: " + e);
@@ -124,63 +130,61 @@ public class ProxyFactory {
 
     private void findWorkingProxy() {
         ExecutorService service = Executors.newCachedThreadPool();
-        Iterator<String> iterator = rawAllUsers.iterator();
-        iterator.next();
         rawProxies.parallelStream().forEach(
-                proxy -> service.submit(
-                        new ProxyChecker(proxy, iterator.next(), PATH_TO_FILE_WITH_PROXY + WORKING_PROXIES_FILE)
-                )
+                proxy -> CompletableFuture.supplyAsync(() -> checkProxy(proxy, getRandomRawNick()), service)
+                        .thenAccept(this::writeProxyToFile)
         );
 
         service.shutdown();
         isCheckingNow = false;
     }
 
-    private static class ProxyChecker implements Callable {
-
-        private HttpHost proxy;
-        private String nick;
-        private String filename;
-
-        public ProxyChecker(HttpHost proxy, String nick, String filename) {
-            this.proxy = proxy;
-            this.nick = nick;
-            this.filename = filename;
+    private ProxyWrapper checkProxy(HttpHost proxy, String nick) {
+        boolean response;
+        try {
+            logger.info("Check proxy: " + proxy.toString());
+            response = new ProxyLoader().loadData(
+                    new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
+        } catch (InterruptedException | UnirestException | IOException e) {
+            logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
+            brokenProxies.add(proxy);
+            return new ProxyWrapper(proxy, false);
         }
 
-        @Override
-        public Object call() throws Exception {
-            boolean response;
-            try {
-                logger.info("Check proxy: " + proxy.toString());
-                response = new ProxyLoader().loadData(new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
-            } catch (RuntimeException | InterruptedException | UnirestException | IOException e) {
-                logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
-                brokenProxies.add(proxy);
-                return false;
-            }
+        return new ProxyWrapper(proxy, response);
+    }
 
-            if (response) {
-                logger.info("Find new working proxy: " + proxy.toString());
-                if (!workingProxies.contains(proxy)) {
-                    workingProxies.add(proxy);
-                    writeProxyToFile();
+    private synchronized void writeProxyToFile(ProxyWrapper proxyWrapper) {
+        HttpHost proxy = proxyWrapper.proxy;
+
+        if (proxyWrapper.isWorking) {
+            logger.info("Find new working proxy: " + proxy.toString());
+            if (!workingProxies.contains(proxy)) {
+                workingProxies.add(proxy);
+                try (PrintWriter printWriter = new PrintWriter(
+                        new FileWriter(WORKING_PROXIES_FILE_FULL_PATH, true))) {
+                    printWriter.println(proxy.getHostName() + ":" + proxy.getPort());
+                } catch (IOException e) {
+                    logger.error("Error writing to file: " + WORKING_PROXIES_FILE_FULL_PATH + ". " + e);
                 }
-            } else {
-                logger.info("No access to LJ for proxy: " + proxy.toString());
-                brokenProxies.add(proxy);
             }
-            return response;
+        } else {
+            logger.info("No access to LJ for proxy: " + proxy.toString());
+            brokenProxies.add(proxy);
         }
+    }
 
-        private synchronized boolean writeProxyToFile() {
-            try (PrintWriter printWriter = new PrintWriter(new FileWriter(filename, true))) {
-                printWriter.println(proxy.getHostName() + ":" + proxy.getPort());
-            } catch (IOException e) {
-                logger.error("Error writing to file: " + filename + ". " + e);
-                return false;
-            }
-            return true;
+    private String getRandomRawNick() {
+        return rawAllUsers.get(random.nextInt(rawAllUsers.size()));
+    }
+
+    private static class ProxyWrapper {
+        HttpHost proxy;
+        boolean isWorking;
+
+        public ProxyWrapper(HttpHost proxy, boolean isWorking) {
+            this.proxy = proxy;
+            this.isWorking = isWorking;
         }
     }
 }
