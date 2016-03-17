@@ -1,0 +1,8 @@
+encoding "utf8";
+TTextMinerConfig {
+  Dictionary = "<dir>/<file>.gzt";
+  PrettyOutput = "<dir>/PrettyOutput.html";
+  Input = { File = "<dir>/input.txt"; }
+  Articles = [ { Name = "N-Grams"; } ]
+  Facts = [ { Name = "NGrams"; } ]
+}
