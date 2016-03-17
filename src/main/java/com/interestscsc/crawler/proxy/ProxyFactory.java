@@ -1,11 +1,16 @@
 package com.interestscsc.crawler.proxy;
 
-import com.interestscsc.crawler.loaders.ProxyLoader;
+import com.interestscsc.crawler.loaders.ProxyChecker;
+import com.interestscsc.crawler.loaders.ProxyListLoader;
+import com.interestscsc.crawler.parsers.ProxyListParser;
+import com.interestscsc.exceptions.NotFoundPageException;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHost;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -17,6 +22,7 @@ public class ProxyFactory {
     private static final double PERCENT_BROKEN_PROXY_TO_RECHECKING = 0.95;
     private static final Logger logger = Logger.getLogger(ProxyFactory.class);
     private static final String DEFAULT_USER = "mi3ch";
+    private static final int MAX_NUMBER_PAGES_ON_SITE_TO_FOUND_PROXIES = 30;
     private static final String RAW_PROXIES_FILE_FULL_PATH = "src" + File.separator +
             "main" + File.separator + "resources" + File.separator +
             "crawler" + File.separator + "proxy" + File.separator +
@@ -66,6 +72,11 @@ public class ProxyFactory {
             startCheckingProxy();
         }
 
+        if (rawProxies.isEmpty()) {
+            logger.warn("Program haven't any proxies! Please, add proxies to file or change website!!!");
+            return null;
+        }
+
         /**
          *  if working proxy-list is empty, then we should sleeping until new proxy doesn't find
          */
@@ -92,7 +103,8 @@ public class ProxyFactory {
         return workingProxies.size();
     }
 
-    public void insertFromFile() {
+    public boolean insertFromFile() {
+        logger.info("Start getting proxy-list from file: " + RAW_PROXIES_FILE_FULL_PATH);
         File file = new File(RAW_PROXIES_FILE_FULL_PATH);
         try (BufferedReader bufferedReaderProxy = new BufferedReader(new FileReader(file.getAbsoluteFile()))) {
             String line;
@@ -102,7 +114,36 @@ public class ProxyFactory {
             }
         } catch (IOException e) {
             logger.error("Invalid filename: " + RAW_PROXIES_FILE_FULL_PATH + " or error reading data from the file. " + e);
+            return false;
         }
+        return !rawProxies.isEmpty();
+    }
+
+    public boolean insertFromSite() {
+        try {
+            logger.info("Start getting proxy-list from site.");
+            Calendar calendar = Calendar.getInstance();
+            DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+            int notFoundPagesNumber = 0;
+            String response = ProxyListLoader.NOT_FOUND_STATUS_PAGE;
+            while (ProxyListLoader.NOT_FOUND_STATUS_PAGE.equals(response)) {
+                String dateString = dateFormat.format(calendar.getTime());
+                response = new ProxyListLoader().loadData(null, dateString);
+                calendar.add(Calendar.DATE, -1);
+                if (notFoundPagesNumber++ > MAX_NUMBER_PAGES_ON_SITE_TO_FOUND_PROXIES) {
+                    throw new NotFoundPageException(new ProxyListLoader().getUrl());
+                }
+            }
+            rawProxies = ProxyListParser.getProxyList(response);
+        } catch (IOException | UnirestException | InterruptedException e) {
+            logger.error("Getting proxy-list from site failed. Error: " + e);
+            return false;
+        } catch (NotFoundPageException e) {
+            logger.error(e.getMessage());
+            logger.error("Please, change website with proxy-list.");
+            return false;
+        }
+        return !rawProxies.isEmpty();
     }
 
     private void startCheckingProxy() {
@@ -112,7 +153,13 @@ public class ProxyFactory {
         }
 
         if (rawProxies.isEmpty()) {
-            insertFromFile();
+            if (!insertFromSite()) {
+                if (!insertFromFile()) {
+                    logger.warn("Raw proxy-list is empty!");
+                    return;
+                }
+            }
+            logger.info("Proxies are added successfully.");
         }
 
         logger.info("Start new session of checking proxies!");
@@ -143,7 +190,7 @@ public class ProxyFactory {
         boolean response;
         try {
             logger.info("Check proxy: " + proxy.toString());
-            response = new ProxyLoader().loadData(
+            response = new ProxyChecker().loadData(
                     new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
         } catch (InterruptedException | UnirestException | IOException e) {
             logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);

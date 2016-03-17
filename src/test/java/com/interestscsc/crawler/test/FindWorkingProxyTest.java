@@ -15,6 +15,7 @@ import java.util.Set;
 public class FindWorkingProxyTest {
     private ProxyFactory proxyFactory;
     private static final Logger logger = Logger.getLogger(FindWorkingProxyTest.class);
+    private static final int MAX_NUMBER_OF_CHECKING = 20;
 
     @Before
     public void setUp() {
@@ -34,16 +35,15 @@ public class FindWorkingProxyTest {
         Queue<String> rawUsersQueue = db.getRawUsers();
         Set<String> rawUsersSet = new HashSet<>(rawUsersQueue);
         proxyFactory.setRawAllUsers(rawUsersSet);
-        int session = 20;
-        while (session-- > 0) {
-            logger.info("Starting session: " + (20 - session));
+        for (int session = 0; session < MAX_NUMBER_OF_CHECKING; session++) {
+            logger.info("Starting session: " + (session + 1));
             proxyFactory.clearWorkingProxy();
             proxyFactory.getNextProxy();
             logger.info("Test was finished!");
             logger.info("--------------------------------------------------------------------------------");
             logger.info("Count of all proxies: " + proxyFactory.getCountRawProxies());
             logger.info("Count of working proxies: " + proxyFactory.getCountWorkingProxies());
-            Thread.sleep(10000);
+            Thread.sleep(20000);
         }
     }
 }

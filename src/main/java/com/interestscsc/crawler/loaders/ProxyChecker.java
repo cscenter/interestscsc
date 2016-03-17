@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.net.*;
 import java.util.concurrent.TimeUnit;
 
-public class ProxyLoader {
+public class ProxyChecker {
     public boolean loadData(HttpHost httpHostProxy, String... argsToEncode) throws IOException, UnirestException, InterruptedException, RuntimeException {
         String urlString = getUrl();
         String[] encodedArgs = new String[argsToEncode.length];
