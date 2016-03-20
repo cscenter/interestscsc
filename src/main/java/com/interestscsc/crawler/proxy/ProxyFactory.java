@@ -194,7 +194,6 @@ public class ProxyFactory {
                     new HttpHost(proxy.getHostName(), proxy.getPort()), nick);
         } catch (InterruptedException | UnirestException | IOException e) {
             logger.error("Error checking proxy: " + proxy.toString() + " to find info about user: " + nick + ". " + e);
-            brokenProxies.add(proxy);
             return new ProxyWrapper(proxy, false);
         }
 
