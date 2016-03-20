@@ -1,7 +1,5 @@
 package com.interestscsc.crawler;
 
-import com.interestscsc.exceptions.AccessDeniedException;
-import com.interestscsc.exceptions.ForbiddenPageException;
 import com.interestscsc.crawler.loaders.*;
 import com.interestscsc.crawler.parsers.*;
 import com.interestscsc.crawler.proxy.ProxyFactory;
@@ -10,6 +8,8 @@ import com.interestscsc.data.Tag;
 import com.interestscsc.data.User;
 import com.interestscsc.db.DBConnector;
 import com.interestscsc.db.DBConnectorToCrawler;
+import com.interestscsc.exceptions.AccessDeniedException;
+import com.interestscsc.exceptions.ForbiddenPageException;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.http.HttpHost;
@@ -197,6 +197,7 @@ public class Crawler {
                 userTags = getUserTags(nick);
             } catch (UnirestException e) {
                 handleException("User: " + nick + " haven't access. Unirest exception. ", e);
+                sleepCrawler(10);
             } catch (InterruptedException | IllegalArgumentException | NullPointerException | IOException e) {
                 handleException("User: " + nick + ". ", e);
             } catch (RuntimeException e) {
