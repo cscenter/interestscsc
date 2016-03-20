@@ -907,6 +907,21 @@ public class DBConnector {
         return result;
     }
 
+    public List<Long> getAllPostIds() throws SQLException {
+        List<Long> result = new LinkedList<>();
+        String selectPostIdsString = "SELECT id FROM Post;";
+        try (
+                Connection con = getConnection();
+                PreparedStatement selectPostIds = con.prepareStatement(selectPostIdsString)
+        ) {
+            ResultSet rs = tryQueryTransaction(selectPostIds, "Post");
+            if (rs != null)
+                while (rs.next())
+                    result.add(rs.getLong(1));
+        }
+        return result;
+    }
+
     /**
      * @deprecated Вместо этого воспользуйтесь методом
      * List<Long> getAllPostNormalizedIdsByTagIds(List<Long> tagIds)
